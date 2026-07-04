@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -21,7 +21,7 @@ return new class extends Migration
         }
 
         Schema::table('daily_closings', function (Blueprint $table): void {
-            $table\->string('active_scope_key', 64)->nullable()->after('status');
+            $table->string('active_scope_key', 64)->nullable()->after('status');
         });
 
         DB::table('daily_closings')
