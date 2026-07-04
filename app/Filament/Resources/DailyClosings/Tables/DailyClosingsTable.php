@@ -56,6 +56,15 @@ class DailyClosingsTable
                     ->sortable()
                     ->toggleable(),
 
+                TextColumn::make('net_sales_amount')
+                    ->label('صافي المبيعات')
+                    ->state(fn (DailyClosing $record): float => max(
+                        (float) $record->total_sales_amount - (float) $record->total_returns_amount,
+                        0,
+                    ))
+                    ->money('SYP')
+                    ->toggleable(),
+
                 TextColumn::make('total_collections_amount')
                     ->label('إجمالي التحصيلات')
                     ->money('SYP')
