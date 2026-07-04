@@ -37,4 +37,14 @@ class Warehouse extends Model
     {
         return $this->hasMany(StockMovement::class, 'from_warehouse_id');
     }
+
+    public function outgoingVehicleLoads(): HasMany
+    {
+        return $this->hasMany(VehicleLoad::class, 'from_warehouse_id');
+    }
+
+    public function incomingVehicleLoads(): HasMany
+    {
+        return $this->hasMany(VehicleLoad::class, 'to_warehouse_id');
+    }
 }

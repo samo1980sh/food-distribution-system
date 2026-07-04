@@ -37,4 +37,9 @@ class Vehicle extends Model
     {
         return $this->hasOne(Warehouse::class);
     }
+
+    public function vehicleLoads(): HasMany
+    {
+        return $this->hasMany(VehicleLoad::class);
+    }
 }
