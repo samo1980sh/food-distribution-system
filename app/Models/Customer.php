@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Customer extends Model
+{
+    protected $fillable = [
+        'code',
+        'name',
+        'owner_name',
+        'phone',
+        'mobile',
+        'customer_type',
+        'area_id',
+        'route_id',
+        'address',
+        'latitude',
+        'longitude',
+        'credit_limit',
+        'payment_type',
+        'status',
+        'notes',
+    ];
+
+    protected $casts = [
+        'latitude' => 'decimal:7',
+        'longitude' => 'decimal:7',
+        'credit_limit' => 'decimal:2',
+    ];
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
+    }
+
+    public function route(): BelongsTo
+    {
+        return $this->belongsTo(DistributionRoute::class, 'route_id');
+    }
+}
