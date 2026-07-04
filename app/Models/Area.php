@@ -9,9 +9,7 @@ class Area extends Model
 {
     protected $fillable = [
         'code',
-        'name_ar',
-        'name_en',
-        'city',
+        'name_ar',        'city',
         'status',
         'notes',
     ];

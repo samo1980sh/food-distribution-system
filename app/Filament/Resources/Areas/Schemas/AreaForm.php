@@ -21,12 +21,8 @@ class AreaForm
                     ->maxLength(255),
 
                 TextInput::make('name_ar')
-                    ->label('اسم المنطقة بالعربية')
+                    ->label('اسم المنطقة')
                     ->required()
-                    ->maxLength(255),
-
-                TextInput::make('name_en')
-                    ->label('اسم المنطقة بالإنكليزية')
                     ->maxLength(255),
 
                 TextInput::make('city')

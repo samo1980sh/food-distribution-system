@@ -14,10 +14,20 @@ class UnitForm
         return $schema
             ->columns(2)
             ->components([
-                TextInput::make('code')->label('رمز الوحدة')->required()->unique(ignoreRecord: true)->maxLength(255),
-                TextInput::make('name_ar')->label('اسم الوحدة بالعربية')->required()->maxLength(255),
-                TextInput::make('name_en')->label('اسم الوحدة بالإنكليزية')->maxLength(255),
-                TextInput::make('symbol')->label('الاختصار')->maxLength(255),
+                TextInput::make('code')
+                    ->label('رمز الوحدة')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(255),
+
+                TextInput::make('name_ar')
+                    ->label('اسم الوحدة')
+                    ->required()
+                    ->maxLength(255),
+
+                TextInput::make('symbol')
+                    ->label('الاختصار')
+                    ->maxLength(255),
 
                 Select::make('status')
                     ->label('الحالة')
@@ -29,7 +39,9 @@ class UnitForm
                     ->required()
                     ->native(false),
 
-                Textarea::make('notes')->label('ملاحظات')->columnSpanFull(),
+                Textarea::make('notes')
+                    ->label('ملاحظات')
+                    ->columnSpanFull(),
             ]);
     }
 }

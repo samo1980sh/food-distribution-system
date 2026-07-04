@@ -16,7 +16,7 @@ class UnitsTable
         return $table
             ->columns([
                 TextColumn::make('code')->label('الرمز')->searchable()->sortable(),
-                TextColumn::make('name_ar')->label('الاسم العربي')->searchable()->sortable(),
+                TextColumn::make('name_ar')->label('الاسم')->searchable()->sortable(),
                 TextColumn::make('symbol')->label('الاختصار')->searchable()->toggleable(),
 
                 TextColumn::make('status')

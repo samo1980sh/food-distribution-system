@@ -15,17 +15,60 @@ class ProductForm
         return $schema
             ->columns(2)
             ->components([
-                TextInput::make('sku')->label('SKU / رمز المنتج')->required()->unique(ignoreRecord: true)->maxLength(255),
-                TextInput::make('barcode')->label('الباركود')->unique(ignoreRecord: true)->maxLength(255),
-                TextInput::make('name_ar')->label('اسم المنتج بالعربية')->required()->maxLength(255),
-                TextInput::make('name_en')->label('اسم المنتج بالإنكليزية')->maxLength(255),
-                Select::make('category_id')->label('التصنيف')->relationship('category', 'name_ar')->searchable()->preload()->native(false),
-                Select::make('unit_id')->label('الوحدة')->relationship('unit', 'name_ar')->searchable()->preload()->native(false),
-                TextInput::make('purchase_price')->label('سعر الشراء')->numeric()->default(0),
-                TextInput::make('sale_price')->label('سعر البيع')->numeric()->default(0),
-                TextInput::make('wholesale_price')->label('سعر الجملة')->numeric()->default(0),
-                TextInput::make('min_stock')->label('حد التنبيه للمخزون')->numeric()->step('0.001')->default(0),
-                Toggle::make('has_expiry')->label('يتطلب تاريخ صلاحية')->default(true),
+                TextInput::make('sku')
+                    ->label('SKU / رمز المنتج')
+                    ->required()
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(255),
+
+                TextInput::make('barcode')
+                    ->label('الباركود')
+                    ->unique(ignoreRecord: true)
+                    ->maxLength(255),
+
+                TextInput::make('name_ar')
+                    ->label('اسم المنتج')
+                    ->required()
+                    ->maxLength(255),
+
+                Select::make('category_id')
+                    ->label('التصنيف')
+                    ->relationship('category', 'name_ar')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+
+                Select::make('unit_id')
+                    ->label('الوحدة')
+                    ->relationship('unit', 'name_ar')
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+
+                TextInput::make('purchase_price')
+                    ->label('سعر الشراء')
+                    ->numeric()
+                    ->default(0),
+
+                TextInput::make('sale_price')
+                    ->label('سعر البيع')
+                    ->numeric()
+                    ->default(0),
+
+                TextInput::make('wholesale_price')
+                    ->label('سعر الجملة')
+                    ->numeric()
+                    ->default(0),
+
+                TextInput::make('min_stock')
+                    ->label('حد التنبيه للمخزون')
+                    ->numeric()
+                    ->step('0.001')
+                    ->default(0),
+
+                Toggle::make('has_expiry')
+                    ->label('يتطلب تاريخ صلاحية')
+                    ->default(true),
 
                 Select::make('status')
                     ->label('الحالة')
@@ -37,7 +80,9 @@ class ProductForm
                     ->required()
                     ->native(false),
 
-                Textarea::make('notes')->label('ملاحظات')->columnSpanFull(),
+                Textarea::make('notes')
+                    ->label('ملاحظات')
+                    ->columnSpanFull(),
             ]);
     }
 }

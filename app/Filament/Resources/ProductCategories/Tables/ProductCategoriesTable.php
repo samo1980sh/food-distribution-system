@@ -16,7 +16,7 @@ class ProductCategoriesTable
         return $table
             ->columns([
                 TextColumn::make('code')->label('الرمز')->searchable()->sortable(),
-                TextColumn::make('name_ar')->label('الاسم العربي')->searchable()->sortable(),
+                TextColumn::make('name_ar')->label('الاسم')->searchable()->sortable(),
                 TextColumn::make('parent.name_ar')->label('التصنيف الأب')->searchable()->placeholder('-')->toggleable(),
                 TextColumn::make('sort_order')->label('الترتيب')->sortable(),
 
