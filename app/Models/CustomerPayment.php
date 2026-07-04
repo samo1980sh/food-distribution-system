@@ -13,6 +13,9 @@ class CustomerPayment extends Model
         'payment_number',
         'customer_id',
         'sales_invoice_id',
+        'vehicle_id',
+        'route_id',
+        'warehouse_id',
         'sales_representative_id',
         'payment_date',
         'payment_method',
@@ -60,6 +63,21 @@ class CustomerPayment extends Model
     public function salesInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
+    }
+
+    public function route(): BelongsTo
+    {
+        return $this->belongsTo(DistributionRoute::class, 'route_id');
+    }
+
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     public function salesRepresentative(): BelongsTo

@@ -5,9 +5,7 @@ namespace App\Filament\Resources\DailyClosings\Tables;
 use App\Models\DailyClosing;
 use App\Services\Distribution\DailyClosingService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -59,9 +57,27 @@ class DailyClosingsTable
                     ->toggleable(),
 
                 TextColumn::make('total_collections_amount')
-                    ->label('التحصيلات')
+                    ->label('إجمالي التحصيلات')
                     ->money('SYP')
                     ->sortable(),
+
+                TextColumn::make('invoice_cash_amount')
+                    ->label('نقد الفواتير')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('cash_collections_amount')
+                    ->label('تحصيل نقدي')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('non_cash_collections_amount')
+                    ->label('تحصيل غير نقدي')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(),
 
                 TextColumn::make('expected_cash_amount')
                     ->label('النقد المتوقع')
@@ -143,7 +159,7 @@ class DailyClosingsTable
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد إغلاق اليوم')
-                    ->modalDescription('سيتم اعتماد الإغلاق ومنع تعديله لاحقًا.')
+                    ->modalDescription('سيتم اعتماد الإغلاق ومنع تعديل عملياته لاحقاً.')
                     ->visible(fn (DailyClosing $record): bool => $record->isDraft())
                     ->action(function (DailyClosing $record): void {
                         try {
@@ -162,6 +178,31 @@ class DailyClosingsTable
                         }
                     }),
 
+                Action::make('cancel')
+                    ->label('إلغاء الإغلاق')
+                    ->icon('heroicon-o-lock-open')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('إلغاء إغلاق اليوم')
+                    ->modalDescription('سيتم فتح التاريخ والمستودع للعمليات العكسية والتصحيحات.')
+                    ->visible(fn (DailyClosing $record): bool => $record->isConfirmed())
+                    ->action(function (DailyClosing $record): void {
+                        try {
+                            app(DailyClosingService::class)->cancel($record);
+
+                            Notification::make()
+                                ->title('تم إلغاء الإغلاق بنجاح')
+                                ->success()
+                                ->send();
+                        } catch (RuntimeException $exception) {
+                            Notification::make()
+                                ->title('تعذر إلغاء الإغلاق')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make()
                     ->label('تعديل')
                     ->modalHeading('تعديل إغلاق يوم')
@@ -172,12 +213,7 @@ class DailyClosingsTable
                     ->label('حذف')
                     ->visible(fn (DailyClosing $record): bool => $record->isDraft()),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

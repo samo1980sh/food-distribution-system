@@ -11,7 +11,9 @@ class StockBalance extends Model
         'warehouse_id',
         'product_id',
         'batch_number',
+        'batch_key',
         'expiry_date',
+        'expiry_key',
         'quantity',
     ];
 

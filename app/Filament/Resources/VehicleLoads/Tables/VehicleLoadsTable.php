@@ -5,9 +5,7 @@ namespace App\Filament\Resources\VehicleLoads\Tables;
 use App\Models\VehicleLoad;
 use App\Services\Distribution\VehicleLoadService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -133,6 +131,31 @@ class VehicleLoadsTable
                         }
                     }),
 
+                Action::make('cancel')
+                    ->label('إلغاء')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('إلغاء أمر التحميل')
+                    ->modalDescription('سيتم عكس حركة المخزون وإرجاع الكميات إلى المستودع المصدر.')
+                    ->visible(fn (VehicleLoad $record): bool => $record->isApproved())
+                    ->action(function (VehicleLoad $record): void {
+                        try {
+                            app(VehicleLoadService::class)->cancel($record);
+
+                            Notification::make()
+                                ->title('تم إلغاء أمر التحميل بنجاح')
+                                ->success()
+                                ->send();
+                        } catch (RuntimeException $exception) {
+                            Notification::make()
+                                ->title('تعذر إلغاء أمر التحميل')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make()
                     ->label('تعديل')
                     ->modalHeading('تعديل أمر تحميل')
@@ -143,12 +166,7 @@ class VehicleLoadsTable
                     ->label('حذف')
                     ->visible(fn (VehicleLoad $record): bool => $record->isDraft()),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

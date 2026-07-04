@@ -5,9 +5,7 @@ namespace App\Filament\Resources\SalesInvoices\Tables;
 use App\Models\SalesInvoice;
 use App\Services\Sales\SalesInvoiceService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -160,6 +158,31 @@ class SalesInvoicesTable
                         }
                     }),
 
+                Action::make('cancel')
+                    ->label('إلغاء')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('إلغاء فاتورة البيع')
+                    ->modalDescription('سيتم عكس حركة المخزون. إذا كانت هناك تحصيلات مرتبطة يجب إلغاؤها أولاً.')
+                    ->visible(fn (SalesInvoice $record): bool => $record->isConfirmed())
+                    ->action(function (SalesInvoice $record): void {
+                        try {
+                            app(SalesInvoiceService::class)->cancel($record);
+
+                            Notification::make()
+                                ->title('تم إلغاء الفاتورة بنجاح')
+                                ->success()
+                                ->send();
+                        } catch (RuntimeException $exception) {
+                            Notification::make()
+                                ->title('تعذر إلغاء الفاتورة')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make()
                     ->label('تعديل')
                     ->modalHeading('تعديل فاتورة بيع')
@@ -170,12 +193,7 @@ class SalesInvoicesTable
                     ->label('حذف')
                     ->visible(fn (SalesInvoice $record): bool => $record->isDraft()),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

@@ -6,7 +6,10 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class CustomerPaymentForm
 {
@@ -17,10 +20,14 @@ class CustomerPaymentForm
             ->components([
                 Select::make('customer_id')
                     ->label('العميل')
-                    ->relationship('customer', 'name')
+                    ->relationship('customer', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                     ->searchable()
                     ->preload()
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('sales_invoice_id', null);
+                    })
                     ->native(false),
 
                 DatePicker::make('payment_date')
@@ -30,15 +37,71 @@ class CustomerPaymentForm
 
                 Select::make('sales_invoice_id')
                     ->label('الفاتورة')
-                    ->relationship('salesInvoice', 'invoice_number')
+                    ->relationship(
+                        'salesInvoice',
+                        'invoice_number',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'confirmed')
+                            ->where('remaining_amount', '>', 0)
+                            ->when($get('customer_id'), fn (Builder $query, $customerId) => $query->where('customer_id', $customerId)),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false)
-                    ->helperText('اختياري. عند اختيار فاتورة معتمدة سيتم تحديث المدفوع والمتبقي عند اعتماد التحصيل.'),
+                    ->helperText('تظهر الفواتير المعتمدة وغير المسددة للعميل المحدد فقط.'),
+
+                Select::make('vehicle_id')
+                    ->label('السيارة')
+                    ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('route_id', null);
+                        $set('warehouse_id', null);
+                    })
+                    ->native(false)
+                    ->helperText('اختياري. عند ربط التحصيل بفاتورة سيتم ملؤه عند الاعتماد من الفاتورة إذا ترك فارغاً.'),
+
+                Select::make('route_id')
+                    ->label('خط التوزيع')
+                    ->relationship(
+                        'route',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
+                            ->where('status', 'active'),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+
+                Select::make('warehouse_id')
+                    ->label('المستودع')
+                    ->relationship(
+                        'warehouse',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->when(
+                                $get('vehicle_id'),
+                                fn (Builder $query, $vehicleId) => $query->where('type', 'vehicle')->where('vehicle_id', $vehicleId),
+                            ),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->helperText('مطلوب عند اعتماد تحصيل غير مرتبط بفاتورة حتى يدخل في الإغلاق الصحيح.'),
 
                 Select::make('sales_representative_id')
                     ->label('مندوب التحصيل')
-                    ->relationship('salesRepresentative', 'name')
+                    ->relationship(
+                        'salesRepresentative',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'sales_representative'),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),

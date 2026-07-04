@@ -7,7 +7,10 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class SalesReturnForm
 {
@@ -18,10 +21,14 @@ class SalesReturnForm
             ->components([
                 Select::make('customer_id')
                     ->label('العميل')
-                    ->relationship('customer', 'name')
+                    ->relationship('customer', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                     ->searchable()
                     ->preload()
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('sales_invoice_id', null);
+                    })
                     ->native(false),
 
                 DatePicker::make('return_date')
@@ -31,37 +38,69 @@ class SalesReturnForm
 
                 Select::make('sales_invoice_id')
                     ->label('الفاتورة الأصلية')
-                    ->relationship('salesInvoice', 'invoice_number')
+                    ->relationship(
+                        'salesInvoice',
+                        'invoice_number',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'confirmed')
+                            ->when($get('customer_id'), fn (Builder $query, $customerId) => $query->where('customer_id', $customerId)),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
 
                 Select::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('route_id', null);
+                        $set('warehouse_id', null);
+                    })
                     ->native(false),
 
                 Select::make('route_id')
                     ->label('خط التوزيع')
-                    ->relationship('route', 'name')
+                    ->relationship(
+                        'route',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
+                            ->where('status', 'active'),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
 
                 Select::make('warehouse_id')
                     ->label('المستودع الذي سيستلم المرتجع')
-                    ->relationship('warehouse', 'name')
+                    ->relationship(
+                        'warehouse',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->when(
+                                $get('vehicle_id'),
+                                fn (Builder $query, $vehicleId) => $query->where('type', 'vehicle')->where('vehicle_id', $vehicleId),
+                            ),
+                    )
                     ->searchable()
                     ->preload()
                     ->required()
                     ->native(false)
-                    ->helperText('غالبًا يكون مستودع السيارة إذا عاد المنتج مع المندوب.'),
+                    ->helperText('عند اختيار سيارة، يتم عرض مستودع السيارة المحددة فقط.'),
 
                 Select::make('sales_representative_id')
                     ->label('مندوب المبيعات')
-                    ->relationship('salesRepresentative', 'name')
+                    ->relationship(
+                        'salesRepresentative',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'sales_representative'),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),

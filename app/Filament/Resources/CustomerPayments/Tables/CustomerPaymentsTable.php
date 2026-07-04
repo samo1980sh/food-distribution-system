@@ -5,9 +5,7 @@ namespace App\Filament\Resources\CustomerPayments\Tables;
 use App\Models\CustomerPayment;
 use App\Services\Sales\CustomerPaymentService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -149,6 +147,31 @@ class CustomerPaymentsTable
                         }
                     }),
 
+                Action::make('cancel')
+                    ->label('إلغاء')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('إلغاء التحصيل')
+                    ->modalDescription('سيتم عكس أثر التحصيل على الفاتورة المرتبطة إن وجدت.')
+                    ->visible(fn (CustomerPayment $record): bool => $record->isConfirmed())
+                    ->action(function (CustomerPayment $record): void {
+                        try {
+                            app(CustomerPaymentService::class)->cancel($record);
+
+                            Notification::make()
+                                ->title('تم إلغاء التحصيل بنجاح')
+                                ->success()
+                                ->send();
+                        } catch (RuntimeException $exception) {
+                            Notification::make()
+                                ->title('تعذر إلغاء التحصيل')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make()
                     ->label('تعديل')
                     ->modalHeading('تعديل تحصيل عميل')
@@ -159,12 +182,7 @@ class CustomerPaymentsTable
                     ->label('حذف')
                     ->visible(fn (CustomerPayment $record): bool => $record->isDraft()),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

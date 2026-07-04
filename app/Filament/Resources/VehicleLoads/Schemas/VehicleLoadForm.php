@@ -7,7 +7,10 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class VehicleLoadForm
 {
@@ -22,6 +25,11 @@ class VehicleLoadForm
                     ->searchable()
                     ->preload()
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('route_id', null);
+                        $set('to_warehouse_id', null);
+                    })
                     ->native(false),
 
                 DatePicker::make('load_date')
@@ -31,28 +39,57 @@ class VehicleLoadForm
 
                 Select::make('route_id')
                     ->label('خط التوزيع')
-                    ->relationship('route', 'name')
+                    ->relationship(
+                        'route',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
+                            ->where('status', 'active'),
+                    )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('driver_id', null);
+                        $set('sales_representative_id', null);
+                    })
                     ->native(false),
 
                 Select::make('driver_id')
                     ->label('السائق')
-                    ->relationship('driver', 'name')
+                    ->relationship(
+                        'driver',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'driver'),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
 
                 Select::make('sales_representative_id')
                     ->label('مندوب المبيعات')
-                    ->relationship('salesRepresentative', 'name')
+                    ->relationship(
+                        'salesRepresentative',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'sales_representative'),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
 
                 Select::make('from_warehouse_id')
                     ->label('من المستودع')
-                    ->relationship('fromWarehouse', 'name')
+                    ->relationship(
+                        'fromWarehouse',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', '!=', 'vehicle'),
+                    )
                     ->searchable()
                     ->preload()
                     ->required()
@@ -60,12 +97,19 @@ class VehicleLoadForm
 
                 Select::make('to_warehouse_id')
                     ->label('إلى مستودع السيارة')
-                    ->relationship('toWarehouse', 'name')
+                    ->relationship(
+                        'toWarehouse',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'vehicle')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId)),
+                    )
                     ->searchable()
                     ->preload()
                     ->required()
                     ->native(false)
-                    ->helperText('اختر مستودع السيارة المرتبط بالسيارة المحددة.'),
+                    ->helperText('يتم عرض مستودعات السيارة المحددة فقط.'),
 
                 Textarea::make('notes')
                     ->label('ملاحظات')

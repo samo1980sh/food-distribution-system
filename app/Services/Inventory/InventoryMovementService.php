@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -169,6 +170,13 @@ class InventoryMovementService
         ?string $batchNumber,
         ?string $expiryDate,
     ): StockBalance {
+        if ((float) $quantity <= 0) {
+            throw new RuntimeException('كمية حركة المخزون يجب أن تكون أكبر من الصفر.');
+        }
+
+        $batchKey = $this->normalizeBatchKey($batchNumber);
+        $expiryKey = $this->normalizeExpiryKey($expiryDate);
+
         $balance = $this->balanceQuery($warehouse->id, $product->id, $batchNumber, $expiryDate)
             ->lockForUpdate()
             ->first();
@@ -178,7 +186,9 @@ class InventoryMovementService
                 'warehouse_id' => $warehouse->id,
                 'product_id' => $product->id,
                 'batch_number' => $batchNumber,
+                'batch_key' => $batchKey,
                 'expiry_date' => $expiryDate,
+                'expiry_key' => $expiryKey,
                 'quantity' => 0,
             ]);
         }
@@ -196,6 +206,10 @@ class InventoryMovementService
         ?string $batchNumber,
         ?string $expiryDate,
     ): StockBalance {
+        if ((float) $quantity <= 0) {
+            throw new RuntimeException('كمية حركة المخزون يجب أن تكون أكبر من الصفر.');
+        }
+
         $balance = $this->balanceQuery($warehouse->id, $product->id, $batchNumber, $expiryDate)
             ->lockForUpdate()
             ->first();
@@ -223,16 +237,18 @@ class InventoryMovementService
         return StockBalance::query()
             ->where('warehouse_id', $warehouseId)
             ->where('product_id', $productId)
-            ->when(
-                $batchNumber === null,
-                fn (Builder $query): Builder => $query->whereNull('batch_number'),
-                fn (Builder $query): Builder => $query->where('batch_number', $batchNumber),
-            )
-            ->when(
-                $expiryDate === null,
-                fn (Builder $query): Builder => $query->whereNull('expiry_date'),
-                fn (Builder $query): Builder => $query->whereDate('expiry_date', $expiryDate),
-            );
+            ->where('batch_key', $this->normalizeBatchKey($batchNumber))
+            ->where('expiry_key', $this->normalizeExpiryKey($expiryDate));
+    }
+
+    private function normalizeBatchKey(?string $batchNumber): string
+    {
+        return trim((string) $batchNumber);
+    }
+
+    private function normalizeExpiryKey(?string $expiryDate): string
+    {
+        return $expiryDate ? date('Y-m-d', strtotime($expiryDate)) : '';
     }
 
     private function createMovement(array $data): StockMovement
@@ -245,12 +261,6 @@ class InventoryMovementService
 
     private function generateMovementNumber(): string
     {
-        $date = now()->format('Ymd');
-
-        $count = StockMovement::query()
-            ->whereDate('created_at', now()->toDateString())
-            ->count() + 1;
-
-        return 'STM-' . $date . '-' . str_pad((string) $count, 5, '0', STR_PAD_LEFT);
+        return app(DocumentNumberService::class)->next('stock_movement', 'STM');
     }
 }

@@ -25,6 +25,7 @@ class SalesInvoice extends Model
         'tax_amount',
         'total_amount',
         'paid_amount',
+        'invoice_cash_amount',
         'remaining_amount',
         'notes',
         'created_by',
@@ -39,6 +40,7 @@ class SalesInvoice extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'paid_amount' => 'decimal:2',
+        'invoice_cash_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
     ];
