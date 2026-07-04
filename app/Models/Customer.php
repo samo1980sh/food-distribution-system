@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
@@ -26,8 +27,8 @@ class Customer extends Model
     ];
 
     protected $casts = [
-        'latitude' => 'decimal:7',
-        'longitude' => 'decimal:7',
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
         'credit_limit' => 'decimal:2',
     ];
 
@@ -39,5 +40,10 @@ class Customer extends Model
     public function route(): BelongsTo
     {
         return $this->belongsTo(DistributionRoute::class, 'route_id');
+    }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class);
     }
 }

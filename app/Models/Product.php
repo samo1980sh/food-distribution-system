@@ -50,4 +50,9 @@ class Product extends Model
     {
         return $this->hasMany(StockMovement::class);
     }
+
+    public function salesInvoiceItems(): HasMany
+    {
+        return $this->hasMany(SalesInvoiceItem::class);
+    }
 }

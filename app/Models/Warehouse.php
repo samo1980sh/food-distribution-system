@@ -47,4 +47,9 @@ class Warehouse extends Model
     {
         return $this->hasMany(VehicleLoad::class, 'to_warehouse_id');
     }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
 }
