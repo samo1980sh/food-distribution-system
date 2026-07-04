@@ -20,7 +20,7 @@ class StockBalanceResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة المخزون';
+        return 'المخزون';
     }
 
     public static function getNavigationLabel(): string
@@ -40,7 +40,7 @@ class StockBalanceResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 10;
+        return 50;
     }
 
     public static function form(Schema $schema): Schema

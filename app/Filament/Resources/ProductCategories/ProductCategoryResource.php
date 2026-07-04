@@ -21,7 +21,7 @@ class ProductCategoryResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة المنتجات';
+        return 'المخزون';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class ProductCategoryResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 10;
+        return 20;
     }
 
     public static function form(Schema $schema): Schema

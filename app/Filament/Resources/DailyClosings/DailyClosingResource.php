@@ -21,7 +21,7 @@ class DailyClosingResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة التوزيع';
+        return 'الإغلاق والمطابقة';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class DailyClosingResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 20;
+        return 10;
     }
 
     public static function form(Schema $schema): Schema

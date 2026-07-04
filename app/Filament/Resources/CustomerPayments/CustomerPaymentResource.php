@@ -21,7 +21,7 @@ class CustomerPaymentResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة المبيعات';
+        return 'المبيعات والتحصيل';
     }
 
     public static function getNavigationLabel(): string

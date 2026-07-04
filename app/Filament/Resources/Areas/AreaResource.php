@@ -21,7 +21,7 @@ class AreaResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إعدادات التوزيع';
+        return 'التهيئة الأساسية';
     }
 
     public static function getNavigationLabel(): string

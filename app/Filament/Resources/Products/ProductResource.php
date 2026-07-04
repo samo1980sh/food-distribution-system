@@ -21,7 +21,7 @@ class ProductResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة المنتجات';
+        return 'المخزون';
     }
 
     public static function getNavigationLabel(): string

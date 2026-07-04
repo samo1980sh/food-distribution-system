@@ -21,7 +21,7 @@ class DistributionRouteResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إعدادات التوزيع';
+        return 'التوزيع والأسطول';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class DistributionRouteResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 40;
+        return 20;
     }
 
     public static function form(Schema $schema): Schema

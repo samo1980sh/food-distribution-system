@@ -21,7 +21,7 @@ class VehicleLoadResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة التوزيع';
+        return 'التوزيع والأسطول';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class VehicleLoadResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 10;
+        return 30;
     }
 
     public static function form(Schema $schema): Schema

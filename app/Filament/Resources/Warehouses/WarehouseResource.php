@@ -21,7 +21,7 @@ class WarehouseResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'إدارة المستودعات';
+        return 'المخزون';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class WarehouseResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 10;
+        return 40;
     }
 
     public static function form(Schema $schema): Schema

@@ -44,6 +44,13 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->maxContentWidth(Width::Full)
             ->simplePageMaxContentWidth(Width::Large)
+            ->navigationGroups([
+                'التهيئة الأساسية',
+                'المخزون',
+                'التوزيع والأسطول',
+                'المبيعات والتحصيل',
+                'الإغلاق والمطابقة',
+            ])
             ->spa()
             ->unsavedChangesAlerts()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
