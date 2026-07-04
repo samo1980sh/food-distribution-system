@@ -4,6 +4,7 @@ namespace App\Services\Sales;
 
 use App\Models\CustomerPayment;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
 use App\Services\Support\DocumentNumberService;
@@ -88,6 +89,15 @@ class SalesInvoiceService
 
             if ($confirmedPayments) {
                 throw new RuntimeException('لا يمكن إلغاء الفاتورة قبل إلغاء التحصيلات المرتبطة بها.');
+            }
+
+            $confirmedReturns = SalesReturn::query()
+                ->where('sales_invoice_id', $invoice->id)
+                ->where('status', 'confirmed')
+                ->exists();
+
+            if ($confirmedReturns) {
+                throw new RuntimeException('لا يمكن إلغاء الفاتورة قبل إلغاء المرتجعات المعتمدة المرتبطة بها.');
             }
 
             app(DailyClosingGuard::class)->ensureOpen($invoice->invoice_date, $invoice->warehouse_id);
