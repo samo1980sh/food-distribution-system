@@ -9,8 +9,9 @@ class DocumentNumberService
 {
     public function next(string $type, string $prefix): string
     {
-        $date = now()->toDateString();
-        $datePart = now()->format('Ymd');
+        $now = now();
+        $date = $now->toDateString();
+        $datePart = $now->format('Ymd');
 
         $number = DB::transaction(function () use ($type, $date): int {
             $sequence = DB::table('document_sequences')
