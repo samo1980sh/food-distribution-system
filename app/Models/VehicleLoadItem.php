@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Distribution\VehicleLoadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,6 +24,25 @@ class VehicleLoadItem extends Model
         'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (VehicleLoadItem $item): void {
+            $item->total_cost = (float) $item->quantity * (float) $item->unit_cost;
+        });
+
+        static::saved(function (VehicleLoadItem $item): void {
+            if ($item->vehicleLoad) {
+                app(VehicleLoadService::class)->recalculateTotals($item->vehicleLoad);
+            }
+        });
+
+        static::deleted(function (VehicleLoadItem $item): void {
+            if ($item->vehicleLoad) {
+                app(VehicleLoadService::class)->recalculateTotals($item->vehicleLoad);
+            }
+        });
+    }
 
     public function vehicleLoad(): BelongsTo
     {

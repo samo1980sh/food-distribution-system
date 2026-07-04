@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\Distribution\VehicleLoadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
 
 class VehicleLoad extends Model
 {
@@ -32,6 +34,27 @@ class VehicleLoad extends Model
         'total_cost' => 'decimal:2',
         'approved_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (VehicleLoad $vehicleLoad): void {
+            if (blank($vehicleLoad->load_number)) {
+                $vehicleLoad->load_number = app(VehicleLoadService::class)->generateLoadNumber();
+            }
+
+            if (blank($vehicleLoad->status)) {
+                $vehicleLoad->status = 'draft';
+            }
+
+            if (blank($vehicleLoad->load_date)) {
+                $vehicleLoad->load_date = now()->toDateString();
+            }
+
+            if (blank($vehicleLoad->created_by)) {
+                $vehicleLoad->created_by = Auth::id();
+            }
+        });
+    }
 
     public function items(): HasMany
     {

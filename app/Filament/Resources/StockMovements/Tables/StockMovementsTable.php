@@ -24,12 +24,14 @@ class StockMovementsTable
                         'opening_balance' => 'رصيد افتتاحي',
                         'manual_out' => 'إخراج يدوي',
                         'warehouse_transfer' => 'تحويل',
+                        'vehicle_load_transfer' => 'تحميل سيارة',
                         default => $state ?? '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
                         'opening_balance' => 'success',
                         'manual_out' => 'danger',
                         'warehouse_transfer' => 'info',
+                        'vehicle_load_transfer' => 'primary',
                         default => 'gray',
                     }),
 
@@ -95,6 +97,7 @@ class StockMovementsTable
                         'opening_balance' => 'رصيد افتتاحي / إدخال',
                         'manual_out' => 'إخراج يدوي',
                         'warehouse_transfer' => 'تحويل بين المستودعات',
+                        'vehicle_load_transfer' => 'تحميل سيارة',
                     ]),
 
                 SelectFilter::make('product_id')
