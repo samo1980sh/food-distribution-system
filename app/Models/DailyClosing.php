@@ -6,7 +6,9 @@ use App\Services\Distribution\DailyClosingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 class DailyClosing extends Model
 {
@@ -78,6 +80,32 @@ class DailyClosing extends Model
                 $closing->created_by = Auth::id();
             }
         });
+
+        static::saving(function (DailyClosing $closing): void {
+            $closing->active_scope_key = $closing->activeScopeKey();
+
+            if ($closing->status === 'cancelled' || blank($closing->closing_date) || blank($closing->warehouse_id)) {
+                return;
+            }
+
+            $duplicateExists = DailyClosing::query()
+                ->where('id', '!=', $closing->getKey() ?? 0)
+                ->where('active_scope_key', $closing->active_scope_key)
+                ->exists();
+
+            if ($duplicateExists) {
+                throw new RuntimeException('يوجد إغلاق يومي فعّال لنفس التاريخ والمستودع. يرجى تعديل الإغلاق الموجود أو إلغاؤه أولاً.');
+            }
+        });
+    }
+
+    public function activeScopeKey(): ?string
+    {
+        if ($this->status === 'cancelled' || blank($this->closing_date) || blank($this->warehouse_id)) {
+            return null;
+        }
+
+        return Carbon::parse($this->closing_date)->toDateString().'|'.$this->warehouse_id;
     }
 
     public function items(): HasMany
