@@ -62,6 +62,12 @@ class SalesInvoice extends Model
                 $invoice->created_by = Auth::id();
             }
         });
+
+        static::saved(function (SalesInvoice $invoice): void {
+            if ($invoice->wasChanged(['discount_amount', 'tax_amount', 'paid_amount'])) {
+                app(SalesInvoiceService::class)->recalculateTotals($invoice);
+            }
+        });
     }
 
     public function items(): HasMany

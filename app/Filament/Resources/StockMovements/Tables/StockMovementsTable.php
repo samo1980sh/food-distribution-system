@@ -25,6 +25,7 @@ class StockMovementsTable
                         'manual_out' => 'إخراج يدوي',
                         'warehouse_transfer' => 'تحويل',
                         'vehicle_load_transfer' => 'تحميل سيارة',
+                        'sales_invoice' => 'فاتورة بيع',
                         default => $state ?? '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -32,6 +33,7 @@ class StockMovementsTable
                         'manual_out' => 'danger',
                         'warehouse_transfer' => 'info',
                         'vehicle_load_transfer' => 'primary',
+                        'sales_invoice' => 'warning',
                         default => 'gray',
                     }),
 
@@ -98,6 +100,7 @@ class StockMovementsTable
                         'manual_out' => 'إخراج يدوي',
                         'warehouse_transfer' => 'تحويل بين المستودعات',
                         'vehicle_load_transfer' => 'تحميل سيارة',
+                        'sales_invoice' => 'فاتورة بيع',
                     ]),
 
                 SelectFilter::make('product_id')
