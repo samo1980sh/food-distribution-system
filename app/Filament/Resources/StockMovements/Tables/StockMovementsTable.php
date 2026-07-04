@@ -4,8 +4,6 @@ namespace App\Filament\Resources\StockMovements\Tables;
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Table;
 
 class StockMovementsTable
@@ -127,12 +125,7 @@ class StockMovementsTable
                     ->preload(),
             ])
             ->recordActions([])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

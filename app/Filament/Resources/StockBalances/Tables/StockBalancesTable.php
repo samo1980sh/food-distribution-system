@@ -4,8 +4,6 @@ namespace App\Filament\Resources\StockBalances\Tables;
 
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Tables\Table;
 
 class StockBalancesTable
@@ -84,12 +82,7 @@ class StockBalancesTable
                     ->preload(),
             ])
             ->recordActions([])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد'),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('updated_at', 'desc');
     }
 }
