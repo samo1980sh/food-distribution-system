@@ -2,7 +2,6 @@
 
 namespace App\Services\Sales;
 
-use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
@@ -64,7 +63,9 @@ class SalesReturnService
                 'confirmed_at' => now(),
             ])->save();
 
-            $this->refreshLinkedInvoiceBalance($salesReturn);
+            if ($salesReturn->sales_invoice_id) {
+                app(SalesInvoiceService::class)->refreshFinancialBalance($salesReturn->sales_invoice_id);
+            }
 
             return $salesReturn;
         });
@@ -104,7 +105,9 @@ class SalesReturnService
                 'status' => 'cancelled',
             ])->save();
 
-            $this->refreshLinkedInvoiceBalance($salesReturn);
+            if ($salesReturn->sales_invoice_id) {
+                app(SalesInvoiceService::class)->refreshFinancialBalance($salesReturn->sales_invoice_id);
+            }
 
             return $salesReturn;
         });
@@ -124,38 +127,6 @@ class SalesReturnService
     public function generateReturnNumber(): string
     {
         return app(DocumentNumberService::class)->next('sales_return', 'SRT');
-    }
-
-    private function refreshLinkedInvoiceBalance(SalesReturn $salesReturn): void
-    {
-        if (! $salesReturn->sales_invoice_id) {
-            return;
-        }
-
-        $invoice = SalesInvoice::query()
-            ->lockForUpdate()
-            ->find($salesReturn->sales_invoice_id);
-
-        if (! $invoice) {
-            return;
-        }
-
-        $confirmedReturnsAmount = (float) SalesReturn::query()
-            ->where('sales_invoice_id', $invoice->id)
-            ->where('status', 'confirmed')
-            ->sum('total_amount');
-
-        $remainingAmount = max(
-            (float) $invoice->total_amount - (float) $invoice->paid_amount - $confirmedReturnsAmount,
-            0,
-        );
-
-        DB::table('sales_invoices')
-            ->where('id', $invoice->id)
-            ->update([
-                'remaining_amount' => $remainingAmount,
-                'updated_at' => now(),
-            ]);
     }
 
     private function validateReturnScope(SalesReturn $salesReturn): void

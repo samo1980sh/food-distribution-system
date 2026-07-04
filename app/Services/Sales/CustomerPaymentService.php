@@ -3,7 +3,6 @@
 namespace App\Services\Sales;
 
 use App\Models\CustomerPayment;
-use App\Models\SalesInvoice;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
@@ -52,6 +51,10 @@ class CustomerPaymentService
                     'updated_at' => now(),
                 ]);
 
+            if ($payment->sales_invoice_id) {
+                app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);
+            }
+
             return $payment->refresh();
         });
     }
@@ -73,10 +76,6 @@ class CustomerPaymentService
 
             app(DailyClosingGuard::class)->ensureOpen($payment->payment_date, $payment->warehouse_id);
 
-            if ($payment->sales_invoice_id) {
-                $this->reverseInvoicePayment($payment);
-            }
-
             DB::table('customer_payments')
                 ->where('id', $payment->id)
                 ->update([
@@ -84,15 +83,17 @@ class CustomerPaymentService
                     'updated_at' => now(),
                 ]);
 
+            if ($payment->sales_invoice_id) {
+                app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);
+            }
+
             return $payment->refresh();
         });
     }
 
     private function applyToInvoice(CustomerPayment $payment, float $amount): array
     {
-        $invoice = SalesInvoice::query()
-            ->lockForUpdate()
-            ->findOrFail($payment->sales_invoice_id);
+        $invoice = app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);
 
         if ((int) $invoice->customer_id !== (int) $payment->customer_id) {
             throw new RuntimeException('الفاتورة المختارة لا تتبع العميل المحدد في التحصيل.');
@@ -102,8 +103,6 @@ class CustomerPaymentService
             throw new RuntimeException('لا يمكن تسجيل تحصيل على فاتورة غير معتمدة.');
         }
 
-        $totalAmount = (float) $invoice->total_amount;
-        $paidAmount = (float) $invoice->paid_amount;
         $remainingAmount = (float) $invoice->remaining_amount;
 
         if ($remainingAmount <= 0) {
@@ -114,40 +113,12 @@ class CustomerPaymentService
             throw new RuntimeException('قيمة التحصيل أكبر من المبلغ المتبقي على الفاتورة.');
         }
 
-        $newPaidAmount = $paidAmount + $amount;
-        $newRemainingAmount = max($totalAmount - $newPaidAmount, 0);
-
-        DB::table('sales_invoices')
-            ->where('id', $invoice->id)
-            ->update([
-                'paid_amount' => $newPaidAmount,
-                'remaining_amount' => $newRemainingAmount,
-                'updated_at' => now(),
-            ]);
-
         return [
             'vehicle_id' => $payment->vehicle_id ?: $invoice->vehicle_id,
             'route_id' => $payment->route_id ?: $invoice->route_id,
             'warehouse_id' => $payment->warehouse_id ?: $invoice->warehouse_id,
             'sales_representative_id' => $payment->sales_representative_id ?: $invoice->sales_representative_id,
         ];
-    }
-
-    private function reverseInvoicePayment(CustomerPayment $payment): void
-    {
-        $invoice = SalesInvoice::query()
-            ->lockForUpdate()
-            ->findOrFail($payment->sales_invoice_id);
-
-        $newPaidAmount = max((float) $invoice->paid_amount - (float) $payment->amount, 0);
-
-        DB::table('sales_invoices')
-            ->where('id', $invoice->id)
-            ->update([
-                'paid_amount' => $newPaidAmount,
-                'remaining_amount' => max((float) $invoice->total_amount - $newPaidAmount, 0),
-                'updated_at' => now(),
-            ]);
     }
 
     private function validateStandalonePaymentScope(CustomerPayment $payment): void

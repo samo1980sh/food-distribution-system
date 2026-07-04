@@ -144,6 +144,45 @@ class SalesInvoiceService
         ])->save();
     }
 
+    public function refreshFinancialBalance(SalesInvoice|int $invoice): SalesInvoice
+    {
+        $invoiceId = $invoice instanceof SalesInvoice ? $invoice->id : $invoice;
+
+        $invoice = SalesInvoice::query()
+            ->lockForUpdate()
+            ->findOrFail($invoiceId);
+
+        $confirmedReturnsAmount = (float) SalesReturn::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->where('status', 'confirmed')
+            ->sum('total_amount');
+
+        $confirmedPaymentsAmount = (float) CustomerPayment::query()
+            ->where('sales_invoice_id', $invoice->id)
+            ->where('status', 'confirmed')
+            ->sum('amount');
+
+        $netInvoiceAmount = (float) $invoice->total_amount - $confirmedReturnsAmount;
+        $paidAmount = (float) $invoice->invoice_cash_amount + $confirmedPaymentsAmount;
+
+        if ($netInvoiceAmount < -0.0001) {
+            throw new RuntimeException('قيمة المرتجعات المعتمدة أكبر من إجمالي الفاتورة.');
+        }
+
+        $netInvoiceAmount = max($netInvoiceAmount, 0);
+
+        if ($paidAmount - $netInvoiceAmount > 0.0001) {
+            throw new RuntimeException('لا يمكن أن تجعل المرتجعات صافي الفاتورة أقل من المبلغ المحصل. يجب إلغاء أو معالجة التحصيل الزائد أولاً.');
+        }
+
+        $invoice->forceFill([
+            'paid_amount' => $paidAmount,
+            'remaining_amount' => max($netInvoiceAmount - $paidAmount, 0),
+        ])->save();
+
+        return $invoice->refresh();
+    }
+
     public function generateInvoiceNumber(): string
     {
         return app(DocumentNumberService::class)->next('sales_invoice', 'INV');
