@@ -13,7 +13,9 @@ class CustomerPaymentService
     public function confirm(CustomerPayment $payment): CustomerPayment
     {
         return DB::transaction(function () use ($payment): CustomerPayment {
-            $payment->loadMissing(['salesInvoice']);
+            $payment = CustomerPayment::query()
+                ->lockForUpdate()
+                ->findOrFail($payment->id);
 
             if (! $payment->isDraft()) {
                 throw new RuntimeException('لا يمكن اعتماد تحصيل ليس بحالة مسودة.');
@@ -23,36 +25,55 @@ class CustomerPaymentService
                 throw new RuntimeException('قيمة التحصيل يجب أن تكون أكبر من الصفر.');
             }
 
-            if ($payment->salesInvoice) {
-                $this->applyToInvoice($payment->salesInvoice, (float) $payment->amount);
+            if ($payment->sales_invoice_id) {
+                $this->applyToInvoice($payment->sales_invoice_id, (float) $payment->amount);
             }
 
-            $payment->forceFill([
-                'status' => 'confirmed',
-                'confirmed_by' => Auth::id(),
-                'confirmed_at' => now(),
-            ])->save();
+            DB::table('customer_payments')
+                ->where('id', $payment->id)
+                ->update([
+                    'status' => 'confirmed',
+                    'confirmed_by' => Auth::id(),
+                    'confirmed_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
-            return $payment;
+            return $payment->refresh();
         });
     }
 
-    private function applyToInvoice(SalesInvoice $invoice, float $amount): void
+    private function applyToInvoice(int $invoiceId, float $amount): void
     {
+        $invoice = SalesInvoice::query()
+            ->lockForUpdate()
+            ->findOrFail($invoiceId);
+
         if (! $invoice->isConfirmed()) {
             throw new RuntimeException('لا يمكن تسجيل تحصيل على فاتورة غير معتمدة.');
         }
 
-        $newPaidAmount = (float) $invoice->paid_amount + $amount;
+        $totalAmount = (float) $invoice->total_amount;
+        $paidAmount = (float) $invoice->paid_amount;
+        $remainingAmount = (float) $invoice->remaining_amount;
 
-        if ($newPaidAmount > (float) $invoice->total_amount) {
+        if ($remainingAmount <= 0) {
+            throw new RuntimeException('هذه الفاتورة مسددة بالكامل.');
+        }
+
+        if ($amount > $remainingAmount) {
             throw new RuntimeException('قيمة التحصيل أكبر من المبلغ المتبقي على الفاتورة.');
         }
 
-        $invoice->forceFill([
-            'paid_amount' => $newPaidAmount,
-            'remaining_amount' => max((float) $invoice->total_amount - $newPaidAmount, 0),
-        ])->save();
+        $newPaidAmount = $paidAmount + $amount;
+        $newRemainingAmount = max($totalAmount - $newPaidAmount, 0);
+
+        DB::table('sales_invoices')
+            ->where('id', $invoice->id)
+            ->update([
+                'paid_amount' => $newPaidAmount,
+                'remaining_amount' => $newRemainingAmount,
+                'updated_at' => now(),
+            ]);
     }
 
     public function generatePaymentNumber(): string

@@ -146,8 +146,7 @@ class VehicleLoadsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->visible(false),
+                        ->label('حذف المحدد'),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

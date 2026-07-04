@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosings\Schemas;
 
+use App\Models\DailyClosing;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -65,10 +66,12 @@ class DailyClosingForm
                     ->relationship('items')
                     ->columns(2)
                     ->columnSpanFull()
+                    ->defaultItems(0)
                     ->addable(false)
                     ->deletable(false)
                     ->reorderable(false)
                     ->collapsed()
+                    ->hidden(fn (?DailyClosing $record): bool => ! $record?->exists)
                     ->schema([
                         Select::make('product_id')
                             ->label('المنتج')

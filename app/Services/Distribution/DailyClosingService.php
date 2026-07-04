@@ -111,7 +111,19 @@ class DailyClosingService
                 ->when($salesRepresentativeId, fn ($query) => $query->where('sales_representative_id', $salesRepresentativeId))
                 ->sum('amount');
 
-            $expectedCash = $invoicePaid + $totalCollections;
+            $linkedCollectionsForInvoices = (float) DB::table('customer_payments')
+                ->join('sales_invoices', 'customer_payments.sales_invoice_id', '=', 'sales_invoices.id')
+                ->where('customer_payments.status', 'confirmed')
+                ->where('sales_invoices.status', 'confirmed')
+                ->whereDate('sales_invoices.invoice_date', $date)
+                ->where('sales_invoices.warehouse_id', $warehouseId)
+                ->when($vehicleId, fn ($query) => $query->where('sales_invoices.vehicle_id', $vehicleId))
+                ->when($salesRepresentativeId, fn ($query) => $query->where('sales_invoices.sales_representative_id', $salesRepresentativeId))
+                ->sum('customer_payments.amount');
+
+            $directInvoiceCash = max($invoicePaid - $linkedCollectionsForInvoices, 0);
+
+            $expectedCash = $directInvoiceCash + $totalCollections;
             $actualCash = (float) $closing->actual_cash_amount;
 
             $closing->forceFill([
@@ -133,7 +145,7 @@ class DailyClosingService
     {
         return DB::transaction(function () use ($closing): DailyClosing {
             if (! $closing->isDraft()) {
-                throw new RuntimeException('لا يمكن اعتماد إغلاق يوم ليس بحالة مسودة.');
+                throw new RuntimeException("\u{0644}\u{0627} \u{064a}\u{0645}\u{0643}\u{0646} \u{0627}\u{0639}\u{062a}\u{0645}\u{0627}\u{062f} \u{0625}\u{063a}\u{0644}\u{0627}\u{0642} \u{064a}\u{0648}\u{0645} \u{0644}\u{064a}\u{0633} \u{0628}\u{062d}\u{0627}\u{0644}\u{0629} \u{0645}\u{0633}\u{0648}\u{062f}\u{0629}.");
             }
 
             $this->refreshTotals($closing);
