@@ -299,3 +299,36 @@ input[type="search"] {
         grid-template-columns: 1fr;
     }
 }
+
+/* Fix Arabic search fields direction */
+.fi-global-search input,
+.fi-ta-search-field input,
+.fi-ta-search input,
+input[type="search"] {
+    direction: rtl !important;
+    text-align: right !important;
+}
+
+/* Keep only technical fields LTR */
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"] {
+    direction: ltr;
+    text-align: left;
+}
+
+/* Better search field spacing in RTL */
+.fi-global-search .fi-input-wrp,
+.fi-ta-search-field .fi-input-wrp,
+.fi-ta-search .fi-input-wrp {
+    direction: rtl;
+}
+
+.fi-global-search input::placeholder,
+.fi-ta-search-field input::placeholder,
+.fi-ta-search input::placeholder,
+input[type="search"]::placeholder {
+    text-align: right;
+}
