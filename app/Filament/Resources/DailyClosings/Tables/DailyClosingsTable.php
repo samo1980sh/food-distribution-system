@@ -88,6 +88,24 @@ class DailyClosingsTable
                     ->sortable()
                     ->toggleable(),
 
+
+                TextColumn::make('total_vehicle_expenses_amount')
+                    ->label("\u{0645}\u{0635}\u{0627}\u{0631}\u{064A}\u{0641} \u{0627}\u{0644}\u{0633}\u{064A}\u{0627}\u{0631}\u{0627}\u{062A}")
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('cash_vehicle_expenses_amount')
+                    ->label("\u{0645}\u{0635}\u{0627}\u{0631}\u{064A}\u{0641} \u{0646}\u{0642}\u{062F}\u{064A}\u{0629}")
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('non_cash_vehicle_expenses_amount')
+                    ->label("\u{0645}\u{0635}\u{0627}\u{0631}\u{064A}\u{0641} \u{063A}\u{064A}\u{0631} \u{0646}\u{0642}\u{062F}\u{064A}\u{0629}")
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('expected_cash_amount')
                     ->label('النقد المتوقع')
                     ->money('SYP')
