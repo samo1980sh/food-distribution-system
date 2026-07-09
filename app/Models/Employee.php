@@ -33,4 +33,13 @@ class Employee extends Model
     {
         return $this->hasMany(DistributionRoute::class, 'sales_representative_id');
     }
+    public function driverVehicleExpenses(): HasMany
+    {
+        return $this->hasMany(VehicleExpense::class, 'driver_id');
+    }
+
+    public function salesRepresentativeVehicleExpenses(): HasMany
+    {
+        return $this->hasMany(VehicleExpense::class, 'sales_representative_id');
+    }
 }
