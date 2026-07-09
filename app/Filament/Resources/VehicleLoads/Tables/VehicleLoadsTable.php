@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleLoads\Tables;
 
+use App\Models\User;
 use App\Models\VehicleLoad;
 use App\Services\Distribution\VehicleLoadService;
 use Filament\Actions\Action;
@@ -113,7 +114,7 @@ class VehicleLoadsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد أمر التحميل')
                     ->modalDescription('سيتم نقل الكميات من المستودع المصدر إلى مستودع السيارة، ولا يمكن تعديل الأمر بعد الاعتماد.')
-                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft())
+                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft() && self::canApproveOrEditLoad())
                     ->action(function (VehicleLoad $record): void {
                         try {
                             app(VehicleLoadService::class)->approve($record);
@@ -138,7 +139,7 @@ class VehicleLoadsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء أمر التحميل')
                     ->modalDescription('سيتم عكس حركة المخزون وإرجاع الكميات إلى المستودع المصدر.')
-                    ->visible(fn (VehicleLoad $record): bool => $record->isApproved())
+                    ->visible(fn (VehicleLoad $record): bool => $record->isApproved() && self::canCancelLoad())
                     ->action(function (VehicleLoad $record): void {
                         try {
                             app(VehicleLoadService::class)->cancel($record);
@@ -160,13 +161,34 @@ class VehicleLoadsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل أمر تحميل')
                     ->slideOver()
-                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft()),
+                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft() && self::canApproveOrEditLoad()),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft()),
+                    ->visible(fn (VehicleLoad $record): bool => $record->isDraft() && self::canDeleteDraftLoad()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canApproveOrEditLoad(): bool
+    {
+        return auth()->user()?->canManageDistribution() === true;
+    }
+
+    private static function canCancelLoad(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
+    }
+
+    private static function canDeleteDraftLoad(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
