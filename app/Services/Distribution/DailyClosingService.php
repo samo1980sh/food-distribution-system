@@ -118,7 +118,20 @@ class DailyClosingService
             $totalCollections = $cashCollections + $bankTransferCollections + $chequeCollections + $otherCollections;
             $nonCashCollections = $bankTransferCollections + $chequeCollections + $otherCollections;
 
-            $expectedCash = $invoiceCash + $cashCollections;
+            $vehicleExpensesByMethod = $this->scopedVehicleExpensesQuery($date, $warehouseId, $vehicleId, $routeId, $salesRepresentativeId)
+                ->selectRaw('payment_method, SUM(amount) as amount')
+                ->groupBy('payment_method')
+                ->pluck('amount', 'payment_method')
+                ->map(fn ($amount): float => (float) $amount);
+
+            $cashVehicleExpenses = (float) ($vehicleExpensesByMethod['cash'] ?? 0);
+            $bankTransferVehicleExpenses = (float) ($vehicleExpensesByMethod['bank_transfer'] ?? 0);
+            $chequeVehicleExpenses = (float) ($vehicleExpensesByMethod['cheque'] ?? 0);
+            $otherVehicleExpenses = (float) ($vehicleExpensesByMethod['other'] ?? 0);
+            $totalVehicleExpenses = $cashVehicleExpenses + $bankTransferVehicleExpenses + $chequeVehicleExpenses + $otherVehicleExpenses;
+            $nonCashVehicleExpenses = $bankTransferVehicleExpenses + $chequeVehicleExpenses + $otherVehicleExpenses;
+
+            $expectedCash = $invoiceCash + $cashCollections - $cashVehicleExpenses;
             $actualCash = (float) $closing->actual_cash_amount;
 
             $closing->forceFill([
@@ -134,6 +147,9 @@ class DailyClosingService
                 'cheque_collections_amount' => $chequeCollections,
                 'other_collections_amount' => $otherCollections,
                 'non_cash_collections_amount' => $nonCashCollections,
+                'total_vehicle_expenses_amount' => $totalVehicleExpenses,
+                'cash_vehicle_expenses_amount' => $cashVehicleExpenses,
+                'non_cash_vehicle_expenses_amount' => $nonCashVehicleExpenses,
                 'expected_cash_amount' => $expectedCash,
                 'cash_difference' => $actualCash - $expectedCash,
             ])->save();
@@ -194,6 +210,22 @@ class DailyClosingService
         if ((int) $closing->warehouse?->vehicle_id !== (int) $closing->vehicle_id) {
             throw new RuntimeException('مستودع الإغلاق لا يتبع السيارة المحددة.');
         }
+    }
+
+    private function scopedVehicleExpensesQuery(
+        string $date,
+        int $warehouseId,
+        ?int $vehicleId,
+        ?int $routeId,
+        ?int $salesRepresentativeId,
+    ): Builder {
+        return DB::table('vehicle_expenses')
+            ->where('status', 'approved')
+            ->whereDate('expense_date', $date)
+            ->where('warehouse_id', $warehouseId)
+            ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_id', $vehicleId))
+            ->when($routeId, fn (Builder $query) => $query->where('route_id', $routeId))
+            ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_representative_id', $salesRepresentativeId));
     }
 
     private function scopedInvoicesQuery(
