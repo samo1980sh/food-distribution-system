@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
@@ -42,6 +43,31 @@ class UserResource extends Resource
     public static function getNavigationSort(): ?int
     {
         return 5;
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->isSuperAdmin() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->isSuperAdmin() === true;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->isSuperAdmin() === true;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return auth()->user()?->isSuperAdmin() === true;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
     }
 
     public static function form(Schema $schema): Schema
