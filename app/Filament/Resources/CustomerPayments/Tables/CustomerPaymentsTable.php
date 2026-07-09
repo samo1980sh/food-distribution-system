@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\CustomerPayments\Tables;
 
 use App\Models\CustomerPayment;
+use App\Models\User;
 use App\Services\Sales\CustomerPaymentService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -129,7 +130,7 @@ class CustomerPaymentsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد التحصيل')
                     ->modalDescription('إذا كان التحصيل مرتبطًا بفاتورة، سيتم تحديث المدفوع والمتبقي على الفاتورة.')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft())
+                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canConfirmOrEditPayment())
                     ->action(function (CustomerPayment $record): void {
                         try {
                             app(CustomerPaymentService::class)->confirm($record);
@@ -154,7 +155,7 @@ class CustomerPaymentsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء التحصيل')
                     ->modalDescription('سيتم عكس أثر التحصيل على الفاتورة المرتبطة إن وجدت.')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isConfirmed())
+                    ->visible(fn (CustomerPayment $record): bool => $record->isConfirmed() && self::canCancelPayment())
                     ->action(function (CustomerPayment $record): void {
                         try {
                             app(CustomerPaymentService::class)->cancel($record);
@@ -176,13 +177,35 @@ class CustomerPaymentsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل تحصيل عميل')
                     ->slideOver()
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft()),
+                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canConfirmOrEditPayment()),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft()),
+                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canDeleteDraftPayment()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canConfirmOrEditPayment(): bool
+    {
+        return auth()->user()?->canManageSalesAndCollections() === true;
+    }
+
+    private static function canCancelPayment(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+            User::ROLE_ACCOUNTANT,
+        ]) === true;
+    }
+
+    private static function canDeleteDraftPayment(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
