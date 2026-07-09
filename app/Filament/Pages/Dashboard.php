@@ -25,6 +25,6 @@ class Dashboard extends BaseDashboard
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'نظرة عامة على التوزيع، السيارات، المخزون، والتحصيلات اليومية.';
+        return 'متابعة يومية للمبيعات، التحصيلات، مصاريف السيارات، وإغلاقات التوزيع.';
     }
 }
