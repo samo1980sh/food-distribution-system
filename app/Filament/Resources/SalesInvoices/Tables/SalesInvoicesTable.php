@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
 use App\Models\SalesInvoice;
+use App\Models\User;
 use App\Services\Sales\SalesInvoiceService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -140,7 +141,7 @@ class SalesInvoicesTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد فاتورة البيع')
                     ->modalDescription('سيتم خصم الكميات من مستودع البيع، ولا يمكن تعديل الفاتورة بعد الاعتماد.')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft())
+                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canManageInvoiceDrafts())
                     ->action(function (SalesInvoice $record): void {
                         try {
                             app(SalesInvoiceService::class)->confirm($record);
@@ -165,7 +166,7 @@ class SalesInvoicesTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء فاتورة البيع')
                     ->modalDescription('سيتم عكس حركة المخزون. إذا كانت هناك تحصيلات مرتبطة يجب إلغاؤها أولاً.')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isConfirmed())
+                    ->visible(fn (SalesInvoice $record): bool => $record->isConfirmed() && self::canCancelInvoice())
                     ->action(function (SalesInvoice $record): void {
                         try {
                             app(SalesInvoiceService::class)->cancel($record);
@@ -187,13 +188,38 @@ class SalesInvoicesTable
                     ->label('تعديل')
                     ->modalHeading('تعديل فاتورة بيع')
                     ->slideOver()
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft()),
+                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canManageInvoiceDrafts()),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft()),
+                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canDeleteDraftInvoice()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canManageInvoiceDrafts(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+            User::ROLE_SUPERVISOR,
+        ]) === true;
+    }
+
+    private static function canCancelInvoice(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
+    }
+
+    private static function canDeleteDraftInvoice(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
