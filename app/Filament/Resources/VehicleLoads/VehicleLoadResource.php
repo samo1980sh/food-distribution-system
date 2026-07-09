@@ -44,6 +44,16 @@ class VehicleLoadResource extends Resource
         return 30;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageDistribution() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageDistribution() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return VehicleLoadForm::configure($schema);

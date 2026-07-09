@@ -44,6 +44,16 @@ class CustomerResource extends Resource
         return 20;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageMasterData() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageMasterData() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return CustomerForm::configure($schema);

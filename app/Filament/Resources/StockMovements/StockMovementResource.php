@@ -44,6 +44,16 @@ class StockMovementResource extends Resource
         return 60;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageInventory() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageInventory() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return StockMovementForm::configure($schema);

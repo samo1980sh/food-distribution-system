@@ -44,6 +44,16 @@ class SalesInvoiceResource extends Resource
         return 10;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageSalesAndCollections() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageSalesAndCollections() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return SalesInvoiceForm::configure($schema);

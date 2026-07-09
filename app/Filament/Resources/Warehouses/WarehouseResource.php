@@ -44,6 +44,16 @@ class WarehouseResource extends Resource
         return 40;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageInventory() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageInventory() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return WarehouseForm::configure($schema);

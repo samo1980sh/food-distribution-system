@@ -44,6 +44,16 @@ class CustomerPaymentResource extends Resource
         return 20;
     }
 
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return auth()->user()?->canManageSalesAndCollections() === true;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->canManageSalesAndCollections() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return CustomerPaymentForm::configure($schema);
