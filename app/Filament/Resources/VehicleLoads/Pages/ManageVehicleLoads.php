@@ -14,6 +14,7 @@ class ManageVehicleLoads extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageDistribution() === true)
                 ->label('إضافة أمر تحميل')
                 ->modalHeading('إضافة أمر تحميل سيارة')
                 ->slideOver(),

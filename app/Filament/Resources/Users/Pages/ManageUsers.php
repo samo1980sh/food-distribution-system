@@ -14,6 +14,7 @@ class ManageUsers extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageUsers() === true)
                 ->label('إضافة مستخدم')
                 ->modalHeading('إضافة مستخدم')
                 ->slideOver(),

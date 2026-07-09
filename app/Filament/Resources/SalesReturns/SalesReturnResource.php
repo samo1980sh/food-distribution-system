@@ -54,6 +54,14 @@ class SalesReturnResource extends Resource
     {
         return auth()->user()?->canManageSalesAndCollections() === true;
     }
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            \App\Models\User::ROLE_SUPER_ADMIN,
+            \App\Models\User::ROLE_MANAGER,
+            \App\Models\User::ROLE_SUPERVISOR,
+        ]) === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return SalesReturnForm::configure($schema);

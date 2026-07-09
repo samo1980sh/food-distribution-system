@@ -84,6 +84,7 @@ class UsersTable
             ])
             ->recordActions([
                 EditAction::make()
+                    ->visible(fn (): bool => auth()->user()?->canManageUsers() === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل مستخدم')
                     ->slideOver(),

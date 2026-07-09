@@ -14,6 +14,7 @@ class ManageVehicleExpenses extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageDistribution() === true)
                 ->label('إضافة مصروف سيارة')
                 ->modalHeading('إضافة مصروف سيارة')
                 ->slideOver(),

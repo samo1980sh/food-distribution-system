@@ -14,6 +14,7 @@ class ManageSalesReturns extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_MANAGER, \App\Models\User::ROLE_SUPERVISOR]) === true)
                 ->label('إضافة مرتجع')
                 ->modalHeading('إضافة مرتجع بيع')
                 ->slideOver(),

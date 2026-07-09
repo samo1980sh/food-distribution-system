@@ -14,6 +14,7 @@ class ManageDailyClosings extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageDailyClosings() === true)
                 ->label('إضافة إغلاق يوم')
                 ->modalHeading('إضافة إغلاق يوم')
                 ->slideOver(),

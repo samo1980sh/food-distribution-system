@@ -54,6 +54,10 @@ class VehicleLoadResource extends Resource
     {
         return auth()->user()?->canManageDistribution() === true;
     }
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->canManageDistribution() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return VehicleLoadForm::configure($schema);
