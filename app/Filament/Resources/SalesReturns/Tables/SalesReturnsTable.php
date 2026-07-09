@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SalesReturns\Tables;
 
 use App\Models\SalesReturn;
+use App\Models\User;
 use App\Services\Sales\SalesReturnService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -142,7 +143,7 @@ class SalesReturnsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد مرتجع البيع')
                     ->modalDescription('سيتم إضافة الكميات المرتجعة إلى المستودع المحدد، ولا يمكن تعديل المرتجع بعد الاعتماد.')
-                    ->visible(fn (SalesReturn $record): bool => $record->isDraft())
+                    ->visible(fn (SalesReturn $record): bool => $record->isDraft() && self::canManageReturnDrafts())
                     ->action(function (SalesReturn $record): void {
                         try {
                             app(SalesReturnService::class)->confirm($record);
@@ -167,7 +168,7 @@ class SalesReturnsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء مرتجع البيع')
                     ->modalDescription('سيتم عكس حركة المخزون وإخراج الكميات المرتجعة من المستودع.')
-                    ->visible(fn (SalesReturn $record): bool => $record->isConfirmed())
+                    ->visible(fn (SalesReturn $record): bool => $record->isConfirmed() && self::canCancelReturn())
                     ->action(function (SalesReturn $record): void {
                         try {
                             app(SalesReturnService::class)->cancel($record);
@@ -189,13 +190,38 @@ class SalesReturnsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل مرتجع بيع')
                     ->slideOver()
-                    ->visible(fn (SalesReturn $record): bool => $record->isDraft()),
+                    ->visible(fn (SalesReturn $record): bool => $record->isDraft() && self::canManageReturnDrafts()),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (SalesReturn $record): bool => $record->isDraft()),
+                    ->visible(fn (SalesReturn $record): bool => $record->isDraft() && self::canDeleteDraftReturn()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canManageReturnDrafts(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+            User::ROLE_SUPERVISOR,
+        ]) === true;
+    }
+
+    private static function canCancelReturn(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
+    }
+
+    private static function canDeleteDraftReturn(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
