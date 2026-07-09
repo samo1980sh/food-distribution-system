@@ -16,7 +16,8 @@ class ManageWarehouses extends ManageRecords
             CreateAction::make()
                 ->label('إضافة مستودع')
                 ->modalHeading('إضافة مستودع')
-                ->slideOver(),
+                ->slideOver()
+                ->visible(fn (): bool => WarehouseResource::canManageWarehouseStructure()),
         ];
     }
 }

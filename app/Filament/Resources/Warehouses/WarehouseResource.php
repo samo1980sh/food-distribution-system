@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Warehouses;
 use App\Filament\Resources\Warehouses\Pages\ManageWarehouses;
 use App\Filament\Resources\Warehouses\Schemas\WarehouseForm;
 use App\Filament\Resources\Warehouses\Tables\WarehousesTable;
+use App\Models\User;
 use App\Models\Warehouse;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -44,7 +45,6 @@ class WarehouseResource extends Resource
         return 40;
     }
 
-
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()?->canManageInventory() === true;
@@ -54,6 +54,12 @@ class WarehouseResource extends Resource
     {
         return auth()->user()?->canManageInventory() === true;
     }
+
+    public static function canCreate(): bool
+    {
+        return self::canManageWarehouseStructure();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return WarehouseForm::configure($schema);
@@ -69,5 +75,13 @@ class WarehouseResource extends Resource
         return [
             'index' => ManageWarehouses::route('/'),
         ];
+    }
+
+    public static function canManageWarehouseStructure(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }

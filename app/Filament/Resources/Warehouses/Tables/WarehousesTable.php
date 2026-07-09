@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Warehouses\Tables;
 
+use App\Filament\Resources\Warehouses\WarehouseResource;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -62,11 +63,14 @@ class WarehousesTable
                 EditAction::make()
                     ->label('تعديل')
                     ->modalHeading('تعديل مستودع')
-                    ->slideOver(),
+                    ->slideOver()
+                    ->visible(fn (): bool => WarehouseResource::canManageWarehouseStructure()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label('حذف المحدد'),
+                    DeleteBulkAction::make()
+                        ->label('حذف المحدد')
+                        ->visible(fn (): bool => WarehouseResource::canManageWarehouseStructure()),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

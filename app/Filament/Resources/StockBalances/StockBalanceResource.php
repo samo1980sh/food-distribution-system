@@ -43,7 +43,6 @@ class StockBalanceResource extends Resource
         return 50;
     }
 
-
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()?->canManageInventory() === true;
@@ -53,6 +52,12 @@ class StockBalanceResource extends Resource
     {
         return auth()->user()?->canManageInventory() === true;
     }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema;
