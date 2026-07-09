@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenses\Tables;
 
+use App\Models\User;
 use App\Models\VehicleExpense;
 use App\Services\Distribution\VehicleExpenseService;
 use Filament\Actions\Action;
@@ -151,7 +152,7 @@ class VehicleExpensesTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد مصروف السيارة')
                     ->modalDescription('بعد الاعتماد سيدخل هذا المصروف لاحقاً ضمن إغلاق اليوم.')
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending())
+                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canApproveOrReject())
                     ->action(function (VehicleExpense $record): void {
                         try {
                             app(VehicleExpenseService::class)->approve($record);
@@ -181,7 +182,7 @@ class VehicleExpensesTable
                             ->required()
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending())
+                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canApproveOrReject())
                     ->action(function (VehicleExpense $record, array $data): void {
                         try {
                             app(VehicleExpenseService::class)->reject($record, $data['rejection_reason'] ?? null);
@@ -203,13 +204,30 @@ class VehicleExpensesTable
                     ->label('تعديل')
                     ->modalHeading('تعديل مصروف سيارة')
                     ->slideOver()
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending()),
+                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && auth()->user()?->canManageDistribution() === true),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending()),
+                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canDeletePendingExpense()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canApproveOrReject(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+            User::ROLE_SUPERVISOR,
+        ]) === true;
+    }
+
+    private static function canDeletePendingExpense(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
