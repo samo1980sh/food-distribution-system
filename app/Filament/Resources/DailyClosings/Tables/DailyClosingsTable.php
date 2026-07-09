@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DailyClosings\Tables;
 
 use App\Models\DailyClosing;
+use App\Models\User;
 use App\Services\Distribution\DailyClosingService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -88,7 +89,6 @@ class DailyClosingsTable
                     ->sortable()
                     ->toggleable(),
 
-
                 TextColumn::make('total_vehicle_expenses_amount')
                     ->label("\u{0645}\u{0635}\u{0627}\u{0631}\u{064A}\u{0641} \u{0627}\u{0644}\u{0633}\u{064A}\u{0627}\u{0631}\u{0627}\u{062A}")
                     ->money('SYP')
@@ -106,6 +106,7 @@ class DailyClosingsTable
                     ->money('SYP')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('expected_cash_amount')
                     ->label('النقد المتوقع')
                     ->money('SYP')
@@ -170,7 +171,7 @@ class DailyClosingsTable
                     ->label('تحديث الملخص')
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft())
+                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions())
                     ->action(function (DailyClosing $record): void {
                         app(DailyClosingService::class)->refreshTotals($record);
 
@@ -187,7 +188,7 @@ class DailyClosingsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد إغلاق اليوم')
                     ->modalDescription('سيتم اعتماد الإغلاق ومنع تعديل عملياته لاحقاً.')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft())
+                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions())
                     ->action(function (DailyClosing $record): void {
                         try {
                             app(DailyClosingService::class)->confirm($record);
@@ -212,7 +213,7 @@ class DailyClosingsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء إغلاق اليوم')
                     ->modalDescription('سيتم فتح التاريخ والمستودع للعمليات العكسية والتصحيحات.')
-                    ->visible(fn (DailyClosing $record): bool => $record->isConfirmed())
+                    ->visible(fn (DailyClosing $record): bool => $record->isConfirmed() && self::canCancelClosing())
                     ->action(function (DailyClosing $record): void {
                         try {
                             app(DailyClosingService::class)->cancel($record);
@@ -234,13 +235,34 @@ class DailyClosingsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل إغلاق يوم')
                     ->slideOver()
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft()),
+                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions()),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft()),
+                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canDeleteDraftClosing()),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function canManageClosingActions(): bool
+    {
+        return auth()->user()?->canManageDailyClosings() === true;
+    }
+
+    private static function canCancelClosing(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
+    }
+
+    private static function canDeleteDraftClosing(): bool
+    {
+        return auth()->user()?->hasAnyRole([
+            User::ROLE_SUPER_ADMIN,
+            User::ROLE_MANAGER,
+        ]) === true;
     }
 }
