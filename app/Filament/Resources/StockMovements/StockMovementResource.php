@@ -54,6 +54,11 @@ class StockMovementResource extends Resource
     {
         return auth()->user()?->canManageInventory() === true;
     }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->canManageInventory() === true;
+    }
     public static function form(Schema $schema): Schema
     {
         return StockMovementForm::configure($schema);

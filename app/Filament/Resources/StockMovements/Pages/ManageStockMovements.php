@@ -22,6 +22,7 @@ class ManageStockMovements extends ManageRecords
         return [
             CreateAction::make()
                 ->label('إضافة حركة مخزون')
+                ->visible(fn (): bool => auth()->user()?->canManageInventory() === true)
                 ->modalHeading('إضافة حركة مخزون')
                 ->slideOver()
                 ->using(function (array $data): StockMovement {
