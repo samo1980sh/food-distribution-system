@@ -14,6 +14,7 @@ class ManageAreas extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                 ->label('إضافة منطقة')
                 ->modalHeading('إضافة منطقة')
                 ->slideOver(),

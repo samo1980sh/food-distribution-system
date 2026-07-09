@@ -14,6 +14,7 @@ class ManageCustomers extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                 ->label('إضافة عميل')
                 ->modalHeading('إضافة عميل')
                 ->slideOver(),

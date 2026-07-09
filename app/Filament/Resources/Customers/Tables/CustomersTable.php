@@ -83,13 +83,16 @@ class CustomersTable
             ])
             ->recordActions([
                 EditAction::make()
+                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل عميل')
                     ->slideOver(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make()->label('حذف المحدد'),
+                    DeleteBulkAction::make()
+                        ->label('حذف المحدد')
+                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');
