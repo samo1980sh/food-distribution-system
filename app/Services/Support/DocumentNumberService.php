@@ -21,6 +21,8 @@ class DocumentNumberService
                 ->first();
 
             if (! $sequence) {
+                $insertException = null;
+
                 try {
                     DB::table('document_sequences')->insert([
                         'document_type' => $type,
@@ -29,7 +31,8 @@ class DocumentNumberService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                } catch (QueryException) {
+                } catch (QueryException $exception) {
+                    $insertException = $exception;
                     // Another request created today's sequence first; lock it below.
                 }
 
@@ -38,6 +41,10 @@ class DocumentNumberService
                     ->where('sequence_date', $date)
                     ->lockForUpdate()
                     ->first();
+
+                if (! $sequence && $insertException) {
+                    throw $insertException;
+                }
             }
 
             $nextNumber = ((int) $sequence->last_number) + 1;
