@@ -47,22 +47,22 @@ class UserResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->isSuperAdmin() === true;
+        return auth()->user()?->canManageUsers() === true;
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->isSuperAdmin() === true;
+        return auth()->user()?->canManageUsers() === true;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->isSuperAdmin() === true;
+        return auth()->user()?->canManageUsers() === true;
     }
 
     public static function canEdit(Model $record): bool
     {
-        return auth()->user()?->isSuperAdmin() === true;
+        return auth()->user()?->canManageUsers() === true;
     }
 
     public static function canDelete(Model $record): bool
