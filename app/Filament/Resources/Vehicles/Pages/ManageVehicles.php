@@ -14,6 +14,7 @@ class ManageVehicles extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                 ->label('إضافة سيارة')
                 ->modalHeading('إضافة سيارة')
                 ->slideOver(),

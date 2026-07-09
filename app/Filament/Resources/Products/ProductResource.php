@@ -54,6 +54,11 @@ class ProductResource extends Resource
     {
         return auth()->user()?->canManageInventory() === true;
     }
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->canManageMasterData() === true;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return ProductForm::configure($schema);

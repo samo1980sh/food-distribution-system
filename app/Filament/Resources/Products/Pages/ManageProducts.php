@@ -14,6 +14,7 @@ class ManageProducts extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                 ->label('إضافة منتج')
                 ->modalHeading('إضافة منتج')
                 ->slideOver(),

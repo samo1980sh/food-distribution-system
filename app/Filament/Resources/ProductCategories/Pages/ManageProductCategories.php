@@ -14,6 +14,7 @@ class ManageProductCategories extends ManageRecords
     {
         return [
             CreateAction::make()
+                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
                 ->label('إضافة تصنيف')
                 ->modalHeading('إضافة تصنيف')
                 ->slideOver(),
