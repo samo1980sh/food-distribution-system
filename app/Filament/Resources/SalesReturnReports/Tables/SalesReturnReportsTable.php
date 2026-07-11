@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\SalesReturnReports\Tables;
 
+use App\Models\SalesReturn;
+
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -226,7 +229,22 @@ class SalesReturnReportsTable
                     ->searchable()
                     ->preload(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (SalesReturn $record): string => route(
+                            'reports.sales-returns.print',
+                            $record,
+                        ),
+                        shouldOpenInNewTab: true,
+                    )
+                    ->visible(
+                        fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                    ),
+            ])
             ->toolbarActions([])
             ->summaries(
                 pageCondition: false,

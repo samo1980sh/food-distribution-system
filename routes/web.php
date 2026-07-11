@@ -7,6 +7,7 @@ use App\Http\Controllers\Reports\DailyClosingFilteredPrintController;
 use App\Http\Controllers\Reports\DailyClosingPrintController;
 use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
+use App\Http\Controllers\Reports\SalesReturnPrintController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -47,3 +48,8 @@ Route::get(
     '/admin/reports/customer-statement/print',
     CustomerStatementPrintController::class,
 )->name('reports.customer-statement.print');
+
+Route::get(
+    '/admin/reports/sales-returns/{salesReturn}/print',
+    SalesReturnPrintController::class,
+)->name('reports.sales-returns.print');
