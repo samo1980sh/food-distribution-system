@@ -15,16 +15,20 @@ class SalesInvoiceItem extends Model
         'expiry_date',
         'quantity',
         'unit_price',
+        'unit_cost',
         'discount_amount',
         'line_total',
+        'total_cost',
     ];
 
     protected $casts = [
         'expiry_date' => 'date',
         'quantity' => 'decimal:3',
         'unit_price' => 'decimal:2',
+        'unit_cost' => 'decimal:6',
         'discount_amount' => 'decimal:2',
         'line_total' => 'decimal:2',
+        'total_cost' => 'decimal:2',
     ];
 
     protected static function booted(): void
@@ -35,6 +39,9 @@ class SalesInvoiceItem extends Model
             if ((float) $item->line_total < 0) {
                 $item->line_total = 0;
             }
+
+            $item->total_cost = (float) $item->quantity
+                * (float) $item->unit_cost;
         });
 
         static::saved(function (SalesInvoiceItem $item): void {

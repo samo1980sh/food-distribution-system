@@ -69,18 +69,18 @@ class VehicleStockReportsTable
                             ->numeric(decimalPlaces: 3),
                     ]),
 
-                TextColumn::make('product.purchase_price')
-                    ->label('سعر الشراء')
+                TextColumn::make('average_unit_cost')
+                    ->label('متوسط تكلفة الوحدة')
                     ->money('SYP')
                     ->sortable()
                     ->toggleable(),
 
-                TextColumn::make('estimated_value')
-                    ->label('القيمة التقديرية')
+                TextColumn::make('inventory_value')
+                    ->label('قيمة المخزون')
                     ->getStateUsing(
                         fn (StockBalance $record): float =>
                             (float) $record->quantity
-                            * (float) ($record->product?->purchase_price ?? 0)
+                            * (float) $record->average_unit_cost
                     )
                     ->money('SYP')
                     ->toggleable(),

@@ -404,8 +404,8 @@
                 </div>
 
                 <div class="stat">
-                    <span>القيمة التقديرية</span>
-                    <strong>{{ $money($totals['estimated_value']) }}</strong>
+                    <span>قيمة المخزون</span>
+                    <strong>{{ $money($totals['inventory_value']) }}</strong>
                 </div>
             </div>
         </section>
@@ -440,8 +440,8 @@
                             <th>الصلاحية</th>
                             <th>حالة الصلاحية</th>
                             <th class="number">الكمية</th>
-                            <th class="number">سعر الشراء</th>
-                            <th class="number">القيمة التقديرية</th>
+                            <th class="number">متوسط تكلفة الوحدة</th>
+                            <th class="number">قيمة المخزون</th>
                             <th>آخر تحديث</th>
                         </tr>
                     </thead>
@@ -450,8 +450,8 @@
                         @forelse ($balances as $balance)
                             @php
                                 [$expiryLabel, $expiryClass] = $expiryInfo($balance->expiry_date);
-                                $estimatedValue = (float) $balance->quantity
-                                    * (float) ($balance->product?->purchase_price ?? 0);
+                                $inventoryValue = (float) $balance->quantity
+                                    * (float) $balance->average_unit_cost;
                             @endphp
 
                             <tr>
@@ -477,10 +477,10 @@
                                 <td class="number">{{ $quantity($balance->quantity) }}</td>
 
                                 <td class="number">
-                                    {{ $money($balance->product?->purchase_price ?? 0) }}
+                                    {{ $money($balance->average_unit_cost) }}
                                 </td>
 
-                                <td class="number">{{ $money($estimatedValue) }}</td>
+                                <td class="number">{{ $money($inventoryValue) }}</td>
 
                                 <td class="number">
                                     {{ $balance->updated_at?->format('Y-m-d H:i') ?? '-' }}
@@ -501,7 +501,7 @@
                                 <td colspan="7">الإجمالي</td>
                                 <td class="number">{{ $quantity($totals['quantity']) }}</td>
                                 <td></td>
-                                <td class="number">{{ $money($totals['estimated_value']) }}</td>
+                                <td class="number">{{ $money($totals['inventory_value']) }}</td>
                                 <td></td>
                             </tr>
                         </tfoot>
@@ -510,7 +510,7 @@
             </div>
 
             <div class="note">
-                القيمة التقديرية محسوبة من الكمية الحالية × سعر شراء المنتج، وليست تكلفة محاسبية نهائية للمخزون.
+                قيمة المخزون محسوبة من الكمية الحالية × متوسط تكلفة الوحدة المرجّح للحركات المخزنية.
             </div>
         </section>
 

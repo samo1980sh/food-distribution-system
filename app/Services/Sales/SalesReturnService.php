@@ -3,6 +3,8 @@
 namespace App\Services\Sales;
 
 use App\Models\SalesReturn;
+use App\Models\SalesInvoiceItem;
+use App\Models\SalesReturnItem;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
 use App\Services\Support\DocumentNumberService;
@@ -44,17 +46,27 @@ class SalesReturnService
             $inventory = app(InventoryMovementService::class);
 
             foreach ($salesReturn->items as $item) {
-                $inventory->addStock(
+                $unitCost = $this->resolveReturnUnitCost(
+                    $salesReturn,
+                    $item,
+                );
+
+                $movement = $inventory->addStock(
                     warehouse: $salesReturn->warehouse,
                     product: $item->product,
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: 0,
+                    unitCost: $unitCost,
                     movementType: 'sales_return',
                     notes: 'مرتجع بيع رقم '.$salesReturn->return_number,
                     reference: $salesReturn,
                 );
+
+                $item->forceFill([
+                    'unit_cost' => $movement->unit_cost,
+                    'total_cost' => $movement->total_cost,
+                ])->saveQuietly();
             }
 
             $salesReturn->forceFill([
@@ -94,7 +106,6 @@ class SalesReturnService
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: 0,
                     movementType: 'sales_return_cancellation',
                     notes: 'إلغاء مرتجع بيع رقم '.$salesReturn->return_number,
                     reference: $salesReturn,
@@ -206,6 +217,42 @@ class SalesReturnService
             trim((string) $batchNumber),
             $expiryDate ?? '',
         ]);
+    }
+
+    private function resolveReturnUnitCost(
+        SalesReturn $salesReturn,
+        SalesReturnItem $returnItem,
+    ): float {
+        if ($salesReturn->sales_invoice_id) {
+            $invoiceItems = SalesInvoiceItem::query()
+                ->where('sales_invoice_id', $salesReturn->sales_invoice_id)
+                ->where('product_id', $returnItem->product_id)
+                ->where('batch_number', $returnItem->batch_number)
+                ->when(
+                    $returnItem->expiry_date,
+                    fn ($query, $date) => $query->whereDate('expiry_date', $date),
+                    fn ($query) => $query->whereNull('expiry_date'),
+                )
+                ->get(['quantity', 'unit_cost', 'total_cost']);
+
+            $quantity = (float) $invoiceItems->sum('quantity');
+            $totalCost = (float) $invoiceItems->sum(
+                fn (SalesInvoiceItem $item): float =>
+                    (float) $item->total_cost > 0
+                        ? (float) $item->total_cost
+                        : (float) $item->quantity * (float) $item->unit_cost,
+            );
+
+            if ($quantity > 0 && $totalCost > 0) {
+                return round($totalCost / $quantity, 6);
+            }
+        }
+
+        if ((float) $returnItem->unit_cost > 0) {
+            return round((float) $returnItem->unit_cost, 6);
+        }
+
+        return round((float) $returnItem->product?->purchase_price, 6);
     }
 
     private function itemKeyExpression(): string

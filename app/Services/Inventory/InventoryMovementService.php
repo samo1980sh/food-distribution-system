@@ -20,7 +20,7 @@ class InventoryMovementService
         float|string $quantity,
         ?string $batchNumber = null,
         ?string $expiryDate = null,
-        float|string $unitCost = 0,
+        float|string|null $unitCost = null,
         string $movementType = 'opening_balance',
         ?string $notes = null,
         ?object $reference = null,
@@ -36,12 +36,18 @@ class InventoryMovementService
             $notes,
             $reference
         ): StockMovement {
+            $appliedUnitCost = $this->normalizeInboundUnitCost(
+                $product,
+                $unitCost,
+            );
+
             $this->increaseBalance(
                 warehouse: $warehouse,
                 product: $product,
                 quantity: $quantity,
                 batchNumber: $batchNumber,
                 expiryDate: $expiryDate,
+                unitCost: $appliedUnitCost,
             );
 
             return $this->createMovement([
@@ -51,8 +57,8 @@ class InventoryMovementService
                 'batch_number' => $batchNumber,
                 'expiry_date' => $expiryDate,
                 'quantity' => $quantity,
-                'unit_cost' => $unitCost,
-                'total_cost' => (float) $quantity * (float) $unitCost,
+                'unit_cost' => $appliedUnitCost,
+                'total_cost' => (float) $quantity * $appliedUnitCost,
                 'notes' => $notes,
                 'reference_type' => $reference ? $reference::class : null,
                 'reference_id' => $reference?->id,
@@ -66,7 +72,6 @@ class InventoryMovementService
         float|string $quantity,
         ?string $batchNumber = null,
         ?string $expiryDate = null,
-        float|string $unitCost = 0,
         string $movementType = 'manual_out',
         ?string $notes = null,
         ?object $reference = null,
@@ -77,12 +82,11 @@ class InventoryMovementService
             $quantity,
             $batchNumber,
             $expiryDate,
-            $unitCost,
             $movementType,
             $notes,
             $reference
         ): StockMovement {
-            $this->decreaseBalance(
+            $appliedUnitCost = $this->decreaseBalance(
                 warehouse: $warehouse,
                 product: $product,
                 quantity: $quantity,
@@ -97,8 +101,8 @@ class InventoryMovementService
                 'batch_number' => $batchNumber,
                 'expiry_date' => $expiryDate,
                 'quantity' => $quantity,
-                'unit_cost' => $unitCost,
-                'total_cost' => (float) $quantity * (float) $unitCost,
+                'unit_cost' => $appliedUnitCost,
+                'total_cost' => (float) $quantity * $appliedUnitCost,
                 'notes' => $notes,
                 'reference_type' => $reference ? $reference::class : null,
                 'reference_id' => $reference?->id,
@@ -113,7 +117,6 @@ class InventoryMovementService
         float|string $quantity,
         ?string $batchNumber = null,
         ?string $expiryDate = null,
-        float|string $unitCost = 0,
         string $movementType = 'warehouse_transfer',
         ?string $notes = null,
         ?object $reference = null,
@@ -125,12 +128,11 @@ class InventoryMovementService
             $quantity,
             $batchNumber,
             $expiryDate,
-            $unitCost,
             $movementType,
             $notes,
             $reference
         ): StockMovement {
-            $this->decreaseBalance(
+            $appliedUnitCost = $this->decreaseBalance(
                 warehouse: $fromWarehouse,
                 product: $product,
                 quantity: $quantity,
@@ -144,6 +146,7 @@ class InventoryMovementService
                 quantity: $quantity,
                 batchNumber: $batchNumber,
                 expiryDate: $expiryDate,
+                unitCost: $appliedUnitCost,
             );
 
             return $this->createMovement([
@@ -154,8 +157,8 @@ class InventoryMovementService
                 'batch_number' => $batchNumber,
                 'expiry_date' => $expiryDate,
                 'quantity' => $quantity,
-                'unit_cost' => $unitCost,
-                'total_cost' => (float) $quantity * (float) $unitCost,
+                'unit_cost' => $appliedUnitCost,
+                'total_cost' => (float) $quantity * $appliedUnitCost,
                 'notes' => $notes,
                 'reference_type' => $reference ? $reference::class : null,
                 'reference_id' => $reference?->id,
@@ -169,6 +172,7 @@ class InventoryMovementService
         float|string $quantity,
         ?string $batchNumber,
         ?string $expiryDate,
+        float $unitCost,
     ): StockBalance {
         if ((float) $quantity <= 0) {
             throw new RuntimeException('كمية حركة المخزون يجب أن تكون أكبر من الصفر.');
@@ -190,10 +194,27 @@ class InventoryMovementService
                 'expiry_date' => $expiryDate,
                 'expiry_key' => $expiryKey,
                 'quantity' => 0,
+                'average_unit_cost' => 0,
             ]);
         }
 
-        $balance->quantity = (float) $balance->quantity + (float) $quantity;
+        $existingQuantity = (float) $balance->quantity;
+        $existingUnitCost = $this->resolveBalanceUnitCost(
+            $balance,
+            $product,
+        );
+        $incomingQuantity = (float) $quantity;
+        $newQuantity = $existingQuantity + $incomingQuantity;
+
+        $newAverageUnitCost = $newQuantity > 0
+            ? (
+                ($existingQuantity * $existingUnitCost)
+                + ($incomingQuantity * $unitCost)
+            ) / $newQuantity
+            : 0;
+
+        $balance->quantity = $newQuantity;
+        $balance->average_unit_cost = round($newAverageUnitCost, 6);
         $balance->save();
 
         return $balance;
@@ -205,7 +226,7 @@ class InventoryMovementService
         float|string $quantity,
         ?string $batchNumber,
         ?string $expiryDate,
-    ): StockBalance {
+    ): float {
         if ((float) $quantity <= 0) {
             throw new RuntimeException('كمية حركة المخزون يجب أن تكون أكبر من الصفر.');
         }
@@ -222,10 +243,16 @@ class InventoryMovementService
             throw new RuntimeException('الرصيد المتوفر لا يكفي لتنفيذ حركة المخزون.');
         }
 
+        $appliedUnitCost = $this->resolveBalanceUnitCost(
+            $balance,
+            $product,
+        );
+
         $balance->quantity = (float) $balance->quantity - (float) $quantity;
+        $balance->average_unit_cost = round($appliedUnitCost, 6);
         $balance->save();
 
-        return $balance;
+        return $appliedUnitCost;
     }
 
     private function balanceQuery(
@@ -249,6 +276,35 @@ class InventoryMovementService
     private function normalizeExpiryKey(?string $expiryDate): string
     {
         return $expiryDate ? date('Y-m-d', strtotime($expiryDate)) : '';
+    }
+
+    private function normalizeInboundUnitCost(
+        Product $product,
+        float|string|null $unitCost,
+    ): float {
+        $cost = $unitCost === null
+            ? (float) $product->purchase_price
+            : (float) $unitCost;
+
+        if ($cost < 0) {
+            throw new RuntimeException('تكلفة الوحدة لا يمكن أن تكون سالبة.');
+        }
+
+        return round($cost, 6);
+    }
+
+    private function resolveBalanceUnitCost(
+        StockBalance $balance,
+        Product $product,
+    ): float {
+        $cost = (float) $balance->average_unit_cost;
+
+        if ($cost <= 0 && (float) $balance->quantity > 0) {
+            $cost = (float) $product->purchase_price;
+            $balance->average_unit_cost = round($cost, 6);
+        }
+
+        return round(max($cost, 0), 6);
     }
 
     private function createMovement(array $data): StockMovement

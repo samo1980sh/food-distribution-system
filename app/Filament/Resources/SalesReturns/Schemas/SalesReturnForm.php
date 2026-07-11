@@ -161,6 +161,13 @@ class SalesReturnForm
                             ->numeric()
                             ->default(0)
                             ->required(),
+
+                        TextInput::make('unit_cost')
+                            ->label('تكلفة الوحدة المخزنية')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(0)
+                            ->helperText('للمرتجع المرتبط بفاتورة تُستعاد التكلفة تلقائيًا من الفاتورة الأصلية.'),
                     ]),
             ]);
     }

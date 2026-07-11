@@ -46,17 +46,21 @@ class SalesInvoiceService
             $inventory = app(InventoryMovementService::class);
 
             foreach ($invoice->items as $item) {
-                $inventory->removeStock(
+                $movement = $inventory->removeStock(
                     warehouse: $invoice->warehouse,
                     product: $item->product,
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: 0,
                     movementType: 'sales_invoice',
                     notes: 'فاتورة بيع رقم '.$invoice->invoice_number,
                     reference: $invoice,
                 );
+
+                $item->forceFill([
+                    'unit_cost' => $movement->unit_cost,
+                    'total_cost' => $movement->total_cost,
+                ])->saveQuietly();
             }
 
             $invoice->forceFill([
@@ -111,7 +115,9 @@ class SalesInvoiceService
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: 0,
+                    unitCost: (float) $item->unit_cost > 0
+                        ? $item->unit_cost
+                        : $item->product->purchase_price,
                     movementType: 'sales_invoice_cancellation',
                     notes: 'إلغاء فاتورة بيع رقم '.$invoice->invoice_number,
                     reference: $invoice,

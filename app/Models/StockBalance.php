@@ -15,11 +15,13 @@ class StockBalance extends Model
         'expiry_date',
         'expiry_key',
         'quantity',
+        'average_unit_cost',
     ];
 
     protected $casts = [
         'expiry_date' => 'date',
         'quantity' => 'decimal:3',
+        'average_unit_cost' => 'decimal:6',
     ];
 
     public function warehouse(): BelongsTo

@@ -35,19 +35,25 @@ class VehicleLoadService
             $inventory = app(InventoryMovementService::class);
 
             foreach ($vehicleLoad->items as $item) {
-                $inventory->transfer(
+                $movement = $inventory->transfer(
                     fromWarehouse: $vehicleLoad->fromWarehouse,
                     toWarehouse: $vehicleLoad->toWarehouse,
                     product: $item->product,
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: $item->unit_cost,
                     movementType: 'vehicle_load_transfer',
                     notes: 'تحميل سيارة - أمر رقم '.$vehicleLoad->load_number,
                     reference: $vehicleLoad,
                 );
+
+                $item->forceFill([
+                    'unit_cost' => $movement->unit_cost,
+                    'total_cost' => $movement->total_cost,
+                ])->saveQuietly();
             }
+
+            $this->recalculateTotals($vehicleLoad);
 
             $vehicleLoad->forceFill([
                 'status' => 'approved',
@@ -84,7 +90,6 @@ class VehicleLoadService
                     quantity: $item->quantity,
                     batchNumber: $item->batch_number,
                     expiryDate: $item->expiry_date?->toDateString(),
-                    unitCost: $item->unit_cost,
                     movementType: 'vehicle_load_cancellation',
                     notes: 'إلغاء تحميل سيارة - أمر رقم '.$vehicleLoad->load_number,
                     reference: $vehicleLoad,

@@ -89,11 +89,16 @@ class OperationalInventoryImpactTest extends TestCase
 
         $this->assertEqualsWithDelta(6, $this->balanceQuantity($sourceWarehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(4, $this->balanceQuantity($vehicleWarehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(12, $this->balanceAverageCost($sourceWarehouse, $product), 0.000001);
+        $this->assertEqualsWithDelta(12, $this->balanceAverageCost($vehicleWarehouse, $product), 0.000001);
+        $this->assertEqualsWithDelta(12, (float) $vehicleLoad->items()->firstOrFail()->unit_cost, 0.000001);
+        $this->assertEqualsWithDelta(48, (float) $vehicleLoad->refresh()->total_cost, 0.001);
 
         app(VehicleLoadService::class)->cancel($vehicleLoad->refresh());
 
         $this->assertEqualsWithDelta(10, $this->balanceQuantity($sourceWarehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(0, $this->balanceQuantity($vehicleWarehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(12, $this->balanceAverageCost($sourceWarehouse, $product), 0.000001);
     }
 
     public function test_sales_invoice_confirmation_and_cancellation_updates_stock_balance(): void
@@ -139,10 +144,14 @@ class OperationalInventoryImpactTest extends TestCase
         app(SalesInvoiceService::class)->confirm($invoice);
 
         $this->assertEqualsWithDelta(7, $this->balanceQuantity($warehouse, $product), 0.0001);
+        $invoiceItem = $invoice->items()->firstOrFail();
+        $this->assertEqualsWithDelta(12, (float) $invoiceItem->unit_cost, 0.000001);
+        $this->assertEqualsWithDelta(36, (float) $invoiceItem->total_cost, 0.001);
 
         app(SalesInvoiceService::class)->cancel($invoice->refresh());
 
         $this->assertEqualsWithDelta(10, $this->balanceQuantity($warehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(12, $this->balanceAverageCost($warehouse, $product), 0.000001);
     }
 
     public function test_sales_return_confirmation_and_cancellation_updates_stock_balance(): void
@@ -213,10 +222,14 @@ class OperationalInventoryImpactTest extends TestCase
         app(SalesReturnService::class)->confirm($salesReturn);
 
         $this->assertEqualsWithDelta(7, $this->balanceQuantity($warehouse, $product), 0.0001);
+        $returnItem = $salesReturn->items()->firstOrFail();
+        $this->assertEqualsWithDelta(12, (float) $returnItem->unit_cost, 0.000001);
+        $this->assertEqualsWithDelta(24, (float) $returnItem->total_cost, 0.001);
 
         app(SalesReturnService::class)->cancel($salesReturn->refresh());
 
         $this->assertEqualsWithDelta(5, $this->balanceQuantity($warehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(12, $this->balanceAverageCost($warehouse, $product), 0.000001);
     }
 
     private function syncStockMovementSequenceForToday(): void
@@ -273,6 +286,7 @@ class OperationalInventoryImpactTest extends TestCase
         return Product::query()->create([
             'sku' => 'P-OPS-'.$suffix,
             'name_ar' => 'Ops Product '.$suffix,
+            'purchase_price' => 12,
             'sale_price' => 20,
             'status' => 'active',
         ]);
@@ -288,5 +302,17 @@ class OperationalInventoryImpactTest extends TestCase
             ->first();
 
         return (float) ($balance?->quantity ?? 0);
+    }
+
+    private function balanceAverageCost(Warehouse $warehouse, Product $product): float
+    {
+        $balance = StockBalance::query()
+            ->where('warehouse_id', $warehouse->id)
+            ->where('product_id', $product->id)
+            ->where('batch_key', '')
+            ->where('expiry_key', '')
+            ->first();
+
+        return (float) ($balance?->average_unit_cost ?? 0);
     }
 }

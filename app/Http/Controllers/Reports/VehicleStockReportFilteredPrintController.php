@@ -148,10 +148,10 @@ class VehicleStockReportFilteredPrintController extends Controller
                 ->count(),
             'products_count' => $balances->pluck('product_id')->unique()->count(),
             'quantity' => (float) $balances->sum('quantity'),
-            'estimated_value' => (float) $balances->sum(
+            'inventory_value' => (float) $balances->sum(
                 fn (StockBalance $balance): float =>
                     (float) $balance->quantity
-                    * (float) ($balance->product?->purchase_price ?? 0),
+                    * (float) $balance->average_unit_cost,
             ),
         ];
 

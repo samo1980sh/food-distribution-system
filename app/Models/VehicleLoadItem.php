@@ -21,7 +21,7 @@ class VehicleLoadItem extends Model
     protected $casts = [
         'expiry_date' => 'date',
         'quantity' => 'decimal:3',
-        'unit_cost' => 'decimal:2',
+        'unit_cost' => 'decimal:6',
         'total_cost' => 'decimal:2',
     ];
 

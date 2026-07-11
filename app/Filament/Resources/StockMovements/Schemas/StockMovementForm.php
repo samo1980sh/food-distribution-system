@@ -70,7 +70,10 @@ class StockMovementForm
                 TextInput::make('unit_cost')
                     ->label('تكلفة الوحدة')
                     ->numeric()
-                    ->default(0),
+                    ->minValue(0)
+                    ->hidden(fn ($get): bool => $get('movement_type') !== 'opening_balance')
+                    ->required(fn ($get): bool => $get('movement_type') === 'opening_balance')
+                    ->helperText('تُدخل في الرصيد الافتتاحي فقط؛ الإخراج والتحويل يستخدمان متوسط تكلفة الرصيد تلقائيًا.'),
 
                 Textarea::make('notes')
                     ->label('ملاحظات')

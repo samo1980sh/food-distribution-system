@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockBalances\Tables;
 
+use App\Models\StockBalance;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -61,6 +62,20 @@ class StockBalancesTable
                     ->sortable()
                     ->badge()
                     ->color(fn ($state): string => ((float) $state) > 0 ? 'success' : 'gray'),
+
+                TextColumn::make('average_unit_cost')
+                    ->label('متوسط تكلفة الوحدة')
+                    ->money('SYP')
+                    ->sortable(),
+
+                TextColumn::make('inventory_value')
+                    ->label('قيمة المخزون')
+                    ->getStateUsing(
+                        fn (StockBalance $record): float =>
+                            (float) $record->quantity
+                            * (float) $record->average_unit_cost
+                    )
+                    ->money('SYP'),
 
                 TextColumn::make('updated_at')
                     ->label('آخر تحديث')

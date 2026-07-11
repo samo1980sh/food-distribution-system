@@ -147,9 +147,12 @@ class VehicleLoadForm
                             ->required(),
 
                         TextInput::make('unit_cost')
-                            ->label('تكلفة الوحدة')
+                            ->label('تكلفة الوحدة عند الاعتماد')
                             ->numeric()
-                            ->default(0),
+                            ->default(0)
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->helperText('تُحتسب تلقائيًا من متوسط تكلفة رصيد المستودع المصدر.'),
                     ]),
             ]);
     }
