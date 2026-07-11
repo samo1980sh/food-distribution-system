@@ -69,6 +69,33 @@ class CustomerStatementReport extends Page
         ]);
     }
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('print')
+                ->label('طباعة كشف الحساب')
+                ->icon('heroicon-o-printer')
+                ->color('gray')
+                ->url(
+                    fn (): string => route(
+                        'reports.customer-statement.print',
+                        [
+                            'customer_id' => $this->data['customer_id'],
+                            'from' => $this->data['from'],
+                            'until' => $this->data['until'],
+                        ],
+                    ),
+                    shouldOpenInNewTab: true,
+                )
+                ->visible(
+                    fn (): bool => $this->generated
+                        && filled($this->data['customer_id'] ?? null)
+                        && filled($this->data['from'] ?? null)
+                        && filled($this->data['until'] ?? null)
+                ),
+        ];
+    }
+
     public function form(Schema $schema): Schema
     {
         return $schema
