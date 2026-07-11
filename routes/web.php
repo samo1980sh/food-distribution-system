@@ -11,6 +11,8 @@ use App\Http\Controllers\Reports\SalesReturnPrintController;
 use App\Http\Controllers\Reports\SalesReturnReportFilteredPrintController;
 use App\Http\Controllers\Reports\VehicleLoadPrintController;
 use App\Http\Controllers\Reports\VehicleLoadReportFilteredPrintController;
+use App\Http\Controllers\Reports\VehicleStockPrintController;
+use App\Http\Controllers\Reports\VehicleStockReportFilteredPrintController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -71,3 +73,13 @@ Route::get(
     '/admin/reports/vehicle-loads/{vehicleLoad}/print',
     VehicleLoadPrintController::class,
 )->name('reports.vehicle-loads.print');
+
+Route::get(
+    '/admin/reports/vehicle-stock/print-filtered',
+    VehicleStockReportFilteredPrintController::class,
+)->name('reports.vehicle-stock.print-filtered');
+
+Route::get(
+    '/admin/reports/vehicle-stock/vehicles/{vehicle}/print',
+    VehicleStockPrintController::class,
+)->name('reports.vehicle-stock.vehicle.print');
