@@ -332,3 +332,81 @@ input[type="url"] {
 input[type="search"]::placeholder {
     text-align: right;
 }
+
+/* Global Filament dark-mode select readability fix */
+.dark .choices__inner {
+    background-color: #0f172a !important;
+    border-color: #475569 !important;
+    color: #f8fafc !important;
+}
+
+.dark .choices__list--single .choices__item,
+.dark .choices__list--multiple .choices__item {
+    color: #f8fafc !important;
+}
+
+.dark .choices__list--dropdown,
+.dark .choices__list[aria-expanded] {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .choices__input {
+    background-color: #111827 !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+.dark .choices__input::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+.dark .choices__list--dropdown .choices__item,
+.dark .choices__list[aria-expanded] .choices__item {
+    color: #e2e8f0 !important;
+}
+
+.dark .choices__list--dropdown .choices__item--selectable,
+.dark .choices__list[aria-expanded] .choices__item--selectable {
+    color: #e2e8f0 !important;
+}
+
+.dark .choices__list--dropdown .choices__item--selectable.is-highlighted,
+.dark .choices__list[aria-expanded] .choices__item--selectable.is-highlighted {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+.dark .choices__placeholder,
+.dark .choices__item--disabled {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+/* Filament native searchable select fallback */
+.dark .fi-fo-select input {
+    color: #f8fafc !important;
+}
+
+.dark .fi-fo-select input::placeholder {
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+.dark .fi-fo-select [role="listbox"] {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark .fi-fo-select [role="option"] {
+    color: #e2e8f0 !important;
+}
+
+.dark .fi-fo-select [role="option"]:hover,
+.dark .fi-fo-select [role="option"][aria-selected="true"] {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
