@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\SalesReports\Tables;
 
+use App\Models\SalesInvoice;
+use Filament\Actions\Action;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -244,7 +247,22 @@ class SalesReportsTable
                     ->searchable()
                     ->preload(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (SalesInvoice $record): string => route(
+                            'reports.sales-invoices.print',
+                            $record,
+                        ),
+                        shouldOpenInNewTab: true,
+                    )
+                    ->visible(
+                        fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                    ),
+            ])
             ->toolbarActions([])
             ->summaries(
                 pageCondition: false,
