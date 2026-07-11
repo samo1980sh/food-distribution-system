@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ProfitReports\Tables;
 
+use App\Models\ProfitReportEntry;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -207,7 +209,21 @@ class ProfitReportsTable
                     ->searchable()
                     ->preload(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (ProfitReportEntry $record): ?string => self::printUrlFor($record),
+                        shouldOpenInNewTab: true,
+                    )
+                    ->visible(
+                        fn (ProfitReportEntry $record): bool =>
+                            in_array($record->entry_type, ['invoice', 'return'], true)
+                            && auth()->user()?->canManageSalesAndCollections() === true
+                    ),
+            ])
             ->toolbarActions([])
             ->summaries(
                 pageCondition: false,
@@ -215,4 +231,18 @@ class ProfitReportsTable
             )
             ->defaultSort('entry_date', 'desc');
     }
+
+    public static function printUrlFor(ProfitReportEntry $record): ?string
+    {
+        return match ($record->entry_type) {
+            'invoice' => route('reports.sales-invoices.print', [
+                'salesInvoice' => $record->source_id,
+            ]),
+            'return' => route('reports.sales-returns.print', [
+                'salesReturn' => $record->source_id,
+            ]),
+            default => null,
+        };
+    }
+
 }
