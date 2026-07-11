@@ -9,6 +9,7 @@ use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesReturnPrintController;
 use App\Http\Controllers\Reports\SalesReturnReportFilteredPrintController;
+use App\Http\Controllers\Reports\VehicleLoadPrintController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -59,3 +60,8 @@ Route::get(
     '/admin/reports/sales-returns/{salesReturn}/print',
     SalesReturnPrintController::class,
 )->name('reports.sales-returns.print');
+
+Route::get(
+    '/admin/reports/vehicle-loads/{vehicleLoad}/print',
+    VehicleLoadPrintController::class,
+)->name('reports.vehicle-loads.print');

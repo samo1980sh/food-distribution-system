@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\VehicleLoadReports\Tables;
 
+use App\Models\VehicleLoad;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -188,7 +190,22 @@ class VehicleLoadReportsTable
                     ->searchable()
                     ->preload(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (VehicleLoad $record): string => route(
+                            'reports.vehicle-loads.print',
+                            $record,
+                        ),
+                        shouldOpenInNewTab: true,
+                    )
+                    ->visible(
+                        fn (): bool => auth()->user()?->canManageDistribution() === true
+                    ),
+            ])
             ->toolbarActions([])
             ->summaries(
                 pageCondition: false,
