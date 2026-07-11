@@ -50,6 +50,7 @@ class AdminPanelProvider extends PanelProvider
                 'التوزيع والأسطول',
                 'المبيعات والتحصيل',
                 'الإغلاق والمطابقة',
+                'التقارير',
             ])
             ->spa()
             ->unsavedChangesAlerts()
