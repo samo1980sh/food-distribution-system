@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DailyClosingReports\Tables;
 
 use App\Models\DailyClosing;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -289,7 +290,22 @@ class DailyClosingReportsTable
                     ->searchable()
                     ->preload(),
             ])
-            ->recordActions([])
+            ->recordActions([
+                Action::make('print')
+                    ->label('طباعة')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->url(
+                        fn (DailyClosing $record): string => route(
+                            'reports.daily-closings.print',
+                            $record,
+                        ),
+                        shouldOpenInNewTab: true,
+                    )
+                    ->visible(
+                        fn (): bool => auth()->user()?->canManageDailyClosings() === true
+                    ),
+            ])
             ->toolbarActions([])
             ->summaries(
                 pageCondition: false,
