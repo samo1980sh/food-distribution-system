@@ -5,6 +5,7 @@ use App\Http\Controllers\Reports\CustomerPaymentReportFilteredPrintController;
 use App\Http\Controllers\Reports\CustomerStatementPrintController;
 use App\Http\Controllers\Reports\DailyClosingFilteredPrintController;
 use App\Http\Controllers\Reports\DailyClosingPrintController;
+use App\Http\Controllers\Reports\ProfitReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesReturnPrintController;
@@ -83,3 +84,8 @@ Route::get(
     '/admin/reports/vehicle-stock/vehicles/{vehicle}/print',
     VehicleStockPrintController::class,
 )->name('reports.vehicle-stock.vehicle.print');
+
+Route::get(
+    '/admin/reports/profit/print-filtered',
+    ProfitReportFilteredPrintController::class,
+)->name('reports.profit.print-filtered');
