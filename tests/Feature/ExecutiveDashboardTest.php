@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Filament\Widgets\DistributionOverviewWidget;
+use App\Filament\Widgets\ExecutiveRankingsWidget;
 use App\Filament\Widgets\FinancialTrendChartWidget;
 use App\Filament\Widgets\OperationalAlertsWidget;
+use App\Filament\Widgets\OperationsFollowUpWidget;
+use App\Filament\Widgets\RecentOperationsWidget;
 use App\Models\User;
 use App\Services\Dashboard\ExecutiveDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,6 +69,75 @@ class ExecutiveDashboardTest extends TestCase
         $this->assertSame(100.0, $trend['returns'][13]);
         $this->assertSame(500.0, $trend['collections'][13]);
         $this->assertSame(100.0, $trend['expenses'][13]);
+    }
+
+    public function test_executive_rankings_use_report_services(): void
+    {
+        $this->insertDashboardData();
+
+        $user = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($user);
+
+        $rankings = app(ExecutiveDashboardService::class)
+            ->executiveRankings($user);
+
+        $this->assertSame(
+            'عميل لوحة التحكم',
+            $rankings['top_customers'][0]['name'],
+        );
+
+        $this->assertSame(
+            900.0,
+            $rankings['top_customers'][0]['net_sales'],
+        );
+
+        $this->assertSame(
+            'خط لوحة التحكم',
+            $rankings['top_routes'][0]['name'],
+        );
+
+        $this->assertSame(
+            350.0,
+            $rankings['top_routes'][0]['net_contribution'],
+        );
+    }
+
+    public function test_recent_activity_and_follow_up_are_available(): void
+    {
+        $this->insertDashboardData();
+
+        $user = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($user);
+
+        $service = app(ExecutiveDashboardService::class);
+
+        $activities = collect(
+            $service->recentActivity($user, 10)
+        );
+
+        $followUp = collect(
+            $service->operationalFollowUp($user)
+        );
+
+        $this->assertTrue(
+            $activities->pluck('number')->contains('DASH-INV-1')
+        );
+
+        $this->assertTrue(
+            $activities->pluck('number')->contains('DASH-CLOSE-1')
+        );
+
+        $this->assertTrue(
+            $followUp->pluck('title')->contains('DASH-001')
+        );
     }
 
     public function test_alerts_detect_pending_and_unassigned_documents(): void
@@ -141,6 +213,15 @@ class ExecutiveDashboardTest extends TestCase
             )
             ->assertSeeLivewire(
                 OperationalAlertsWidget::class,
+            )
+            ->assertSeeLivewire(
+                ExecutiveRankingsWidget::class,
+            )
+            ->assertSeeLivewire(
+                RecentOperationsWidget::class,
+            )
+            ->assertSeeLivewire(
+                OperationsFollowUpWidget::class,
             );
 
         Livewire::test(DistributionOverviewWidget::class)
@@ -152,6 +233,19 @@ class ExecutiveDashboardTest extends TestCase
 
         Livewire::test(OperationalAlertsWidget::class)
             ->assertSee('التنبيهات التشغيلية');
+
+        Livewire::test(ExecutiveRankingsWidget::class)
+            ->assertSee('الترتيب التنفيذي لهذا الشهر')
+            ->assertSee('عميل لوحة التحكم')
+            ->assertSee('خط لوحة التحكم');
+
+        Livewire::test(RecentOperationsWidget::class)
+            ->assertSee('أحدث الحركات المهمة')
+            ->assertSee('DASH-INV-1');
+
+        Livewire::test(OperationsFollowUpWidget::class)
+            ->assertSee('متابعة السيارات والمستودعات')
+            ->assertSee('DASH-001');
     }
 
     private function insertDashboardData(): void
@@ -169,8 +263,27 @@ class ExecutiveDashboardTest extends TestCase
                     'capacity' => 100,
                     'status' => 'active',
                     'current_odometer' => null,
-                    'insurance_expiry_date' => null,
+                    'insurance_expiry_date' => today()
+                        ->addDays(10)
+                        ->toDateString(),
                     'license_expiry_date' => null,
+                    'notes' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ],
+            ]);
+
+            DB::table('distribution_routes')->insert([
+                [
+                    'id' => 101,
+                    'area_id' => 1,
+                    'vehicle_id' => 1,
+                    'driver_id' => null,
+                    'sales_representative_id' => null,
+                    'code' => 'DASH-ROUTE-1',
+                    'name' => 'خط لوحة التحكم',
+                    'visit_days' => null,
+                    'status' => 'active',
                     'notes' => null,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -202,7 +315,7 @@ class ExecutiveDashboardTest extends TestCase
                     'mobile' => null,
                     'customer_type' => 'grocery',
                     'area_id' => null,
-                    'route_id' => null,
+                    'route_id' => 101,
                     'address' => null,
                     'latitude' => null,
                     'longitude' => null,

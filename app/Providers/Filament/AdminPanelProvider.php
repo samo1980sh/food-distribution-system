@@ -5,8 +5,11 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\AdminWelcomeWidget;
 use App\Filament\Widgets\DistributionOverviewWidget;
+use App\Filament\Widgets\ExecutiveRankingsWidget;
 use App\Filament\Widgets\FinancialTrendChartWidget;
 use App\Filament\Widgets\OperationalAlertsWidget;
+use App\Filament\Widgets\OperationsFollowUpWidget;
+use App\Filament\Widgets\RecentOperationsWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -67,6 +70,9 @@ class AdminPanelProvider extends PanelProvider
                 DistributionOverviewWidget::class,
                 FinancialTrendChartWidget::class,
                 OperationalAlertsWidget::class,
+                ExecutiveRankingsWidget::class,
+                RecentOperationsWidget::class,
+                OperationsFollowUpWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,

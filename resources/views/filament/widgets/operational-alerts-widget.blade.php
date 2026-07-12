@@ -1,4 +1,5 @@
 <x-filament-widgets::widget>
+    @include('filament.widgets.partials.executive-dashboard-styles')
     <x-filament::section>
         <x-slot name="heading">
             التنبيهات التشغيلية
@@ -8,7 +9,7 @@
             الحالات التي تحتاج متابعة حسب صلاحيات حسابك.
         </x-slot>
 
-        <div class="fr-operational-alerts">
+        <div class="fr-exec-dashboard fr-operational-alerts">
             @if ($alerts === [])
                 <div class="fr-operational-alerts__healthy">
                     <x-filament::icon
