@@ -9,6 +9,8 @@ use App\Http\Controllers\Reports\ExpiryRiskPrintController;
 use App\Http\Controllers\Reports\ExpiryRiskReportFilteredPrintController;
 use App\Http\Controllers\Reports\OverdueCustomerPrintController;
 use App\Http\Controllers\Reports\OverdueCustomerReportFilteredPrintController;
+use App\Http\Controllers\Reports\TopCustomerPrintController;
+use App\Http\Controllers\Reports\TopCustomerReportFilteredPrintController;
 use App\Http\Controllers\Reports\ProfitReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
@@ -125,4 +127,14 @@ Route::get(
     '/admin/reports/overdue-customers/{customer}/print',
     OverdueCustomerPrintController::class,
 )->name('reports.overdue-customers.print');
+
+Route::get(
+    '/admin/reports/top-customers/print-filtered',
+    TopCustomerReportFilteredPrintController::class,
+)->name('reports.top-customers.print-filtered');
+
+Route::get(
+    '/admin/reports/top-customers/{customer}/print',
+    TopCustomerPrintController::class,
+)->name('reports.top-customers.print');
 
