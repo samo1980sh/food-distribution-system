@@ -11,6 +11,8 @@ use App\Http\Controllers\Reports\OverdueCustomerPrintController;
 use App\Http\Controllers\Reports\OverdueCustomerReportFilteredPrintController;
 use App\Http\Controllers\Reports\TopCustomerPrintController;
 use App\Http\Controllers\Reports\TopCustomerReportFilteredPrintController;
+use App\Http\Controllers\Reports\RoutePerformancePrintController;
+use App\Http\Controllers\Reports\RoutePerformanceReportFilteredPrintController;
 use App\Http\Controllers\Reports\ProfitReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
@@ -137,4 +139,14 @@ Route::get(
     '/admin/reports/top-customers/{customer}/print',
     TopCustomerPrintController::class,
 )->name('reports.top-customers.print');
+
+Route::get(
+    '/admin/reports/route-performance/print-filtered',
+    RoutePerformanceReportFilteredPrintController::class,
+)->name('reports.route-performance.print-filtered');
+
+Route::get(
+    '/admin/reports/route-performance/{distributionRoute}/print',
+    RoutePerformancePrintController::class,
+)->name('reports.route-performance.print');
 
