@@ -2,11 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\CustomerPayment;
-use App\Models\DailyClosing;
-use App\Models\SalesInvoice;
-use App\Models\Vehicle;
-use App\Models\VehicleExpense;
+use App\Services\Dashboard\ExecutiveDashboardService;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -14,79 +10,179 @@ class DistributionOverviewWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 2;
 
+    protected int|string|array $columnSpan = 'full';
+
+    protected ?string $pollingInterval = '60s';
+
+    public static function canView(): bool
+    {
+        $user = auth()->user();
+
+        return $user
+            && (
+                $user->canManageSalesAndCollections()
+                || $user->canManageDailyClosings()
+            );
+    }
+
     protected function getStats(): array
     {
-        $today = now()->toDateString();
-
-        $activeVehiclesCount = Vehicle::query()
-            ->where('status', 'active')
-            ->count();
-
-        $todayConfirmedInvoicesQuery = SalesInvoice::query()
-            ->whereDate('invoice_date', $today)
-            ->where('status', 'confirmed');
-
-        $todaySalesAmount = (float) (clone $todayConfirmedInvoicesQuery)->sum('total_amount');
-        $todayInvoicesCount = (clone $todayConfirmedInvoicesQuery)->count();
-        $todayInvoiceCashAmount = (float) (clone $todayConfirmedInvoicesQuery)->sum('invoice_cash_amount');
-        $todayRemainingAmount = (float) (clone $todayConfirmedInvoicesQuery)->sum('remaining_amount');
-
-        $todayConfirmedPaymentsQuery = CustomerPayment::query()
-            ->whereDate('payment_date', $today)
-            ->where('status', 'confirmed');
-
-        $todayCollectionsAmount = (float) (clone $todayConfirmedPaymentsQuery)->sum('amount');
-        $todayCollectionsCount = (clone $todayConfirmedPaymentsQuery)->count();
-
-        $pendingVehicleExpensesQuery = VehicleExpense::query()
-            ->where('status', 'pending');
-
-        $pendingVehicleExpensesCount = (clone $pendingVehicleExpensesQuery)->count();
-        $pendingVehicleExpensesAmount = (float) (clone $pendingVehicleExpensesQuery)->sum('amount');
-
-        $todayClosingsQuery = DailyClosing::query()
-            ->whereDate('closing_date', $today);
-
-        $todayClosingsCount = (clone $todayClosingsQuery)->count();
-        $todayConfirmedClosingsCount = (clone $todayClosingsQuery)
-            ->where('status', 'confirmed')
-            ->count();
+        $summary = app(ExecutiveDashboardService::class)->summary();
 
         return [
-            Stat::make('السيارات النشطة', number_format($activeVehiclesCount))
-                ->description('عدد السيارات الفعالة ضمن الأسطول')
-                ->descriptionIcon('heroicon-m-truck')
-                ->color('info'),
-
-            Stat::make('مبيعات اليوم', $this->formatMoney($todaySalesAmount))
-                ->description(number_format($todayInvoicesCount).' فاتورة معتمدة')
+            Stat::make(
+                'مبيعات اليوم',
+                $this->money($summary['today_sales']),
+            )
+                ->description(
+                    number_format($summary['today_invoice_count'])
+                    .' فاتورة معتمدة'
+                )
                 ->descriptionIcon('heroicon-m-receipt-percent')
-                ->color('primary'),
+                ->color('primary')
+                ->url(route(
+                    'filament.admin.resources.sales-reports.index'
+                )),
 
-            Stat::make('نقد فواتير اليوم', $this->formatMoney($todayInvoiceCashAmount))
-                ->description('متبقي: '.$this->formatMoney($todayRemainingAmount))
+            Stat::make(
+                'صافي مبيعات الشهر',
+                $this->money($summary['month_net_sales']),
+            )
+                ->description(
+                    'مرتجعات: '
+                    .$this->money($summary['month_returns'])
+                )
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->color(
+                    $summary['month_net_sales'] >= 0
+                        ? 'success'
+                        : 'danger'
+                )
+                ->url(route(
+                    'filament.admin.resources.sales-reports.index'
+                )),
+
+            Stat::make(
+                'مقبوضات الشهر',
+                $this->money(
+                    $summary['month_total_collections']
+                ),
+            )
+                ->description(
+                    'نقد الفواتير والتحصيلات المعتمدة'
+                )
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color($todayRemainingAmount > 0 ? 'warning' : 'success'),
+                ->color('success')
+                ->url(route(
+                    'filament.admin.resources.customer-payment-reports.index'
+                )),
 
-            Stat::make('تحصيلات اليوم', $this->formatMoney($todayCollectionsAmount))
-                ->description(number_format($todayCollectionsCount).' عملية تحصيل معتمدة')
-                ->descriptionIcon('heroicon-m-currency-dollar')
-                ->color('success'),
+            Stat::make(
+                'صافي مساهمة الشهر',
+                $this->money(
+                    $summary['month_net_contribution']
+                ),
+            )
+                ->description(
+                    'الربح بعد مصاريف السيارات'
+                )
+                ->descriptionIcon('heroicon-m-calculator')
+                ->color(
+                    $summary['month_net_contribution'] >= 0
+                        ? 'success'
+                        : 'danger'
+                )
+                ->url(route(
+                    'filament.admin.resources.profit-reports.index'
+                )),
 
-            Stat::make('مصاريف سيارات معلقة', number_format($pendingVehicleExpensesCount))
-                ->description('القيمة: '.$this->formatMoney($pendingVehicleExpensesAmount))
-                ->descriptionIcon('heroicon-m-exclamation-triangle')
-                ->color($pendingVehicleExpensesCount > 0 ? 'warning' : 'gray'),
+            Stat::make(
+                'الربح التقريبي',
+                $this->money(
+                    $summary['month_approximate_profit']
+                ),
+            )
+                ->description(
+                    'قبل مصاريف السيارات المعتمدة'
+                )
+                ->descriptionIcon('heroicon-m-presentation-chart-line')
+                ->color(
+                    $summary['month_approximate_profit'] >= 0
+                        ? 'info'
+                        : 'danger'
+                )
+                ->url(route(
+                    'filament.admin.resources.profit-reports.index'
+                )),
 
-            Stat::make('إغلاقات اليوم', number_format($todayClosingsCount))
-                ->description('المعتمد: '.number_format($todayConfirmedClosingsCount))
-                ->descriptionIcon('heroicon-m-clipboard-document-check')
-                ->color($todayConfirmedClosingsCount > 0 ? 'success' : 'gray'),
+            Stat::make(
+                'مصاريف الشهر',
+                $this->money($summary['month_expenses']),
+            )
+                ->description('مصاريف سيارات معتمدة')
+                ->descriptionIcon('heroicon-m-receipt-refund')
+                ->color(
+                    $summary['month_expenses'] > 0
+                        ? 'warning'
+                        : 'gray'
+                )
+                ->url(route(
+                    'filament.admin.resources.vehicle-expense-reports.index'
+                )),
+
+            Stat::make(
+                'العملاء المتأخرون',
+                number_format(
+                    $summary['overdue_customers_count']
+                ),
+            )
+                ->description(
+                    'القيمة: '
+                    .$this->money($summary['overdue_amount'])
+                )
+                ->descriptionIcon('heroicon-m-user-minus')
+                ->color(
+                    $summary['overdue_customers_count'] > 0
+                        ? 'danger'
+                        : 'success'
+                )
+                ->url(route(
+                    'filament.admin.resources.overdue-customer-reports.index'
+                )),
+
+            Stat::make(
+                'إغلاقات اليوم',
+                number_format(
+                    $summary['today_confirmed_closings']
+                ),
+            )
+                ->description(
+                    $summary['today_missing_closing_warehouses'] > 0
+                        ? number_format(
+                            $summary[
+                                'today_missing_closing_warehouses'
+                            ]
+                        ).' مستودع لم يُغلق'
+                        : 'لا توجد حركة مفتوحة دون إغلاق'
+                )
+                ->descriptionIcon(
+                    $summary['today_missing_closing_warehouses'] > 0
+                        ? 'heroicon-m-lock-open'
+                        : 'heroicon-m-lock-closed'
+                )
+                ->color(
+                    $summary['today_missing_closing_warehouses'] > 0
+                        ? 'danger'
+                        : 'success'
+                )
+                ->url(route(
+                    'filament.admin.resources.daily-closing-reports.index'
+                )),
         ];
     }
 
-    private function formatMoney(float $amount): string
+    private function money(float $amount): string
     {
-        return number_format($amount, 2).' SYP';
+        return number_format($amount, 2).' ل.س';
     }
 }

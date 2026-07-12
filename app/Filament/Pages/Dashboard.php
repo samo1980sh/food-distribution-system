@@ -25,6 +25,14 @@ class Dashboard extends BaseDashboard
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'متابعة يومية للمبيعات، التحصيلات، مصاريف السيارات، وإغلاقات التوزيع.';
+        return 'متابعة تنفيذية للمبيعات والمقبوضات والربحية والتنبيهات التشغيلية.';
+    }
+
+    public function getColumns(): int|array
+    {
+        return [
+            'md' => 2,
+            'xl' => 4,
+        ];
     }
 }
