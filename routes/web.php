@@ -7,6 +7,8 @@ use App\Http\Controllers\Reports\DailyClosingFilteredPrintController;
 use App\Http\Controllers\Reports\DailyClosingPrintController;
 use App\Http\Controllers\Reports\ExpiryRiskPrintController;
 use App\Http\Controllers\Reports\ExpiryRiskReportFilteredPrintController;
+use App\Http\Controllers\Reports\OverdueCustomerPrintController;
+use App\Http\Controllers\Reports\OverdueCustomerReportFilteredPrintController;
 use App\Http\Controllers\Reports\ProfitReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
@@ -113,4 +115,14 @@ Route::get(
     '/admin/reports/expiry-risk/{stockBalance}/print',
     ExpiryRiskPrintController::class,
 )->name('reports.expiry-risk.print');
+
+Route::get(
+    '/admin/reports/overdue-customers/print-filtered',
+    OverdueCustomerReportFilteredPrintController::class,
+)->name('reports.overdue-customers.print-filtered');
+
+Route::get(
+    '/admin/reports/overdue-customers/{customer}/print',
+    OverdueCustomerPrintController::class,
+)->name('reports.overdue-customers.print');
 
