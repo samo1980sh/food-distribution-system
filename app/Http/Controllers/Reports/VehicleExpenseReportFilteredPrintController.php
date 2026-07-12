@@ -10,6 +10,7 @@ use App\Models\VehicleExpense;
 use App\Models\Warehouse;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -17,8 +18,13 @@ use Throwable;
 
 class VehicleExpenseReportFilteredPrintController
 {
-    public function __invoke(Request $request): View
-    {
+    public function __invoke(
+        Request $request,
+    ): View|RedirectResponse {
+        if (! Auth::check()) {
+            return redirect()->route('filament.admin.auth.login');
+        }
+
         abort_unless(
             Auth::user()?->canManageDistribution() === true,
             403,

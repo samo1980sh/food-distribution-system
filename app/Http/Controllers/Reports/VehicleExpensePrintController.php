@@ -4,12 +4,18 @@ namespace App\Http\Controllers\Reports;
 
 use App\Models\VehicleExpense;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
 class VehicleExpensePrintController
 {
-    public function __invoke(VehicleExpense $vehicleExpense): View
-    {
+    public function __invoke(
+        VehicleExpense $vehicleExpense,
+    ): View|RedirectResponse {
+        if (! Auth::check()) {
+            return redirect()->route('filament.admin.auth.login');
+        }
+
         abort_unless(
             Auth::user()?->canManageDistribution() === true,
             403,
