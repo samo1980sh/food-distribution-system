@@ -10,6 +10,8 @@ use App\Http\Controllers\Reports\SalesInvoicePrintController;
 use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesReturnPrintController;
 use App\Http\Controllers\Reports\SalesReturnReportFilteredPrintController;
+use App\Http\Controllers\Reports\VehicleExpensePrintController;
+use App\Http\Controllers\Reports\VehicleExpenseReportFilteredPrintController;
 use App\Http\Controllers\Reports\VehicleLoadPrintController;
 use App\Http\Controllers\Reports\VehicleLoadReportFilteredPrintController;
 use App\Http\Controllers\Reports\VehicleStockPrintController;
@@ -89,3 +91,14 @@ Route::get(
     '/admin/reports/profit/print-filtered',
     ProfitReportFilteredPrintController::class,
 )->name('reports.profit.print-filtered');
+
+Route::get(
+    '/admin/reports/vehicle-expenses/print-filtered',
+    VehicleExpenseReportFilteredPrintController::class,
+)->name('reports.vehicle-expenses.print-filtered');
+
+Route::get(
+    '/admin/reports/vehicle-expenses/{vehicleExpense}/print',
+    VehicleExpensePrintController::class,
+)->name('reports.vehicle-expenses.print');
+
