@@ -14,7 +14,7 @@ class ManageCustomerPayments extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->visible(fn (): bool => auth()->user()?->canManageSalesAndCollections() === true)
+                ->visible(fn (): bool => CustomerPaymentResource::canCreate())
                 ->label('إضافة تحصيل')
                 ->modalHeading('إضافة تحصيل عميل')
                 ->slideOver(),

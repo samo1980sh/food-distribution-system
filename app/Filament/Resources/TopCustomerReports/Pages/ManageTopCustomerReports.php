@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TopCustomerReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\TopCustomerReports\TopCustomerReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -37,8 +38,7 @@ class ManageTopCustomerReports extends ManageRecords
                 )
                 ->visible(
                     fn (): bool =>
-                        auth()->user()?->canManageSalesAndCollections()
-                            === true
+                        auth()->user()?->can(PermissionName::REPORT_TOP_CUSTOMERS->value) === true
                 ),
         ];
     }

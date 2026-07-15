@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\CustomerPayments\Tables;
 
 use App\Models\CustomerPayment;
-use App\Models\User;
 use App\Services\Sales\CustomerPaymentService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -12,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 class CustomerPaymentsTable
@@ -130,9 +130,10 @@ class CustomerPaymentsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد التحصيل')
                     ->modalDescription('إذا كان التحصيل مرتبطًا بفاتورة، سيتم تحديث المدفوع والمتبقي على الفاتورة.')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canConfirmOrEditPayment())
+                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('confirm', $record) === true)
                     ->action(function (CustomerPayment $record): void {
                         try {
+                            Gate::authorize('confirm', $record);
                             app(CustomerPaymentService::class)->confirm($record);
 
                             Notification::make()
@@ -155,9 +156,10 @@ class CustomerPaymentsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء التحصيل')
                     ->modalDescription('سيتم عكس أثر التحصيل على الفاتورة المرتبطة إن وجدت.')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isConfirmed() && self::canCancelPayment())
+                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('cancel', $record) === true)
                     ->action(function (CustomerPayment $record): void {
                         try {
+                            Gate::authorize('cancel', $record);
                             app(CustomerPaymentService::class)->cancel($record);
 
                             Notification::make()
@@ -177,35 +179,13 @@ class CustomerPaymentsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل تحصيل عميل')
                     ->slideOver()
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canConfirmOrEditPayment()),
+                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('update', $record) === true),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (CustomerPayment $record): bool => $record->isDraft() && self::canDeleteDraftPayment()),
+                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('delete', $record) === true),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
-    }
-
-    private static function canConfirmOrEditPayment(): bool
-    {
-        return auth()->user()?->canManageSalesAndCollections() === true;
-    }
-
-    private static function canCancelPayment(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-            User::ROLE_ACCOUNTANT,
-        ]) === true;
-    }
-
-    private static function canDeleteDraftPayment(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
     }
 }

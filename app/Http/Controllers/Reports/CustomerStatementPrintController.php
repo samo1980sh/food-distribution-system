@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Services\Reports\CustomerStatementService;
 use Illuminate\Http\RedirectResponse;
@@ -18,7 +19,7 @@ class CustomerStatementPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_CUSTOMER_STATEMENT->value) === true,
             403,
         );
 

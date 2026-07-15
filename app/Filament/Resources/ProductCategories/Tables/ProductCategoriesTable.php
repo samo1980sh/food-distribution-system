@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProductCategories\Tables;
 
+use App\Enums\PermissionName;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -36,7 +37,7 @@ class ProductCategoriesTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::PRODUCT_CATEGORIES_UPDATE->value) === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل تصنيف')
                     ->slideOver(),
@@ -45,7 +46,7 @@ class ProductCategoriesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
+                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::PRODUCT_CATEGORIES_DELETE->value) === true),
                 ]),
             ])
             ->defaultSort('sort_order');

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleStockReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleStockReports\VehicleStockReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageVehicleStockReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageInventory() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_VEHICLE_STOCK->value) === true
                 ),
         ];
     }

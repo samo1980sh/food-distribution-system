@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
@@ -25,7 +26,7 @@ class DailyClosingFilteredPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageDailyClosings() === true,
+            Auth::user()?->can(PermissionName::REPORT_DAILY_CLOSINGS->value) === true,
             403,
         );
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ExpiryRiskReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\ProductCategory;
 use App\Models\StockBalance;
 use App\Models\Vehicle;
@@ -286,7 +287,7 @@ class ExpiryRiskReportsTable
                     )
                     ->visible(
                         fn (): bool =>
-                            auth()->user()?->canManageInventory() === true
+                            auth()->user()?->can(PermissionName::REPORT_EXPIRY_RISK->value) === true
                     ),
             ])
             ->toolbarActions([])

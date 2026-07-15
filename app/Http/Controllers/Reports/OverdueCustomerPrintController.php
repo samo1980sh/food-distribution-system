@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\Reports\OverdueCustomerReportService;
@@ -21,7 +22,7 @@ class OverdueCustomerPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_OVERDUE_CUSTOMERS->value) === true,
             403,
         );
 

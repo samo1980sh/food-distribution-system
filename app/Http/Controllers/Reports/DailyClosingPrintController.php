@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DailyClosing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DailyClosingPrintController extends Controller
@@ -16,10 +17,7 @@ class DailyClosingPrintController extends Controller
             return redirect()->route('filament.admin.auth.login');
         }
 
-        abort_unless(
-            Auth::user()?->canManageDailyClosings() === true,
-            403,
-        );
+        Gate::authorize('print', $dailyClosing);
 
         $dailyClosing->load([
             'warehouse',

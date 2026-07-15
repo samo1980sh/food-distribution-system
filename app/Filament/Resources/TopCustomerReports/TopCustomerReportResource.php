@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TopCustomerReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\TopCustomerReports\Pages\ManageTopCustomerReports;
 use App\Filament\Resources\TopCustomerReports\Tables\TopCustomerReportsTable;
 use App\Models\Customer;
@@ -46,12 +47,12 @@ class TopCustomerReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_TOP_CUSTOMERS->value) === true;
     }
 
     public static function canCreate(): bool

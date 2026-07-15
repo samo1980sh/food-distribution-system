@@ -44,16 +44,11 @@ class AreaResource extends Resource
         return 10;
     }
 
-
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageMasterData() === true;
+        return static::canViewAny();
     }
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->canManageMasterData() === true;
-    }
     public static function form(Schema $schema): Schema
     {
         return AreaForm::configure($schema);

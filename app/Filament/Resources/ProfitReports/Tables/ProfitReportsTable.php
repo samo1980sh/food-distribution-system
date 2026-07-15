@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProfitReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\ProfitReportEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -221,7 +222,7 @@ class ProfitReportsTable
                     ->visible(
                         fn (ProfitReportEntry $record): bool =>
                             in_array($record->entry_type, ['invoice', 'return'], true)
-                            && auth()->user()?->canManageSalesAndCollections() === true
+                            && auth()->user()?->can(PermissionName::REPORT_PROFIT->value) === true
                     ),
             ])
             ->toolbarActions([])

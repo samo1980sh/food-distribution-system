@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\PermissionName;
 use App\Services\Dashboard\ExecutiveDashboardService;
 use Filament\Widgets\Widget;
 
@@ -11,6 +12,11 @@ class OperationalAlertsWidget extends Widget
         'filament.widgets.operational-alerts-widget';
 
     protected static ?int $sort = 4;
+
+    public static function canView(): bool
+    {
+        return auth()->user()?->can(PermissionName::DASHBOARD_VIEW->value) === true;
+    }
 
     protected int|string|array $columnSpan = [
         'md' => 2,

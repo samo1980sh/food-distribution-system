@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\DailyClosings\Tables;
 
 use App\Models\DailyClosing;
-use App\Models\User;
 use App\Services\Distribution\DailyClosingService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -12,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 class DailyClosingsTable
@@ -171,8 +171,9 @@ class DailyClosingsTable
                     ->label('تحديث الملخص')
                     ->icon('heroicon-o-arrow-path')
                     ->color('info')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions())
+                    ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('refreshTotals', $record) === true)
                     ->action(function (DailyClosing $record): void {
+                        Gate::authorize('refreshTotals', $record);
                         app(DailyClosingService::class)->refreshTotals($record);
 
                         Notification::make()
@@ -188,9 +189,10 @@ class DailyClosingsTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد إغلاق اليوم')
                     ->modalDescription('سيتم اعتماد الإغلاق ومنع تعديل عملياته لاحقاً.')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions())
+                    ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('confirm', $record) === true)
                     ->action(function (DailyClosing $record): void {
                         try {
+                            Gate::authorize('confirm', $record);
                             app(DailyClosingService::class)->confirm($record);
 
                             Notification::make()
@@ -213,9 +215,10 @@ class DailyClosingsTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء إغلاق اليوم')
                     ->modalDescription('سيتم فتح التاريخ والمستودع للعمليات العكسية والتصحيحات.')
-                    ->visible(fn (DailyClosing $record): bool => $record->isConfirmed() && self::canCancelClosing())
+                    ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('cancel', $record) === true)
                     ->action(function (DailyClosing $record): void {
                         try {
+                            Gate::authorize('cancel', $record);
                             app(DailyClosingService::class)->cancel($record);
 
                             Notification::make()
@@ -235,34 +238,13 @@ class DailyClosingsTable
                     ->label('تعديل')
                     ->modalHeading('تعديل إغلاق يوم')
                     ->slideOver()
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canManageClosingActions()),
+                    ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('update', $record) === true),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (DailyClosing $record): bool => $record->isDraft() && self::canDeleteDraftClosing()),
+                    ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('delete', $record) === true),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
-    }
-
-    private static function canManageClosingActions(): bool
-    {
-        return auth()->user()?->canManageDailyClosings() === true;
-    }
-
-    private static function canCancelClosing(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
-    }
-
-    private static function canDeleteDraftClosing(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
     }
 }

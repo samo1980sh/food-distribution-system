@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
@@ -27,7 +28,7 @@ class CustomerPaymentReportFilteredPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_CUSTOMER_PAYMENTS->value) === true,
             403,
         );
 

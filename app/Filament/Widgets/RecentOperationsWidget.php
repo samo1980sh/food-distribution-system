@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\PermissionName;
 use App\Services\Dashboard\ExecutiveDashboardService;
 use Filament\Widgets\Widget;
 
@@ -19,14 +20,7 @@ class RecentOperationsWidget extends Widget
 
     public static function canView(): bool
     {
-        $user = auth()->user();
-
-        return $user
-            && (
-                $user->canManageSalesAndCollections()
-                || $user->canManageDistribution()
-                || $user->canManageDailyClosings()
-            );
+        return auth()->user()?->can(PermissionName::DASHBOARD_VIEW->value) === true;
     }
 
     public function getViewData(): array

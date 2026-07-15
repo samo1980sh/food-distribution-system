@@ -7,6 +7,7 @@ use App\Models\SalesReturn;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class SalesReturnPrintController extends Controller
@@ -18,10 +19,7 @@ class SalesReturnPrintController extends Controller
             return redirect()->route('filament.admin.auth.login');
         }
 
-        abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
-            403,
-        );
+        Gate::authorize('print', $salesReturn);
 
         $salesReturn->load([
             'customer',

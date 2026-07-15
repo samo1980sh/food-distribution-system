@@ -1,0 +1,63 @@
+RBAC FOUNDATION - FINAL MANIFEST
+================================
+
+Baseline commit:
+- 8a268af Add executive dashboard rankings and activity
+
+Validated environment:
+- Laravel 12.62.0
+- Filament ~5.0
+- spatie/laravel-permission 6.25.0
+- PHP 8.2+
+
+Core additions:
+- app/Enums/PermissionName.php
+- app/Enums/UserRole.php
+- app/Support/Authorization/RolePermissionMap.php
+- app/Policies/*
+- database/seeders/RolesAndPermissionsSeeder.php
+- database/migrations/2026_07_15_120000_create_permission_tables_and_migrate_legacy_roles.php
+- database/migrations/2026_07_15_120100_enforce_single_employee_per_user.php
+- tests/Feature/RbacFoundationTest.php
+
+Core modifications:
+- app/Models/User.php
+- app/Providers/AppServiceProvider.php
+- app/Providers/Filament/AdminPanelProvider.php
+- app/Filament/**
+- app/Http/Controllers/Reports/**
+- app/Services/Dashboard/ExecutiveDashboardService.php
+- bootstrap/providers.php
+- composer.json
+- composer.lock
+- database/seeders/DatabaseSeeder.php
+- tests/TestCase.php
+
+Documentation and staging helper:
+- docs/rbac/INSTALL_AR.md
+- docs/rbac/ROLE_MATRIX_AR.md
+- docs/rbac/MANIFEST.txt
+- scripts/rbac-git-add.ps1
+
+Final authorization notes:
+- Policies are registered from AppServiceProvider.
+- No App\Providers\AuthServiceProvider file is used.
+- Inactive users are denied centrally.
+- Super Admin is protected and receives global authorization bypass only while active.
+- UserPolicy is independent from PermissionPolicy to keep PHP method signatures compatible.
+
+Database result verified:
+- 7 roles
+- 105 permissions
+- no users without roles
+- legacy users.role column removed
+
+Tests verified:
+- RBAC: 8 passed / 21 assertions
+- Full suite: 70 passed / 295 assertions
+
+Excluded:
+- vendor/
+- .env
+- ZIP files
+- generated Filament public assets

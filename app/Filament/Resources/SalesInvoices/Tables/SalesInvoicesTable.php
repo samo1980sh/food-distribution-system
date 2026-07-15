@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
 use App\Models\SalesInvoice;
-use App\Models\User;
 use App\Services\Sales\SalesInvoiceService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -12,6 +11,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 class SalesInvoicesTable
@@ -141,9 +141,10 @@ class SalesInvoicesTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد فاتورة البيع')
                     ->modalDescription('سيتم خصم الكميات من مستودع البيع، ولا يمكن تعديل الفاتورة بعد الاعتماد.')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canManageInvoiceDrafts())
+                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('confirm', $record) === true)
                     ->action(function (SalesInvoice $record): void {
                         try {
+                            Gate::authorize('confirm', $record);
                             app(SalesInvoiceService::class)->confirm($record);
 
                             Notification::make()
@@ -166,9 +167,10 @@ class SalesInvoicesTable
                     ->requiresConfirmation()
                     ->modalHeading('إلغاء فاتورة البيع')
                     ->modalDescription('سيتم عكس حركة المخزون. إذا كانت هناك تحصيلات مرتبطة يجب إلغاؤها أولاً.')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isConfirmed() && self::canCancelInvoice())
+                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('cancel', $record) === true)
                     ->action(function (SalesInvoice $record): void {
                         try {
+                            Gate::authorize('cancel', $record);
                             app(SalesInvoiceService::class)->cancel($record);
 
                             Notification::make()
@@ -188,38 +190,13 @@ class SalesInvoicesTable
                     ->label('تعديل')
                     ->modalHeading('تعديل فاتورة بيع')
                     ->slideOver()
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canManageInvoiceDrafts()),
+                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('update', $record) === true),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (SalesInvoice $record): bool => $record->isDraft() && self::canDeleteDraftInvoice()),
+                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('delete', $record) === true),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
-    }
-
-    private static function canManageInvoiceDrafts(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-            User::ROLE_SUPERVISOR,
-        ]) === true;
-    }
-
-    private static function canCancelInvoice(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
-    }
-
-    private static function canDeleteDraftInvoice(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
     }
 }

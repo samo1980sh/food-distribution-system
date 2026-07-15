@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RoutePerformanceReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\Area;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
@@ -555,8 +556,7 @@ class RoutePerformanceReportsTable
                     )
                     ->visible(
                         fn (): bool =>
-                            auth()->user()?->canManageSalesAndCollections()
-                                === true
+                            auth()->user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true
                     ),
             ])
             ->toolbarActions([])

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\VehicleLoad;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class VehicleLoadPrintController extends Controller
@@ -18,10 +19,7 @@ class VehicleLoadPrintController extends Controller
             return redirect()->route('filament.admin.auth.login');
         }
 
-        abort_unless(
-            Auth::user()?->canManageDistribution() === true,
-            403,
-        );
+        Gate::authorize('print', $vehicleLoad);
 
         $vehicleLoad->load([
             'vehicle',

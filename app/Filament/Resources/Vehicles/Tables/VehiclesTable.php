@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Vehicles\Tables;
 
+use App\Enums\PermissionName;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -50,7 +51,7 @@ class VehiclesTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::VEHICLES_UPDATE->value) === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل سيارة')
                     ->slideOver(),
@@ -59,7 +60,7 @@ class VehiclesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
+                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::VEHICLES_DELETE->value) === true),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenseReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleExpenseReports\Pages\ManageVehicleExpenseReports;
 use App\Filament\Resources\VehicleExpenseReports\Tables\VehicleExpenseReportsTable;
 use App\Models\VehicleExpense;
@@ -46,12 +47,12 @@ class VehicleExpenseReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageDistribution() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageDistribution() === true;
+        return auth()->user()?->can(PermissionName::REPORT_VEHICLE_EXPENSES->value) === true;
     }
 
     public static function canCreate(): bool

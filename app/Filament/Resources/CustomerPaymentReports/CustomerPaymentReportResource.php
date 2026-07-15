@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPaymentReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\CustomerPaymentReports\Pages\ManageCustomerPaymentReports;
 use App\Filament\Resources\CustomerPaymentReports\Tables\CustomerPaymentReportsTable;
 use App\Models\CustomerPayment;
@@ -45,12 +46,12 @@ class CustomerPaymentReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_CUSTOMER_PAYMENTS->value) === true;
     }
 
     public static function canCreate(): bool

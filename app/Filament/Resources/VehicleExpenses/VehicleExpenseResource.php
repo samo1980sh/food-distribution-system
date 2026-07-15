@@ -44,20 +44,11 @@ class VehicleExpenseResource extends Resource
         return 35;
     }
 
-
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageDistribution() === true;
+        return static::canViewAny();
     }
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->canManageDistribution() === true;
-    }
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->canManageDistribution() === true;
-    }
     public static function form(Schema $schema): Schema
     {
         return VehicleExpenseForm::configure($schema);

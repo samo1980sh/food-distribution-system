@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenseReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\VehicleExpense;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -228,7 +229,7 @@ class VehicleExpenseReportsTable
                     ->visible(
                         fn (VehicleExpense $record): bool =>
                             $record->isApproved()
-                            && auth()->user()?->canManageDistribution() === true
+                            && auth()->user()?->can(PermissionName::REPORT_VEHICLE_EXPENSES->value) === true
                     ),
             ])
             ->toolbarActions([])

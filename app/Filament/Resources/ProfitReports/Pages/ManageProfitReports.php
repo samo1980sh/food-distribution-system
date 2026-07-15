@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProfitReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\ProfitReports\ProfitReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageProfitReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_PROFIT->value) === true
                 ),
         ];
     }

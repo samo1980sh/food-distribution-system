@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RoutePerformanceReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\RoutePerformanceReports\RoutePerformanceReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -38,8 +39,7 @@ class ManageRoutePerformanceReports extends ManageRecords
                 )
                 ->visible(
                     fn (): bool =>
-                        auth()->user()?->canManageSalesAndCollections()
-                            === true
+                        auth()->user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true
                 ),
         ];
     }

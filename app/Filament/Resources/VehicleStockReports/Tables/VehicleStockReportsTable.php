@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleStockReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\StockBalance;
 use App\Models\Vehicle;
 use Filament\Actions\Action;
@@ -197,7 +198,7 @@ class VehicleStockReportsTable
                     ->visible(
                         fn (StockBalance $record): bool =>
                             filled($record->warehouse?->vehicle_id)
-                            && auth()->user()?->canManageInventory() === true
+                            && auth()->user()?->can(PermissionName::REPORT_VEHICLE_STOCK->value) === true
                     ),
             ])
             ->toolbarActions([])

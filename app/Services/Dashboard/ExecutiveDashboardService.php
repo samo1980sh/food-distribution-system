@@ -2,6 +2,8 @@
 
 namespace App\Services\Dashboard;
 
+use App\Enums\PermissionName;
+
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
 use App\Models\DailyClosing;
@@ -1074,7 +1076,7 @@ class ExecutiveDashboardService
 
         $links = [];
 
-        if ($user->canManageSalesAndCollections()) {
+        if ($user->can(PermissionName::REPORT_SALES->value)) {
             $links[] = [
                 'label' => 'تقرير المبيعات',
                 'icon' => 'heroicon-o-chart-bar',
@@ -1083,6 +1085,9 @@ class ExecutiveDashboardService
                 ),
             ];
 
+        }
+
+        if ($user->can(PermissionName::REPORT_OVERDUE_CUSTOMERS->value)) {
             $links[] = [
                 'label' => 'العملاء المتأخرون',
                 'icon' => 'heroicon-o-user-minus',
@@ -1091,6 +1096,9 @@ class ExecutiveDashboardService
                 ),
             ];
 
+        }
+
+        if ($user->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value)) {
             $links[] = [
                 'label' => 'أداء الخطوط',
                 'icon' => 'heroicon-o-map',
@@ -1100,7 +1108,7 @@ class ExecutiveDashboardService
             ];
         }
 
-        if ($user->canManageInventory()) {
+        if ($user->can(PermissionName::STOCK_BALANCES_VIEW->value)) {
             $links[] = [
                 'label' => 'أرصدة المخزون',
                 'icon' => 'heroicon-o-archive-box',
@@ -1110,7 +1118,7 @@ class ExecutiveDashboardService
             ];
         }
 
-        if ($user->canManageDailyClosings()) {
+        if ($user->can(PermissionName::DAILY_CLOSINGS_VIEW->value)) {
             $links[] = [
                 'label' => 'الإغلاقات اليومية',
                 'icon' => 'heroicon-o-clipboard-document-check',

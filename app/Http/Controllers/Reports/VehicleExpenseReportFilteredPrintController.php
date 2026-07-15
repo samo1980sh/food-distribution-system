@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleExpenseReports\Tables\VehicleExpenseReportsTable;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
@@ -26,7 +27,7 @@ class VehicleExpenseReportFilteredPrintController
         }
 
         abort_unless(
-            Auth::user()?->canManageDistribution() === true,
+            Auth::user()?->can(PermissionName::REPORT_VEHICLE_EXPENSES->value) === true,
             403,
         );
 

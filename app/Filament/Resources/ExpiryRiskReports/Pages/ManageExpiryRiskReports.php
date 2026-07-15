@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ExpiryRiskReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\ExpiryRiskReports\ExpiryRiskReportResource;
 use App\Models\StockBalance;
 use Filament\Actions\Action;
@@ -52,7 +53,7 @@ class ManageExpiryRiskReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageInventory() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_EXPIRY_RISK->value) === true
                 ),
         ];
     }

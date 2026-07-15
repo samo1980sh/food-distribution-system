@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OverdueCustomerReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\OverdueCustomerReports\OverdueCustomerReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -37,7 +38,7 @@ class ManageOverdueCustomerReports extends ManageRecords
                 )
                 ->visible(
                     fn (): bool =>
-                        auth()->user()?->canManageSalesAndCollections() === true
+                        auth()->user()?->can(PermissionName::REPORT_OVERDUE_CUSTOMERS->value) === true
                 ),
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
@@ -27,7 +28,7 @@ class SalesReturnReportFilteredPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_SALES_RETURNS->value) === true,
             403,
         );
 

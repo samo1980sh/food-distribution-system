@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesReturnReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\SalesReturnReports\Pages\ManageSalesReturnReports;
 use App\Filament\Resources\SalesReturnReports\Tables\SalesReturnReportsTable;
 use App\Models\SalesReturn;
@@ -45,12 +46,12 @@ class SalesReturnReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_SALES_RETURNS->value) === true;
     }
 
     public static function canCreate(): bool

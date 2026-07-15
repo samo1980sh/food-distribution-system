@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RoutePerformanceReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\RoutePerformanceReports\Pages\ManageRoutePerformanceReports;
 use App\Filament\Resources\RoutePerformanceReports\Tables\RoutePerformanceReportsTable;
 use App\Models\DistributionRoute;
@@ -47,12 +48,12 @@ class RoutePerformanceReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true;
     }
 
     public static function canCreate(): bool

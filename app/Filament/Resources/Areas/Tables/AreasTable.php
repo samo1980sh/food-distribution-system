@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Areas\Tables;
 
+use App\Enums\PermissionName;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -43,7 +44,7 @@ class AreasTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::AREAS_UPDATE->value) === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل منطقة')
                     ->slideOver(),
@@ -52,7 +53,7 @@ class AreasTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
+                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::AREAS_DELETE->value) === true),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

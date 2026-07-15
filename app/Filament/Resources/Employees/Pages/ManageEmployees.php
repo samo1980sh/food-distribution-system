@@ -14,7 +14,7 @@ class ManageEmployees extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                ->visible(fn (): bool => EmployeeResource::canCreate())
                 ->label('إضافة موظف')
                 ->modalHeading('إضافة موظف')
                 ->slideOver(),

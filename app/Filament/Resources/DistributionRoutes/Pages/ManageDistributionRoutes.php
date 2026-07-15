@@ -14,7 +14,7 @@ class ManageDistributionRoutes extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                ->visible(fn (): bool => DistributionRouteResource::canCreate())
                 ->label('إضافة خط توزيع')
                 ->modalHeading('إضافة خط توزيع')
                 ->slideOver(),

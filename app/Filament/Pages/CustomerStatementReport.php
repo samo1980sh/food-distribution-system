@@ -2,6 +2,8 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\PermissionName;
+
 use App\Models\Customer;
 use App\Services\Reports\CustomerStatementService;
 use BackedEnum;
@@ -47,7 +49,7 @@ class CustomerStatementReport extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_CUSTOMER_STATEMENT->value) === true;
     }
 
     public function getHeading(): string|Htmlable

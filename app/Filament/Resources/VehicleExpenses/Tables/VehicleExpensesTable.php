@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\VehicleExpenses\Tables;
 
-use App\Models\User;
 use App\Models\VehicleExpense;
 use App\Services\Distribution\VehicleExpenseService;
 use Filament\Actions\Action;
@@ -13,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 class VehicleExpensesTable
@@ -152,9 +152,10 @@ class VehicleExpensesTable
                     ->requiresConfirmation()
                     ->modalHeading('اعتماد مصروف السيارة')
                     ->modalDescription('بعد الاعتماد سيدخل هذا المصروف لاحقاً ضمن إغلاق اليوم.')
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canApproveOrReject())
+                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('approve', $record) === true)
                     ->action(function (VehicleExpense $record): void {
                         try {
+                            Gate::authorize('approve', $record);
                             app(VehicleExpenseService::class)->approve($record);
 
                             Notification::make()
@@ -182,9 +183,10 @@ class VehicleExpensesTable
                             ->required()
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canApproveOrReject())
+                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('approve', $record) === true)
                     ->action(function (VehicleExpense $record, array $data): void {
                         try {
+                            Gate::authorize('reject', $record);
                             app(VehicleExpenseService::class)->reject($record, $data['rejection_reason'] ?? null);
 
                             Notification::make()
@@ -204,30 +206,13 @@ class VehicleExpensesTable
                     ->label('تعديل')
                     ->modalHeading('تعديل مصروف سيارة')
                     ->slideOver()
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && auth()->user()?->canManageDistribution() === true),
+                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('update', $record) === true),
 
                 DeleteAction::make()
                     ->label('حذف')
-                    ->visible(fn (VehicleExpense $record): bool => $record->isPending() && self::canDeletePendingExpense()),
+                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('delete', $record) === true),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
-    }
-
-    private static function canApproveOrReject(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-            User::ROLE_SUPERVISOR,
-        ]) === true;
-    }
-
-    private static function canDeletePendingExpense(): bool
-    {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
     }
 }

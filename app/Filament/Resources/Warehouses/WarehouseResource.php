@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\Warehouses;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\Warehouses\Pages\ManageWarehouses;
 use App\Filament\Resources\Warehouses\Schemas\WarehouseForm;
 use App\Filament\Resources\Warehouses\Tables\WarehousesTable;
-use App\Models\User;
 use App\Models\Warehouse;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -47,17 +47,7 @@ class WarehouseResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->canManageInventory() === true;
-    }
-
-    public static function canCreate(): bool
-    {
-        return self::canManageWarehouseStructure();
+        return static::canViewAny();
     }
 
     public static function form(Schema $schema): Schema
@@ -79,9 +69,7 @@ class WarehouseResource extends Resource
 
     public static function canManageWarehouseStructure(): bool
     {
-        return auth()->user()?->hasAnyRole([
-            User::ROLE_SUPER_ADMIN,
-            User::ROLE_MANAGER,
-        ]) === true;
+        return auth()->user()?->can(PermissionName::WAREHOUSES_UPDATE->value) === true;
     }
+
 }

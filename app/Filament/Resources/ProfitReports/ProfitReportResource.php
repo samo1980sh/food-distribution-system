@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProfitReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\ProfitReports\Pages\ManageProfitReports;
 use App\Filament\Resources\ProfitReports\Tables\ProfitReportsTable;
 use App\Models\ProfitReportEntry;
@@ -47,12 +48,12 @@ class ProfitReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections() === true;
+        return auth()->user()?->can(PermissionName::REPORT_PROFIT->value) === true;
     }
 
     public static function canCreate(): bool

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TopCustomerReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
@@ -427,8 +428,7 @@ class TopCustomerReportsTable
                     )
                     ->visible(
                         fn (): bool =>
-                            auth()->user()?->canManageSalesAndCollections()
-                                === true
+                            auth()->user()?->can(PermissionName::REPORT_TOP_CUSTOMERS->value) === true
                     ),
             ])
             ->toolbarActions([])

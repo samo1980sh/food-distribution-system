@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\OverdueCustomerReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\Customer;
 use App\Services\Reports\OverdueCustomerReportService;
 use Filament\Actions\Action;
@@ -347,8 +348,7 @@ class OverdueCustomerReportsTable
                     )
                     ->visible(
                         fn (): bool =>
-                            auth()->user()?->canManageSalesAndCollections()
-                                === true
+                            auth()->user()?->can(PermissionName::REPORT_OVERDUE_CUSTOMERS->value) === true
                     ),
             ])
             ->toolbarActions([])

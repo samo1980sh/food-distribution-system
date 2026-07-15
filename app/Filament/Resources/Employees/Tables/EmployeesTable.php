@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Tables;
 
+use App\Enums\PermissionName;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -62,7 +63,7 @@ class EmployeesTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::EMPLOYEES_UPDATE->value) === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل موظف')
                     ->slideOver(),
@@ -71,7 +72,7 @@ class EmployeesTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
+                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::EMPLOYEES_DELETE->value) === true),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

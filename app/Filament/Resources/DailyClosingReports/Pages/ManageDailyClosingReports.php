@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosingReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\DailyClosingReports\DailyClosingReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageDailyClosingReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageDailyClosings() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_DAILY_CLOSINGS->value) === true
                 ),
         ];
     }

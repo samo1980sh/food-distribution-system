@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosingReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\DailyClosing;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -303,7 +304,7 @@ class DailyClosingReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->canManageDailyClosings() === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_DAILY_CLOSINGS->value) === true
                     ),
             ])
             ->toolbarActions([])

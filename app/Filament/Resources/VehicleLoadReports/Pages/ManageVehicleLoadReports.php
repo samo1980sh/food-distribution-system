@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleLoadReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleLoadReports\VehicleLoadReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageVehicleLoadReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageDistribution() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_VEHICLE_LOADS->value) === true
                 ),
         ];
     }

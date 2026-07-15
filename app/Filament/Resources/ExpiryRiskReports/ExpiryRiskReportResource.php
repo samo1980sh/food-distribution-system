@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ExpiryRiskReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\ExpiryRiskReports\Pages\ManageExpiryRiskReports;
 use App\Filament\Resources\ExpiryRiskReports\Tables\ExpiryRiskReportsTable;
 use App\Models\StockBalance;
@@ -46,12 +47,12 @@ class ExpiryRiskReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
+        return auth()->user()?->can(PermissionName::REPORT_EXPIRY_RISK->value) === true;
     }
 
     public static function canCreate(): bool

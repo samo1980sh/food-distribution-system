@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\ExpiryRiskReports\Tables\ExpiryRiskReportsTable;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
@@ -26,7 +27,7 @@ class ExpiryRiskReportFilteredPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageInventory() === true,
+            Auth::user()?->can(PermissionName::REPORT_EXPIRY_RISK->value) === true,
             403,
         );
 

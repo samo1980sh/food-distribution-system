@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\PermissionName;
 use App\Services\Dashboard\ExecutiveDashboardService;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -16,13 +17,7 @@ class DistributionOverviewWidget extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        $user = auth()->user();
-
-        return $user
-            && (
-                $user->canManageSalesAndCollections()
-                || $user->canManageDailyClosings()
-            );
+        return auth()->user()?->can(PermissionName::DASHBOARD_FINANCIAL->value) === true;
     }
 
     protected function getStats(): array

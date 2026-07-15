@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleLoadReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\VehicleLoad;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -203,7 +204,7 @@ class VehicleLoadReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->canManageDistribution() === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_VEHICLE_LOADS->value) === true
                     ),
             ])
             ->toolbarActions([])

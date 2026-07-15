@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleLoadReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleLoadReports\Pages\ManageVehicleLoadReports;
 use App\Filament\Resources\VehicleLoadReports\Tables\VehicleLoadReportsTable;
 use App\Models\VehicleLoad;
@@ -45,12 +46,12 @@ class VehicleLoadReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageDistribution() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageDistribution() === true;
+        return auth()->user()?->can(PermissionName::REPORT_VEHICLE_LOADS->value) === true;
     }
 
     public static function canCreate(): bool

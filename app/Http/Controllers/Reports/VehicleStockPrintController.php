@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\StockBalance;
 use App\Models\Vehicle;
@@ -19,7 +20,7 @@ class VehicleStockPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageInventory() === true,
+            Auth::user()?->can(PermissionName::REPORT_VEHICLE_STOCK->value) === true,
             403,
         );
 

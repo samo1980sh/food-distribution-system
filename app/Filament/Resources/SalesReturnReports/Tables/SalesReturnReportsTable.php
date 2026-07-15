@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesReturnReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\SalesReturn;
 
 use Filament\Actions\Action;
@@ -242,7 +243,7 @@ class SalesReturnReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_SALES_RETURNS->value) === true
                     ),
             ])
             ->toolbarActions([])

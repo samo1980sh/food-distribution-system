@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPaymentReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\CustomerPayment;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -262,7 +263,7 @@ class CustomerPaymentReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_CUSTOMER_PAYMENTS->value) === true
                     ),
             ])
             ->toolbarActions([])

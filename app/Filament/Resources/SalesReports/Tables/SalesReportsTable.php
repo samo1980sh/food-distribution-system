@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesReports\Tables;
 
+use App\Enums\PermissionName;
 use App\Models\SalesInvoice;
 use Filament\Actions\Action;
 
@@ -260,7 +261,7 @@ class SalesReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_SALES->value) === true
                     ),
             ])
             ->toolbarActions([])

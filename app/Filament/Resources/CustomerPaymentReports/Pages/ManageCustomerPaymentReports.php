@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPaymentReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\CustomerPaymentReports\CustomerPaymentReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageCustomerPaymentReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageSalesAndCollections() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_CUSTOMER_PAYMENTS->value) === true
                 ),
         ];
     }

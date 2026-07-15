@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\DistributionRoute;
 use App\Services\Reports\RoutePerformanceReportService;
@@ -21,7 +22,7 @@ class RoutePerformancePrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true,
             403,
         );
 

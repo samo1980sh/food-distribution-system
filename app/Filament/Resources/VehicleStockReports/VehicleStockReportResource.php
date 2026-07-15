@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleStockReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleStockReports\Pages\ManageVehicleStockReports;
 use App\Filament\Resources\VehicleStockReports\Tables\VehicleStockReportsTable;
 use App\Models\StockBalance;
@@ -46,12 +47,12 @@ class VehicleStockReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
+        return auth()->user()?->can(PermissionName::REPORT_VEHICLE_STOCK->value) === true;
     }
 
     public static function canCreate(): bool

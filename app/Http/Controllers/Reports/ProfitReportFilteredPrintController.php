@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
@@ -26,7 +27,7 @@ class ProfitReportFilteredPrintController extends Controller
         }
 
         abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
+            Auth::user()?->can(PermissionName::REPORT_PROFIT->value) === true,
             403,
         );
 

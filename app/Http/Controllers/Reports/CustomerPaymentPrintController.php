@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerPayment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class CustomerPaymentPrintController extends Controller
@@ -16,10 +17,7 @@ class CustomerPaymentPrintController extends Controller
             return redirect()->route('filament.admin.auth.login');
         }
 
-        abort_unless(
-            Auth::user()?->canManageSalesAndCollections() === true,
-            403,
-        );
+        Gate::authorize('print', $customerPayment);
 
         $customerPayment->load([
             'customer',

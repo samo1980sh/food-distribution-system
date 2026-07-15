@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UsersTable
 {
@@ -24,37 +26,30 @@ class UsersTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('role')
+                TextColumn::make('roles.name')
                     ->label('الدور')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'super_admin' => 'مدير النظام',
-                        'manager' => 'مدير',
-                        'supervisor' => 'مشرف',
-                        'warehouse_keeper' => 'أمين مستودع',
-                        'accountant' => 'محاسب',
-                        default => $state ?? '-',
-                    })
-                    ->color(fn (?string $state): string => match ($state) {
-                        'super_admin' => 'danger',
-                        'manager' => 'primary',
-                        'supervisor' => 'info',
-                        'warehouse_keeper' => 'warning',
-                        'accountant' => 'success',
-                        default => 'gray',
-                    }),
+                    ->formatStateUsing(
+                        fn (?string $state): string => UserRole::tryFrom((string) $state)?->label()
+                            ?? $state
+                            ?? '-',
+                    )
+                    ->color(
+                        fn (?string $state): string => UserRole::tryFrom((string) $state)?->color()
+                            ?? 'gray',
+                    ),
 
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'active' => 'فعّال',
-                        'inactive' => 'غير فعّال',
+                        User::STATUS_ACTIVE => 'فعّال',
+                        User::STATUS_INACTIVE => 'غير فعّال',
                         default => $state ?? '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
-                        'active' => 'success',
-                        'inactive' => 'gray',
+                        User::STATUS_ACTIVE => 'success',
+                        User::STATUS_INACTIVE => 'gray',
                         default => 'gray',
                     }),
 
@@ -67,24 +62,30 @@ class UsersTable
             ->filters([
                 SelectFilter::make('role')
                     ->label('الدور')
-                    ->options([
-                        'super_admin' => 'مدير النظام',
-                        'manager' => 'مدير',
-                        'supervisor' => 'مشرف',
-                        'warehouse_keeper' => 'أمين مستودع',
-                        'accountant' => 'محاسب',
-                    ]),
+                    ->options(
+                        fn (): array => UserRole::options(
+                            includeSuperAdmin: auth()->user()?->isSuperAdmin() === true,
+                        ),
+                    )
+                    ->query(
+                        fn (Builder $query, array $data): Builder => $query->when(
+                            filled($data['value'] ?? null),
+                            fn (Builder $query): Builder => $query->role($data['value']),
+                        ),
+                    ),
 
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'active' => 'فعّال',
-                        'inactive' => 'غير فعّال',
+                        User::STATUS_ACTIVE => 'فعّال',
+                        User::STATUS_INACTIVE => 'غير فعّال',
                     ]),
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageUsers() === true)
+                    ->visible(
+                        fn (User $record): bool => auth()->user()?->can('update', $record) === true,
+                    )
                     ->label('تعديل')
                     ->modalHeading('تعديل مستخدم')
                     ->slideOver(),

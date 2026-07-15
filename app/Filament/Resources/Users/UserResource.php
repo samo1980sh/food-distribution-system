@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Enums\UserRole;
 use App\Filament\Resources\Users\Pages\ManageUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
@@ -10,7 +11,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -47,27 +48,24 @@ class UserResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageUsers() === true;
+        return static::canViewAny();
     }
 
-    public static function canViewAny(): bool
+    public static function getEloquentQuery(): Builder
     {
-        return auth()->user()?->canManageUsers() === true;
-    }
+        $query = parent::getEloquentQuery();
 
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->canManageUsers() === true;
-    }
+        if (auth()->user()?->isSuperAdmin() === true) {
+            return $query;
+        }
 
-    public static function canEdit(Model $record): bool
-    {
-        return auth()->user()?->canManageUsers() === true;
-    }
-
-    public static function canDelete(Model $record): bool
-    {
-        return false;
+        return $query->whereDoesntHave(
+            'roles',
+            fn (Builder $query): Builder => $query->where(
+                'name',
+                UserRole::SUPER_ADMIN->value,
+            ),
+        );
     }
 
     public static function form(Schema $schema): Schema

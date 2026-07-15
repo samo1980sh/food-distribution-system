@@ -6,6 +6,7 @@ use App\Models\VehicleExpense;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class VehicleExpensePrintController
 {
@@ -16,10 +17,7 @@ class VehicleExpensePrintController
             return redirect()->route('filament.admin.auth.login');
         }
 
-        abort_unless(
-            Auth::user()?->canManageDistribution() === true,
-            403,
-        );
+        Gate::authorize('print', $vehicleExpense);
 
         abort_unless($vehicleExpense->isApproved(), 404);
 

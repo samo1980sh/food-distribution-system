@@ -44,19 +44,9 @@ class ProductResource extends Resource
         return 30;
     }
 
-
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageInventory() === true;
-    }
-
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->canManageInventory() === true;
-    }
-    public static function canCreate(): bool
-    {
-        return auth()->user()?->canManageMasterData() === true;
+        return static::canViewAny();
     }
 
     public static function form(Schema $schema): Schema

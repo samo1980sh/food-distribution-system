@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\PermissionName;
 use App\Services\Dashboard\ExecutiveDashboardService;
 use Filament\Widgets\ChartWidget;
 
@@ -23,8 +24,7 @@ class FinancialTrendChartWidget extends ChartWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->canManageSalesAndCollections()
-            === true;
+        return auth()->user()?->can(PermissionName::DASHBOARD_FINANCIAL->value) === true;
     }
 
     public function getDescription(): ?string

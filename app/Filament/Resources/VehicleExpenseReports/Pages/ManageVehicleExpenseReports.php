@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenseReports\Pages;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\VehicleExpenseReports\VehicleExpenseReportResource;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
@@ -36,7 +37,7 @@ class ManageVehicleExpenseReports extends ManageRecords
                     shouldOpenInNewTab: true,
                 )
                 ->visible(
-                    fn (): bool => auth()->user()?->canManageDistribution() === true
+                    fn (): bool => auth()->user()?->can(PermissionName::REPORT_VEHICLE_EXPENSES->value) === true
                 ),
         ];
     }

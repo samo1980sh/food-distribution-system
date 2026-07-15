@@ -14,7 +14,7 @@ class ManageUnits extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                ->visible(fn (): bool => UnitResource::canCreate())
                 ->label('إضافة وحدة')
                 ->modalHeading('إضافة وحدة')
                 ->slideOver(),

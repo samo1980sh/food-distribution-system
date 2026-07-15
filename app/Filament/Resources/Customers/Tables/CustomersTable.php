@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Customers\Tables;
 
+use App\Enums\PermissionName;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -83,7 +84,7 @@ class CustomersTable
             ])
             ->recordActions([
                 EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true)
+                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::CUSTOMERS_UPDATE->value) === true)
                     ->label('تعديل')
                     ->modalHeading('تعديل عميل')
                     ->slideOver(),
@@ -92,7 +93,7 @@ class CustomersTable
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
                         ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->canManageMasterData() === true),
+                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::CUSTOMERS_DELETE->value) === true),
                 ]),
             ])
             ->defaultSort('created_at', 'desc');

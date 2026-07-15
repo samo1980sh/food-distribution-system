@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosingReports;
 
+use App\Enums\PermissionName;
 use App\Filament\Resources\DailyClosingReports\Pages\ManageDailyClosingReports;
 use App\Filament\Resources\DailyClosingReports\Tables\DailyClosingReportsTable;
 use App\Models\DailyClosing;
@@ -45,12 +46,12 @@ class DailyClosingReportResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return auth()->user()?->canManageDailyClosings() === true;
+        return static::canViewAny();
     }
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->canManageDailyClosings() === true;
+        return auth()->user()?->can(PermissionName::REPORT_DAILY_CLOSINGS->value) === true;
     }
 
     public static function canCreate(): bool
