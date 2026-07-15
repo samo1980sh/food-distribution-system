@@ -31,17 +31,17 @@ class SalesReturnPolicy extends PermissionPolicy
     public function confirm(User $user, SalesReturn $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::SALES_RETURNS_CONFIRM);
+            && $this->allowsMutation($user, $record, PermissionName::SALES_RETURNS_CONFIRM);
     }
 
     public function cancel(User $user, SalesReturn $record): bool
     {
         return $record->isConfirmed()
-            && $this->allows($user, PermissionName::SALES_RETURNS_CANCEL);
+            && $this->allowsMutation($user, $record, PermissionName::SALES_RETURNS_CANCEL);
     }
 
     public function print(User $user, SalesReturn $record): bool
     {
-        return $this->allows($user, PermissionName::SALES_RETURNS_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::SALES_RETURNS_PRINT);
     }
 }

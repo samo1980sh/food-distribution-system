@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
+use App\Services\Authorization\AccessScopeService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -26,7 +27,9 @@ class OverdueCustomerReportService
     ): Collection {
         $creditDays = $this->normalizeCreditDays($creditDays);
         $asOfDate = $this->normalizeAsOf($asOf);
-        $cacheKey = $creditDays.'|'.$asOfDate;
+        $cacheKey = app(AccessScopeService::class)->cacheKey()
+            .'|'.$creditDays
+            .'|'.$asOfDate;
 
         if (array_key_exists($cacheKey, self::$summaryCache)) {
             return self::$summaryCache[$cacheKey];

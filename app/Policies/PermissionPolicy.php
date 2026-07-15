@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName;
 use App\Models\User;
+use App\Services\Authorization\AccessScopeService;
 use Illuminate\Database\Eloquent\Model;
 
 abstract class PermissionPolicy
@@ -34,7 +35,11 @@ abstract class PermissionPolicy
 
     public function view(User $user, Model $record): bool
     {
-        return $this->allows($user, static::VIEW ?? static::VIEW_ANY);
+        return $this->allowsRecord(
+            $user,
+            $record,
+            static::VIEW ?? static::VIEW_ANY,
+        );
     }
 
     public function create(User $user): bool
@@ -44,12 +49,12 @@ abstract class PermissionPolicy
 
     public function update(User $user, Model $record): bool
     {
-        return $this->allows($user, static::UPDATE);
+        return $this->allowsMutation($user, $record, static::UPDATE);
     }
 
     public function delete(User $user, Model $record): bool
     {
-        return $this->allows($user, static::DELETE);
+        return $this->allowsRecord($user, $record, static::DELETE);
     }
 
     public function deleteAny(User $user): bool
@@ -59,7 +64,7 @@ abstract class PermissionPolicy
 
     public function restore(User $user, Model $record): bool
     {
-        return $this->allows($user, static::RESTORE);
+        return $this->allowsRecord($user, $record, static::RESTORE);
     }
 
     public function restoreAny(User $user): bool
@@ -69,7 +74,7 @@ abstract class PermissionPolicy
 
     public function forceDelete(User $user, Model $record): bool
     {
-        return $this->allows($user, static::FORCE_DELETE);
+        return $this->allowsRecord($user, $record, static::FORCE_DELETE);
     }
 
     public function forceDeleteAny(User $user): bool
@@ -79,7 +84,7 @@ abstract class PermissionPolicy
 
     public function replicate(User $user, Model $record): bool
     {
-        return $this->allows($user, static::REPLICATE);
+        return $this->allowsRecord($user, $record, static::REPLICATE);
     }
 
     public function reorder(User $user): bool
@@ -91,5 +96,26 @@ abstract class PermissionPolicy
     {
         return $permission !== null
             && $user->can($permission->value);
+    }
+
+    protected function allowsRecord(
+        User $user,
+        Model $record,
+        ?PermissionName $permission,
+    ): bool {
+        return $this->allows($user, $permission)
+            && app(AccessScopeService::class)->allows($user, $record);
+    }
+
+    protected function allowsMutation(
+        User $user,
+        Model $record,
+        ?PermissionName $permission,
+    ): bool {
+        $accessScopes = app(AccessScopeService::class);
+
+        return $this->allows($user, $permission)
+            && $accessScopes->allows($user, $record)
+            && $accessScopes->allowsAttributes($user, $record);
     }
 }

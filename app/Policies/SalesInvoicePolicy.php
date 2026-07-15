@@ -31,17 +31,17 @@ class SalesInvoicePolicy extends PermissionPolicy
     public function confirm(User $user, SalesInvoice $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::SALES_INVOICES_CONFIRM);
+            && $this->allowsMutation($user, $record, PermissionName::SALES_INVOICES_CONFIRM);
     }
 
     public function cancel(User $user, SalesInvoice $record): bool
     {
         return $record->isConfirmed()
-            && $this->allows($user, PermissionName::SALES_INVOICES_CANCEL);
+            && $this->allowsMutation($user, $record, PermissionName::SALES_INVOICES_CANCEL);
     }
 
     public function print(User $user, SalesInvoice $record): bool
     {
-        return $this->allows($user, PermissionName::SALES_INVOICES_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::SALES_INVOICES_PRINT);
     }
 }

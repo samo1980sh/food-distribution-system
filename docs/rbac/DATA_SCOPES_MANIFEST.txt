@@ -1,0 +1,55 @@
+ROLE DATA SCOPES - MANIFEST
+================================
+
+Baseline:
+- e24247a Build professional RBAC foundation
+
+New architecture:
+- Four user scope assignment tables
+- Central AccessScopeService
+- Request-scoped effective scope cache
+- Global Eloquent scopes for scoped models
+- Record-level Policy enforcement
+- Mutation-level Policy enforcement
+- Save observer for cross-scope payloads
+- Scope-aware Dashboard and report caches
+- Employee/User role consistency on employee linking
+
+New files:
+- app/Providers/AccessScopeServiceProvider.php
+- app/Services/Authorization/AccessScopeService.php
+- app/Services/Authorization/UserScopeAssignmentService.php
+- app/Support/Authorization/EffectiveAccessScope.php
+- app/Support/Authorization/ScopedModelObserver.php
+- app/Support/Authorization/ScopedModelRegistry.php
+- database/migrations/2026_07_15_150000_create_user_access_scope_tables.php
+- tests/Feature/RoleDataScopeTest.php
+- docs/rbac/DATA_SCOPES_AR.md
+- docs/rbac/DATA_SCOPES_INSTALL_AR.md
+- docs/rbac/DATA_SCOPES_MANIFEST.txt
+- scripts/data-scopes-git-add.ps1
+
+Modified areas:
+- User and Employee models
+- User and Employee Filament forms/actions
+- PermissionPolicy and operational document policies
+- Dashboard service
+- Top customer, overdue customer, and route performance services
+- bootstrap/providers.php
+
+Migration compatibility:
+- Existing supervisors receive all current areas and warehouses.
+- Existing warehouse keepers receive all current warehouses.
+- New restricted users default to no scoped records until assigned.
+
+Static validation completed in package build:
+- PHP syntax lint for the complete bundled project.
+- New/modified class reference checks.
+- Trailing whitespace scan.
+- ZIP integrity verification.
+
+Runtime validation required locally:
+- RoleDataScopeTest
+- RbacFoundationTest
+- Full Laravel test suite
+- Manual role checks

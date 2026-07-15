@@ -31,17 +31,17 @@ class VehicleLoadPolicy extends PermissionPolicy
     public function approve(User $user, VehicleLoad $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::VEHICLE_LOADS_APPROVE);
+            && $this->allowsMutation($user, $record, PermissionName::VEHICLE_LOADS_APPROVE);
     }
 
     public function cancel(User $user, VehicleLoad $record): bool
     {
         return $record->isApproved()
-            && $this->allows($user, PermissionName::VEHICLE_LOADS_CANCEL);
+            && $this->allowsMutation($user, $record, PermissionName::VEHICLE_LOADS_CANCEL);
     }
 
     public function print(User $user, VehicleLoad $record): bool
     {
-        return $this->allows($user, PermissionName::VEHICLE_LOADS_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::VEHICLE_LOADS_PRINT);
     }
 }

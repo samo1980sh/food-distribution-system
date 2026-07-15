@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\Permission\Models\Role;
@@ -59,6 +60,7 @@ class UserForm
                     ->multiple()
                     ->maxItems(1)
                     ->required()
+                    ->live()
                     ->preload()
                     ->searchable()
                     ->native(false)
@@ -71,6 +73,54 @@ class UserForm
                             ? 'لا يمكن تغيير دور آخر مدير نظام فعّال.'
                             : 'لا يمكن للمستخدم تغيير دوره بنفسه.',
                     ),
+
+                Select::make('accessAreas')
+                    ->label('المناطق المسموح بها')
+                    ->relationship('accessAreas', 'name_ar')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => self::selectedRole($get) === UserRole::SUPERVISOR)
+                    ->helperText('تمنح المنطقة جميع خطوطها وعملائها وسياراتها للمشرف.')
+                    ->columnSpanFull(),
+
+                Select::make('accessRoutes')
+                    ->label('خطوط التوزيع الإضافية')
+                    ->relationship('accessRoutes', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => self::selectedRole($get) === UserRole::SUPERVISOR)
+                    ->helperText('تُضاف هذه الخطوط إلى الخطوط المشتقة من المناطق المحددة.')
+                    ->columnSpanFull(),
+
+                Select::make('accessVehicles')
+                    ->label('السيارات الإضافية')
+                    ->relationship('accessVehicles', 'plate_number')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => self::selectedRole($get) === UserRole::SUPERVISOR)
+                    ->helperText('استخدمها عند الحاجة لمنح المشرف سيارة خارج خطوطه الأساسية.')
+                    ->columnSpanFull(),
+
+                Select::make('accessWarehouses')
+                    ->label('المستودعات المسموح بها')
+                    ->relationship('accessWarehouses', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->visible(fn (Get $get): bool => in_array(
+                        self::selectedRole($get),
+                        [UserRole::SUPERVISOR, UserRole::WAREHOUSE_KEEPER],
+                        true,
+                    ))
+                    ->helperText('يجب تعيين مستودعات المصدر والوجهة التي يحتاج المستخدم للعمل عليها.')
+                    ->columnSpanFull(),
 
                 Select::make('status')
                     ->label('الحالة')
@@ -101,5 +151,20 @@ class UserForm
                     ->helperText('اتركها فارغة عند التعديل إذا لم ترغب بتغيير كلمة المرور.')
                     ->columnSpanFull(),
             ]);
+    }
+
+    private static function selectedRole(Get $get): ?UserRole
+    {
+        $roleId = collect((array) $get('roles'))->first();
+
+        if ($roleId === null) {
+            return null;
+        }
+
+        $roleName = Role::query()
+            ->whereKey($roleId)
+            ->value('name');
+
+        return UserRole::tryFrom((string) $roleName);
     }
 }

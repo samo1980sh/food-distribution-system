@@ -31,23 +31,23 @@ class DailyClosingPolicy extends PermissionPolicy
     public function refreshTotals(User $user, DailyClosing $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS);
+            && $this->allowsMutation($user, $record, PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS);
     }
 
     public function confirm(User $user, DailyClosing $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::DAILY_CLOSINGS_CONFIRM);
+            && $this->allowsMutation($user, $record, PermissionName::DAILY_CLOSINGS_CONFIRM);
     }
 
     public function cancel(User $user, DailyClosing $record): bool
     {
         return $record->isConfirmed()
-            && $this->allows($user, PermissionName::DAILY_CLOSINGS_CANCEL);
+            && $this->allowsMutation($user, $record, PermissionName::DAILY_CLOSINGS_CANCEL);
     }
 
     public function print(User $user, DailyClosing $record): bool
     {
-        return $this->allows($user, PermissionName::DAILY_CLOSINGS_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::DAILY_CLOSINGS_PRINT);
     }
 }

@@ -14,6 +14,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
+use App\Services\Authorization\AccessScopeService;
 use App\Services\Reports\OverdueCustomerReportService;
 use App\Services\Reports\ProfitReportQuery;
 use App\Services\Reports\RoutePerformanceReportService;
@@ -52,7 +53,9 @@ class ExecutiveDashboardService
 
         $today = $date->toDateString();
         $monthFrom = $date->copy()->startOfMonth()->toDateString();
-        $cacheKey = $monthFrom.'|'.$today;
+        $cacheKey = app(AccessScopeService::class)->cacheKey()
+            .'|'.$monthFrom
+            .'|'.$today;
 
         if (array_key_exists($cacheKey, self::$summaryCache)) {
             return self::$summaryCache[$cacheKey];
@@ -215,7 +218,8 @@ class ExecutiveDashboardService
             : today();
 
         $from = $until->copy()->subDays($days - 1);
-        $cacheKey = $from->toDateString()
+        $cacheKey = app(AccessScopeService::class)->cacheKey()
+            .'|'.$from->toDateString()
             .'|'.$until->toDateString()
             .'|'.$days;
 
@@ -320,7 +324,9 @@ class ExecutiveDashboardService
 
         $from = $date->copy()->startOfMonth()->toDateString();
         $until = $date->toDateString();
-        $cacheKey = $from.'|'.$until;
+        $cacheKey = app(AccessScopeService::class)->cacheKey($user)
+            .'|'.$from
+            .'|'.$until;
 
         if (array_key_exists($cacheKey, self::$rankingCache)) {
             return self::$rankingCache[$cacheKey];
@@ -415,7 +421,8 @@ class ExecutiveDashboardService
         }
 
         $limit = min(max($limit, 5), 20);
-        $cacheKey = $user->getKey().'|'.$limit;
+        $cacheKey = app(AccessScopeService::class)->cacheKey($user)
+            .'|'.$limit;
 
         if (array_key_exists($cacheKey, self::$activityCache)) {
             return self::$activityCache[$cacheKey];
@@ -647,7 +654,8 @@ class ExecutiveDashboardService
             : today();
 
         $today = $date->toDateString();
-        $cacheKey = $user->getKey().'|'.$today;
+        $cacheKey = app(AccessScopeService::class)->cacheKey($user)
+            .'|'.$today;
 
         if (array_key_exists($cacheKey, self::$followUpCache)) {
             return self::$followUpCache[$cacheKey];
@@ -797,7 +805,10 @@ class ExecutiveDashboardService
         }
 
         if ($user->canManageInventory()) {
-            DB::table('stock_balances')
+            app(AccessScopeService::class)->applyToTable(
+                DB::table('stock_balances'),
+                'stock_balances',
+            )
                 ->join(
                     'warehouses',
                     'warehouses.id',
@@ -928,7 +939,10 @@ class ExecutiveDashboardService
         }
 
         if ($user->canManageInventory()) {
-            $expiryRisk = DB::table('stock_balances')
+            $expiryRisk = app(AccessScopeService::class)->applyToTable(
+                DB::table('stock_balances'),
+                'stock_balances',
+            )
                 ->join(
                     'products',
                     'products.id',
@@ -961,12 +975,15 @@ class ExecutiveDashboardService
                 ];
             }
 
-            $stockTotals = DB::table('stock_balances')
+            $stockTotals = app(AccessScopeService::class)->applyToTable(
+                DB::table('stock_balances'),
+                'stock_balances',
+            )
                 ->select('product_id')
                 ->selectRaw('SUM(quantity) as total_quantity')
                 ->groupBy('product_id');
 
-            $lowStock = DB::table('products')
+            $lowStockQuery = DB::table('products')
                 ->leftJoinSub(
                     $stockTotals,
                     'stock_totals',
@@ -978,8 +995,13 @@ class ExecutiveDashboardService
                 ->where('products.min_stock', '>', 0)
                 ->whereRaw(
                     'COALESCE(stock_totals.total_quantity, 0) <= products.min_stock'
-                )
-                ->count();
+                );
+
+            if (! app(AccessScopeService::class)->for($user)->unrestricted) {
+                $lowStockQuery->whereNotNull('stock_totals.product_id');
+            }
+
+            $lowStock = $lowStockQuery->count();
 
             if ($lowStock > 0) {
                 $alerts[] = [
@@ -1190,7 +1212,10 @@ class ExecutiveDashboardService
         string $until,
         string $status,
     ): array {
-        return DB::table($table)
+        return app(AccessScopeService::class)->applyToTable(
+            DB::table($table),
+            $table,
+        )
             ->select($dateColumn)
             ->selectRaw(
                 "SUM({$amountColumn}) as aggregate"

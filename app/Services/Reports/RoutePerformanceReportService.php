@@ -9,6 +9,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
+use App\Services\Authorization\AccessScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -95,7 +96,10 @@ class RoutePerformanceReportService
     public function rankings(array $settings = []): Collection
     {
         $settings = $this->normalizeSettings($settings);
-        $key = sha1(json_encode($settings) ?: '');
+        $key = sha1(json_encode([
+            'scope' => app(AccessScopeService::class)->cacheKey(),
+            'settings' => $settings,
+        ]) ?: '');
 
         if (isset(self::$cache[$key])) {
             return self::$cache[$key];

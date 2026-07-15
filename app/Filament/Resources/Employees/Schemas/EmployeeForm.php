@@ -5,7 +5,9 @@ namespace App\Filament\Resources\Employees\Schemas;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class EmployeeForm
 {
@@ -30,11 +32,21 @@ class EmployeeForm
                     ])
                     ->default('driver')
                     ->required()
+                    ->live()
                     ->native(false),
 
                 Select::make('user_id')
                     ->label('حساب المستخدم')
-                    ->relationship('user', 'name')
+                    ->relationship(
+                        'user',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->when(
+                                self::roleForEmployeeType($get('type')),
+                                fn (Builder $query, string $role): Builder => $query->role($role),
+                                fn (Builder $query): Builder => $query->whereRaw('1 = 0'),
+                            ),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
@@ -51,5 +63,17 @@ class EmployeeForm
 
                 Textarea::make('notes')->label('ملاحظات')->columnSpanFull(),
             ]);
+    }
+
+    private static function roleForEmployeeType(?string $type): ?string
+    {
+        return match ($type) {
+            'driver' => 'driver',
+            'sales_representative' => 'sales_representative',
+            'warehouse_keeper' => 'warehouse_keeper',
+            'accountant' => 'accountant',
+            'supervisor' => 'supervisor',
+            default => null,
+        };
     }
 }

@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -102,6 +103,38 @@ class User extends Authenticatable implements FilamentUser
     public function employee(): HasOne
     {
         return $this->hasOne(Employee::class);
+    }
+
+    public function accessAreas(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Area::class,
+            'user_area_scopes',
+        )->withTimestamps();
+    }
+
+    public function accessRoutes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            DistributionRoute::class,
+            'user_route_scopes',
+        )->withTimestamps();
+    }
+
+    public function accessVehicles(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Vehicle::class,
+            'user_vehicle_scopes',
+        )->withTimestamps();
+    }
+
+    public function accessWarehouses(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Warehouse::class,
+            'user_warehouse_scopes',
+        )->withTimestamps();
     }
 
     public function canAccessPanel(Panel $panel): bool

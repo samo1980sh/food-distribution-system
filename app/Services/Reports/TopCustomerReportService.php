@@ -7,6 +7,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
+use App\Services\Authorization\AccessScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -27,7 +28,10 @@ class TopCustomerReportService
         $cacheKey = hash(
             'sha256',
             json_encode(
-                $settings,
+                [
+                    'scope' => app(AccessScopeService::class)->cacheKey(),
+                    'settings' => $settings,
+                ],
                 JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
             ) ?: '',
         );

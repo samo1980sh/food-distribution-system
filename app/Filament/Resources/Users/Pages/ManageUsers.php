@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Users\Pages;
 
 use App\Filament\Resources\Users\UserResource;
+use App\Models\User;
+use App\Services\Authorization\UserScopeAssignmentService;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
@@ -17,7 +19,8 @@ class ManageUsers extends ManageRecords
                 ->visible(fn (): bool => UserResource::canCreate())
                 ->label('إضافة مستخدم')
                 ->modalHeading('إضافة مستخدم')
-                ->slideOver(),
+                ->slideOver()
+                ->after(fn (User $record) => app(UserScopeAssignmentService::class)->normalize($record)),
         ];
     }
 }

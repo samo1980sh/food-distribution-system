@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\Authorization\UserScopeAssignmentService;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -88,7 +89,8 @@ class UsersTable
                     )
                     ->label('تعديل')
                     ->modalHeading('تعديل مستخدم')
-                    ->slideOver(),
+                    ->slideOver()
+                    ->after(fn (User $record) => app(UserScopeAssignmentService::class)->normalize($record)),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');

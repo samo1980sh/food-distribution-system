@@ -31,17 +31,17 @@ class VehicleExpensePolicy extends PermissionPolicy
     public function approve(User $user, VehicleExpense $record): bool
     {
         return $record->isPending()
-            && $this->allows($user, PermissionName::VEHICLE_EXPENSES_APPROVE);
+            && $this->allowsMutation($user, $record, PermissionName::VEHICLE_EXPENSES_APPROVE);
     }
 
     public function reject(User $user, VehicleExpense $record): bool
     {
         return $record->isPending()
-            && $this->allows($user, PermissionName::VEHICLE_EXPENSES_REJECT);
+            && $this->allowsMutation($user, $record, PermissionName::VEHICLE_EXPENSES_REJECT);
     }
 
     public function print(User $user, VehicleExpense $record): bool
     {
-        return $this->allows($user, PermissionName::VEHICLE_EXPENSES_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::VEHICLE_EXPENSES_PRINT);
     }
 }

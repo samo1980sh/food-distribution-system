@@ -31,17 +31,17 @@ class CustomerPaymentPolicy extends PermissionPolicy
     public function confirm(User $user, CustomerPayment $record): bool
     {
         return $record->isDraft()
-            && $this->allows($user, PermissionName::CUSTOMER_PAYMENTS_CONFIRM);
+            && $this->allowsMutation($user, $record, PermissionName::CUSTOMER_PAYMENTS_CONFIRM);
     }
 
     public function cancel(User $user, CustomerPayment $record): bool
     {
         return $record->isConfirmed()
-            && $this->allows($user, PermissionName::CUSTOMER_PAYMENTS_CANCEL);
+            && $this->allowsMutation($user, $record, PermissionName::CUSTOMER_PAYMENTS_CANCEL);
     }
 
     public function print(User $user, CustomerPayment $record): bool
     {
-        return $this->allows($user, PermissionName::CUSTOMER_PAYMENTS_PRINT);
+        return $this->allowsRecord($user, $record, PermissionName::CUSTOMER_PAYMENTS_PRINT);
     }
 }
