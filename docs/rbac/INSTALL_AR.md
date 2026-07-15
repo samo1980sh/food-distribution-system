@@ -45,7 +45,7 @@ php artisan optimize:clear
 النتيجة المتوقعة:
 
 - 7 أدوار.
-- 105 صلاحيات.
+- 106 صلاحيات، منها `api.access`.
 - حذف عمود `users.role` القديم بعد ترحيل المستخدمين.
 - كل مستخدم حالي يحتفظ بدوره المقابل.
 - قيد unique على `employees.user_id`.
@@ -85,8 +85,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\rbac-git-add.ps1
 - لا تضف `vendor` أو `.env` أو ملفات ZIP إلى Git.
 - لا تشغّل `filament:upgrade` ضمن هذا التغيير؛ لا توجد حاجة لتحديث أصول Filament.
 - لا تستخدم `composer update --with-all-dependencies` لأنه يحدّث Laravel وحزمًا أخرى خارج نطاق RBAC.
-- السائق والمندوب مجهزان كأدوار، لكنهما لا يدخلان لوحة Filament حاليًا؛ سيتم استخدامهما لاحقًا عبر API وتطبيق Flutter.
-- طبقة تقييد البيانات حسب المنطقة والخط والمستودع والسيارة ستنفذ في المرحلة التالية.
+- السائق والمندوب لا يدخلان لوحة Filament، ويستخدمان Mobile API عبر Sanctum وفق الصلاحيات والنطاقات نفسها.
+- طبقة تقييد البيانات حسب المنطقة والخط والمستودع والسيارة منفذة في Role Data Scopes.
 
 ## التراجع
 

@@ -5,6 +5,7 @@ namespace App\Enums;
 enum PermissionName: string
 {
     case ADMIN_ACCESS = 'admin.access';
+    case API_ACCESS = 'api.access';
     case DASHBOARD_VIEW = 'dashboard.view';
     case DASHBOARD_FINANCIAL = 'dashboard.financial';
     case DASHBOARD_OPERATIONAL = 'dashboard.operational';

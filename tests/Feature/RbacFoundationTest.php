@@ -78,6 +78,9 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $driver->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
         );
+        $this->assertTrue(
+            $driver->can(PermissionName::API_ACCESS->value),
+        );
     }
 
     public function test_inactive_super_admin_is_denied_by_the_global_gate(): void

@@ -15,6 +15,7 @@ final class RolePermissionMap
             UserRole::MANAGER->value => P::values(),
             UserRole::SUPERVISOR->value => self::values([
                 P::ADMIN_ACCESS,
+                P::API_ACCESS,
                 P::DASHBOARD_VIEW,
                 P::DASHBOARD_FINANCIAL,
                 P::DASHBOARD_OPERATIONAL,
@@ -73,6 +74,7 @@ final class RolePermissionMap
             ]),
             UserRole::WAREHOUSE_KEEPER->value => self::values([
                 P::ADMIN_ACCESS,
+                P::API_ACCESS,
                 P::DASHBOARD_VIEW,
                 P::DASHBOARD_OPERATIONAL,
                 P::PRODUCT_CATEGORIES_VIEW,
@@ -96,6 +98,7 @@ final class RolePermissionMap
             ]),
             UserRole::ACCOUNTANT->value => self::values([
                 P::ADMIN_ACCESS,
+                P::API_ACCESS,
                 P::DASHBOARD_VIEW,
                 P::DASHBOARD_FINANCIAL,
                 P::CUSTOMERS_VIEW,
@@ -129,6 +132,7 @@ final class RolePermissionMap
                 P::REPORT_ROUTE_PERFORMANCE,
             ]),
             UserRole::SALES_REPRESENTATIVE->value => self::values([
+                P::API_ACCESS,
                 P::CUSTOMERS_VIEW,
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
@@ -146,6 +150,7 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_UPDATE,
             ]),
             UserRole::DRIVER->value => self::values([
+                P::API_ACCESS,
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
                 P::VEHICLE_EXPENSES_VIEW,

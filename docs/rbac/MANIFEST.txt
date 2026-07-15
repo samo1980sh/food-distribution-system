@@ -48,7 +48,7 @@ Final authorization notes:
 
 Database result verified:
 - 7 roles
-- 105 permissions
+- 106 permissions, including api.access
 - no users without roles
 - legacy users.role column removed
 

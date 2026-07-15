@@ -13,12 +13,13 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
     use HasRoles {
         hasPermissionTo as private hasPermissionToThroughRoles;
     }
@@ -89,6 +90,16 @@ class User extends Authenticatable implements FilamentUser
             }
 
             $user->pendingLegacyRole = null;
+        });
+
+        static::updated(function (self $user): void {
+            $accountWasDisabled = $user->wasChanged('status')
+                && ! $user->isActive();
+            $passwordWasChanged = $user->wasChanged('password');
+
+            if ($accountWasDisabled || $passwordWasChanged) {
+                $user->tokens()->delete();
+            }
         });
     }
 

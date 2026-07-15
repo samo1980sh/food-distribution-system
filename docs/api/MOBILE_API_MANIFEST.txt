@@ -1,0 +1,57 @@
+MOBILE API FOUNDATION - MANIFEST
+================================
+
+Baseline:
+- 8f014c6 Add role-based data access scopes
+
+Core changes:
+- Add api.access permission to PermissionName and RolePermissionMap
+- Add Laravel Sanctum HasApiTokens to User
+- Add /api/v1 versioned routes
+- Add login, me/bootstrap, session management, logout, and logout-all
+- Add device metadata and expiration support for personal access tokens
+- Revoke all mobile tokens immediately when a user is disabled or changes password
+- Add API access, token touch, and API version middleware
+- Add named login/API rate limiters
+- Schedule daily Sanctum expired-token pruning
+- Add standardized JSON responses and API exception rendering
+- Reuse AccessScopeService in API bootstrap
+
+New files:
+- config/mobile_api.php
+- app/Http/Controllers/Api/V1/AuthController.php
+- app/Http/Controllers/Api/V1/HealthController.php
+- app/Http/Middleware/AddMobileApiHeaders.php
+- app/Http/Middleware/EnsureMobileApiAccess.php
+- app/Http/Middleware/TouchMobileApiToken.php
+- app/Http/Requests/Api/V1/Auth/LoginRequest.php
+- app/Http/Resources/Api/V1/*
+- app/Providers/MobileApiServiceProvider.php
+- app/Services/Api/MobileBootstrapService.php
+- app/Services/Api/MobileTokenService.php
+- app/Support/Api/ApiResponse.php
+- database/migrations/2026_07_15_180000_add_mobile_metadata_to_personal_access_tokens.php
+- tests/Feature/Api/MobileApiFoundationTest.php
+- docs/api/*
+- scripts/mobile-api-git-add.ps1
+
+Modified files:
+- .env.example
+- app/Enums/PermissionName.php
+- app/Models/User.php
+- app/Support/Authorization/RolePermissionMap.php
+- bootstrap/app.php
+- bootstrap/providers.php
+- routes/api.php
+- routes/console.php
+- tests/Feature/RbacFoundationTest.php
+- docs/rbac/INSTALL_AR.md
+- docs/rbac/MANIFEST.txt
+- docs/rbac/ROLE_MATRIX_AR.md
+
+Excluded:
+- .env
+- vendor/
+- storage logs/cache
+- generated public assets
+- ZIP files
