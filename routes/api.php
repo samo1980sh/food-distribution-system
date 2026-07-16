@@ -61,6 +61,8 @@ Route::prefix('v1')
                         ->name('sync.status');
                     Route::post('/sync/pull', [MobileSyncController::class, 'pull'])
                         ->name('sync.pull');
+                    Route::post('/sync/push', [MobileSyncController::class, 'push'])
+                        ->name('sync.push');
 
                     Route::apiResource('routes', OperationalRouteController::class)
                         ->only(['index', 'show'])

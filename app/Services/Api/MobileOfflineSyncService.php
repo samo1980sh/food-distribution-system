@@ -18,6 +18,7 @@ class MobileOfflineSyncService
     public function __construct(
         private readonly MobileSyncContextService $contextService,
         private readonly MobileSyncScopeService $scopeService,
+        private readonly MobileSyncVersionService $versionService,
     ) {
     }
 
@@ -54,6 +55,9 @@ class MobileOfflineSyncService
                 'default_pull' => (int) config('mobile_api.sync_default_pull_limit', 200),
                 'max_pull' => (int) config('mobile_api.sync_max_pull_limit', 500),
                 'retention_days' => (int) config('mobile_api.sync_retention_days', 90),
+                'max_push_operations' => (int) config('mobile_api.sync_max_push_operations', 50),
+                'max_push_operation_kb' => (int) config('mobile_api.sync_max_push_operation_kb', 256),
+                'push_processing_timeout_seconds' => (int) config('mobile_api.sync_push_processing_timeout_seconds', 300),
             ],
             'entities' => MobileSyncEntityRegistry::entities(),
         ];
@@ -184,7 +188,7 @@ class MobileOfflineSyncService
             'entity' => $entity,
             'operation' => 'upsert',
             'record_id' => (int) $record->getKey(),
-            'version' => $this->iso($record->getAttribute('updated_at')),
+            'version' => $this->versionService->forRecord($entity, $record),
             'record' => $resourceClass::make($record)->resolve($request),
             'changed_at' => $this->iso($change->changed_at),
         ];

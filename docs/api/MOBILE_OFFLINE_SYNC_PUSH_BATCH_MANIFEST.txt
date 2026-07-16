@@ -1,0 +1,57 @@
+Mobile Offline Sync Push Batch + Conflict Handling — Phase 2
+Base commit: 5761a38 Add mobile offline sync foundation
+
+Modified:
+- .env.example
+- app/Http/Controllers/Api/V1/Operational/MobileSyncController.php
+- app/Http/Controllers/Api/V1/Operational/OperationalBootstrapController.php
+- app/Services/Api/MobileOfflineSyncService.php
+- app/Support/Api/MobileSyncEntityRegistry.php
+- config/mobile_api.php
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_INSTALL_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_MANIFEST.txt
+- docs/api/MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md
+- docs/api/openapi.yaml
+- routes/api.php
+- tests/Feature/Api/MobileOfflineSyncFoundationTest.php
+
+Added:
+- app/Http/Requests/Api/V1/Operational/MobileSyncPushRequest.php
+- app/Models/MobileSyncPushBatch.php
+- app/Models/MobileSyncPushOperation.php
+- app/Services/Api/MobileSyncPushOperationService.php
+- app/Services/Api/MobileSyncPushRequestValidator.php
+- app/Services/Api/MobileSyncPushService.php
+- app/Services/Api/MobileSyncVersionService.php
+- app/Support/Api/MobileSyncPushRegistry.php
+- database/migrations/2026_07_16_190000_create_mobile_sync_push_tables.php
+- docs/api/MOBILE_OFFLINE_SYNC_PUSH_BATCH_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_PUSH_BATCH_INSTALL_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_PUSH_BATCH_MANIFEST.txt
+- scripts/mobile-offline-sync-push-batch-git-add.ps1
+- tests/Feature/Api/MobileOfflineSyncPushBatchTest.php
+
+Database:
+- Creates mobile_sync_push_batches.
+- Creates mobile_sync_push_operations.
+- Enforces per-user/per-device batch_id and operation_id uniqueness.
+
+API:
+- POST /api/v1/operational/sync/push.
+- Ordered partial-success batch processing.
+- Batch and operation idempotency.
+- Opaque cursor version tokens and base_version optimistic conflict detection.
+- Server-wins pull-then-retry conflict contract.
+- Reuses existing write validation, policies, scopes, and business services.
+
+Limits:
+- MOBILE_API_SYNC_MAX_PUSH_OPERATIONS=50.
+- MOBILE_API_SYNC_MAX_PUSH_OPERATION_KB=256.
+- MOBILE_API_SYNC_PUSH_PROCESSING_TIMEOUT_SECONDS=300.
+
+Tests:
+- Adds focused Push Batch feature coverage.
+- Updates the offline-sync bootstrap contract test.
+
+No new role or permission is added.

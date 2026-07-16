@@ -57,7 +57,7 @@ POST /api/v1/operational/sync/pull
   "entity": "sales_invoices",
   "operation": "upsert",
   "record_id": 44,
-  "version": "2026-07-16T14:00:00+03:00",
+  "version": "c:120",
   "record": {},
   "changed_at": "2026-07-16T14:00:01+03:00"
 }
@@ -122,14 +122,15 @@ errors.sync.cursor: 0
 
 ## الكتابة أثناء Offline
 
-في هذه المرحلة يخزن تطبيق Flutter عمليات الكتابة محليًا ويرسلها بالتسلسل عند عودة الاتصال عبر مسارات الكتابة الحالية.
+بعد إضافة مرحلة Push Batch يستطيع تطبيق Flutter إرسال قائمة العمليات المحلية دفعة واحدة إلى:
 
 ```text
-push_mode: rest_idempotent
-batch_push_supported: false
+POST /api/v1/operational/sync/push
+push_mode: batch_idempotent
+batch_push_supported: true
 ```
 
-إنشاء المستندات آمن لإعادة المحاولة بواسطة `client_reference`. Batch Push وحل تعارضات التعديل المتقدمة مؤجلان لمرحلة لاحقة.
+يستخدم كل طلب `batch_id` ثابتًا، وكل عملية `operation_id` ثابتًا، وتبقى عمليات الإنشاء محمية أيضًا بواسطة `client_reference`. عمليات التعديل والحذف والاعتماد ترسل `base_version` لكشف التعارض قبل الكتابة فوق نسخة أحدث على الخادم.
 
 ## الكيانات المشمولة
 

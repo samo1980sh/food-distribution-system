@@ -43,6 +43,21 @@ return [
         90,
     ),
 
+    'sync_max_push_operations' => (int) env(
+        'MOBILE_API_SYNC_MAX_PUSH_OPERATIONS',
+        50,
+    ),
+
+    'sync_max_push_operation_kb' => (int) env(
+        'MOBILE_API_SYNC_MAX_PUSH_OPERATION_KB',
+        256,
+    ),
+
+    'sync_push_processing_timeout_seconds' => (int) env(
+        'MOBILE_API_SYNC_PUSH_PROCESSING_TIMEOUT_SECONDS',
+        300,
+    ),
+
     'expense_receipt_max_kb' => (int) env(
         'MOBILE_API_EXPENSE_RECEIPT_MAX_KB',
         5120,

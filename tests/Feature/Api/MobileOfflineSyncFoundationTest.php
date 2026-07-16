@@ -71,7 +71,9 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->assertJsonPath('data.sync.supports_cursor_pull', true)
             ->assertJsonPath('data.sync.supports_deleted_records', true)
             ->assertJsonPath('data.sync.offline_queue_supported', true)
-            ->assertJsonPath('data.sync.push_mode', 'rest_idempotent');
+            ->assertJsonPath('data.sync.push_mode', 'batch_idempotent')
+            ->assertJsonPath('data.sync.batch_push_supported', true)
+            ->assertJsonPath('data.sync.endpoints.push', '/api/v1/operational/sync/push');
 
         $contextKey = (string) $bootstrap->json('data.sync.context_key');
         $this->assertSame(64, strlen($contextKey));
@@ -80,7 +82,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->getJson('/api/v1/operational/sync/status')
             ->assertOk()
             ->assertJsonPath('data.context_key', $contextKey)
-            ->assertJsonPath('data.registry_version', 1)
+            ->assertJsonPath('data.registry_version', 2)
             ->assertJsonPath('data.device.device_id', 'sync-device-bootstrap')
             ->assertJsonPath('data.reset_required', false);
     }

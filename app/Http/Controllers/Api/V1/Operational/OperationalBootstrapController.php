@@ -114,11 +114,14 @@ class OperationalBootstrapController extends Controller
                 'supports_deleted_records' => true,
                 'write_api_enabled' => true,
                 'offline_queue_supported' => true,
-                'push_mode' => 'rest_idempotent',
-                'batch_push_supported' => false,
+                'push_mode' => 'batch_idempotent',
+                'batch_push_supported' => true,
+                'conflict_strategy' => 'server_wins_pull_then_retry',
+                'max_push_operations' => (int) config('mobile_api.sync_max_push_operations', 50),
                 'endpoints' => [
                     'status' => '/api/v1/operational/sync/status',
                     'pull' => '/api/v1/operational/sync/pull',
+                    'push' => '/api/v1/operational/sync/push',
                 ],
             ],
             'today' => [

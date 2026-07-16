@@ -33,11 +33,12 @@ php artisan optimize:clear
 php artisan route:list --path=api/v1/operational/sync
 ```
 
-المتوقع مساران:
+بعد تركيب Push Batch يصبح المتوقع ثلاثة مسارات:
 
 ```text
 GET|HEAD api/v1/operational/sync/status
 POST     api/v1/operational/sync/pull
+POST     api/v1/operational/sync/push
 ```
 
 ## الاختبارات
@@ -58,6 +59,9 @@ git status --short
 MOBILE_API_SYNC_DEFAULT_PULL_LIMIT=200
 MOBILE_API_SYNC_MAX_PULL_LIMIT=500
 MOBILE_API_SYNC_RETENTION_DAYS=90
+MOBILE_API_SYNC_MAX_PUSH_OPERATIONS=50
+MOBILE_API_SYNC_MAX_PUSH_OPERATION_KB=256
+MOBILE_API_SYNC_PUSH_PROCESSING_TIMEOUT_SECONDS=300
 ```
 
 ## فحص أمر Compaction

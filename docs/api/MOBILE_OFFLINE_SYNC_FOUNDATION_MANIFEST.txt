@@ -56,7 +56,7 @@ API:
 - Cursor-based scoped full/incremental pull.
 - Context reset and expired-cursor reset contracts.
 - Tombstones, cascade-delete capture, and surviving-record refreshes.
-- REST idempotent outbound queue contract; no batch push yet.
+- The foundation is extended by Push Batch Phase 2 with operation idempotency and version conflicts.
 
 Maintenance:
 - mobile-sync:prune is dry-run by default.
