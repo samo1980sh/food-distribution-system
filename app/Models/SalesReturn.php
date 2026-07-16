@@ -26,6 +26,8 @@ class SalesReturn extends Model
         'total_amount',
         'notes',
         'created_by',
+        'client_reference',
+        'client_payload_hash',
         'confirmed_by',
         'confirmed_at',
     ];

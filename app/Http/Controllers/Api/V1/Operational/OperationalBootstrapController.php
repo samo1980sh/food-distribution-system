@@ -17,6 +17,7 @@ use App\Models\StockBalance;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,39 @@ class OperationalBootstrapController extends Controller
                 'vehicles' => VehicleResource::collection($vehicles)->resolve($request),
                 'warehouses' => WarehouseResource::collection($warehouses)->resolve($request),
             ],
+            'write' => [
+                'enabled' => true,
+                'idempotent_create' => true,
+                'client_reference_required' => true,
+                'sales_invoices' => $this->writeCapabilities($user, SalesInvoice::class, [
+                    'confirm' => PermissionName::SALES_INVOICES_CONFIRM,
+                    'cancel' => PermissionName::SALES_INVOICES_CANCEL,
+                ]),
+                'customer_payments' => $this->writeCapabilities($user, CustomerPayment::class, [
+                    'confirm' => PermissionName::CUSTOMER_PAYMENTS_CONFIRM,
+                    'cancel' => PermissionName::CUSTOMER_PAYMENTS_CANCEL,
+                ]),
+                'sales_returns' => $this->writeCapabilities($user, SalesReturn::class, [
+                    'confirm' => PermissionName::SALES_RETURNS_CONFIRM,
+                    'cancel' => PermissionName::SALES_RETURNS_CANCEL,
+                ]),
+                'vehicle_expenses' => $this->writeCapabilities($user, VehicleExpense::class, [
+                    'approve' => PermissionName::VEHICLE_EXPENSES_APPROVE,
+                    'reject' => PermissionName::VEHICLE_EXPENSES_REJECT,
+                ]),
+                'daily_closings' => $this->writeCapabilities($user, DailyClosing::class, [
+                    'refresh_totals' => PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS,
+                    'confirm' => PermissionName::DAILY_CLOSINGS_CONFIRM,
+                    'cancel' => PermissionName::DAILY_CLOSINGS_CANCEL,
+                ]),
+            ],
+            'sync' => [
+                'server_time' => now()->toIso8601String(),
+                'supports_updated_since' => true,
+                'supports_deleted_records' => false,
+                'write_api_enabled' => true,
+                'offline_queue_supported' => false,
+            ],
             'today' => [
                 'customers' => $modules['customers'] ? Customer::query()->where('status', 'active')->count() : null,
                 'stock_batches' => $modules['stock_balances'] ? StockBalance::query()->where('quantity', '>', 0)->count() : null,
@@ -80,5 +114,33 @@ class OperationalBootstrapController extends Controller
                 'daily_closings' => $modules['daily_closings'] ? DailyClosing::query()->whereDate('closing_date', $today)->count() : null,
             ],
         ], 'تم تحميل البيانات التشغيلية الأساسية.');
+    }
+
+    /**
+     * @param class-string $modelClass
+     * @param array<string, PermissionName> $actions
+     * @return array<string, bool>
+     */
+    private function writeCapabilities(
+        User $user,
+        string $modelClass,
+        array $actions,
+    ): array {
+        [$update, $delete] = match ($modelClass) {
+            SalesInvoice::class => [PermissionName::SALES_INVOICES_UPDATE, PermissionName::SALES_INVOICES_DELETE],
+            CustomerPayment::class => [PermissionName::CUSTOMER_PAYMENTS_UPDATE, PermissionName::CUSTOMER_PAYMENTS_DELETE],
+            SalesReturn::class => [PermissionName::SALES_RETURNS_UPDATE, PermissionName::SALES_RETURNS_DELETE],
+            VehicleExpense::class => [PermissionName::VEHICLE_EXPENSES_UPDATE, PermissionName::VEHICLE_EXPENSES_DELETE],
+            DailyClosing::class => [PermissionName::DAILY_CLOSINGS_UPDATE, PermissionName::DAILY_CLOSINGS_DELETE],
+        };
+
+        return [
+            'create' => $user->can('create', $modelClass),
+            'update' => $user->can($update->value),
+            'delete' => $user->can($delete->value),
+            ...collect($actions)
+                ->map(fn (PermissionName $permission): bool => $user->can($permission->value))
+                ->all(),
+        ];
     }
 }

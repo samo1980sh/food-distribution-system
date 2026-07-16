@@ -1,5 +1,55 @@
 <?php
+
 namespace App\Http\Resources\Api\V1\Operational;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-class VehicleExpenseResource extends OperationalResource { public function toArray(Request $request): array { $user=$request->user(); return ['id'=>(int)$this->id,'expense_number'=>$this->expense_number,'expense_date'=>$this->date($this->expense_date),'expense_type'=>$this->expense_type,'amount'=>$this->decimal($this->amount),'payment_method'=>$this->payment_method,'status'=>$this->status,'notes'=>$this->notes,'rejection_reason'=>$this->rejection_reason,'receipt_url'=>$this->receipt_path ? Storage::disk('public')->url($this->receipt_path) : null,'vehicle'=>$this->whenLoaded('vehicle',fn()=> $this->vehicle ? VehicleResource::make($this->vehicle)->resolve($request) : null),'warehouse'=>$this->whenLoaded('warehouse',fn()=> $this->warehouse ? WarehouseResource::make($this->warehouse)->resolve($request) : null),'route'=>$this->whenLoaded('route',fn()=> $this->route ? ['id'=>(int)$this->route->id,'code'=>$this->route->code,'name'=>$this->route->name] : null),'driver'=>$this->whenLoaded('driver',fn()=> $this->driver ? EmployeeSummaryResource::make($this->driver)->resolve($request) : null),'sales_representative'=>$this->whenLoaded('salesRepresentative',fn()=> $this->salesRepresentative ? EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request) : null),'approved_at'=>$this->dateTime($this->approved_at),'rejected_at'=>$this->dateTime($this->rejected_at),'actions'=>['can_update'=>$user?->can('update',$this->resource)??false,'can_approve'=>$user?->can('approve',$this->resource)??false,'can_reject'=>$user?->can('reject',$this->resource)??false]]; } }
+
+class VehicleExpenseResource extends OperationalResource
+{
+    public function toArray(Request $request): array
+    {
+        $user = $request->user();
+
+        return [
+            'id' => (int) $this->id,
+            'client_reference' => $this->client_reference,
+            'expense_number' => $this->expense_number,
+            'expense_date' => $this->date($this->expense_date),
+            'expense_type' => $this->expense_type,
+            'amount' => $this->decimal($this->amount),
+            'payment_method' => $this->payment_method,
+            'status' => $this->status,
+            'notes' => $this->notes,
+            'rejection_reason' => $this->rejection_reason,
+            'receipt_url' => $this->receipt_path
+                ? Storage::disk('public')->url($this->receipt_path)
+                : null,
+            'vehicle' => $this->whenLoaded('vehicle', fn () => $this->vehicle
+                ? VehicleResource::make($this->vehicle)->resolve($request)
+                : null),
+            'warehouse' => $this->whenLoaded('warehouse', fn () => $this->warehouse
+                ? WarehouseResource::make($this->warehouse)->resolve($request)
+                : null),
+            'route' => $this->whenLoaded('route', fn () => $this->route ? [
+                'id' => (int) $this->route->id,
+                'code' => $this->route->code,
+                'name' => $this->route->name,
+            ] : null),
+            'driver' => $this->whenLoaded('driver', fn () => $this->driver
+                ? EmployeeSummaryResource::make($this->driver)->resolve($request)
+                : null),
+            'sales_representative' => $this->whenLoaded('salesRepresentative', fn () => $this->salesRepresentative
+                ? EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request)
+                : null),
+            'approved_at' => $this->dateTime($this->approved_at),
+            'rejected_at' => $this->dateTime($this->rejected_at),
+            'actions' => [
+                'can_update' => $user?->can('update', $this->resource) ?? false,
+                'can_delete' => $user?->can('delete', $this->resource) ?? false,
+                'can_approve' => $user?->can('approve', $this->resource) ?? false,
+                'can_reject' => $user?->can('reject', $this->resource) ?? false,
+            ],
+        ];
+    }
+}

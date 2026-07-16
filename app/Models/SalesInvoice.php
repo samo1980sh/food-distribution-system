@@ -29,6 +29,8 @@ class SalesInvoice extends Model
         'remaining_amount',
         'notes',
         'created_by',
+        'client_reference',
+        'client_payload_hash',
         'confirmed_by',
         'confirmed_at',
     ];

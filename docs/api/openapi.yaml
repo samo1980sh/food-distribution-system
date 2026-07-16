@@ -1,10 +1,13 @@
 openapi: 3.1.0
 info:
   title: FreshRoute Mobile API
-  version: 1.1.0
-  description: Authentication, device sessions, effective access scopes, and read-only operational data for Flutter.
+  version: 1.2.0
+  description: >-
+    Device-bound authentication, effective access scopes, scoped operational reads,
+    and online operational writes for the Flutter application.
 servers:
   - url: /api/v1
+security: []
 paths:
   /health:
     get:
@@ -21,20 +24,22 @@ paths:
             schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
         '200': { description: Logged in }
-        '403': { description: Account inactive or API access denied }
-        '422': { description: Validation or credentials failure }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
   /auth/me:
     get:
       summary: Current user, permissions, and effective scope
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Bootstrap data }
+        '200': { description: Mobile bootstrap data }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
   /auth/sessions:
     get:
       summary: List current user's mobile sessions
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Session list }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
   /auth/sessions/{token}:
     delete:
       summary: Revoke one mobile session
@@ -43,7 +48,7 @@ paths:
         - { name: token, in: path, required: true, schema: { type: integer } }
       responses:
         '200': { description: Session revoked }
-        '404': { description: Session not found }
+        '404': { $ref: '#/components/responses/NotFound' }
   /auth/logout:
     post:
       summary: Logout current device
@@ -56,18 +61,25 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: All mobile tokens revoked }
+
   /operational/bootstrap:
     get:
-      summary: Available modules, assigned context, and today's scoped counters
+      summary: Scoped context, counters, and role-aware read/write capabilities
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Operational bootstrap loaded }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
   /operational/routes:
     get:
       summary: List scoped distribution routes
       security: [{ bearerAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/PerPage' }, { $ref: '#/components/parameters/Search' }]
-      responses: { '200': { description: Paginated routes } }
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { $ref: '#/components/parameters/Search' }
+      responses:
+        '200': { description: Paginated routes }
   /operational/vehicles:
     get:
       summary: List scoped vehicles
@@ -87,7 +99,10 @@ paths:
     get:
       summary: List scoped customers
       security: [{ bearerAuth: [] }]
-      parameters: [{ $ref: '#/components/parameters/PerPage' }, { $ref: '#/components/parameters/Search' }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { $ref: '#/components/parameters/Search' }
       responses: { '200': { description: Paginated customers } }
   /operational/stock-balances:
     get:
@@ -99,31 +114,379 @@ paths:
       summary: List scoped vehicle loads
       security: [{ bearerAuth: [] }]
       responses: { '200': { description: Paginated vehicle loads } }
+
   /operational/sales-invoices:
     get:
       summary: List scoped sales invoices
       security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { $ref: '#/components/parameters/Search' }
       responses: { '200': { description: Paginated sales invoices } }
+    post:
+      summary: Create an idempotent sales invoice draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalesInvoiceCreate' }
+      responses:
+        '201': { description: Draft created }
+        '200': { description: Existing draft replayed for the same client reference and payload }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/sales-invoices/{salesInvoice}:
+    parameters:
+      - { $ref: '#/components/parameters/SalesInvoiceId' }
+    get:
+      summary: Show one scoped sales invoice
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Sales invoice }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a permitted sales invoice draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalesInvoiceUpdate' }
+      responses:
+        '200': { description: Draft updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      summary: Delete a permitted sales invoice draft
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Draft deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /operational/sales-invoices/{salesInvoice}/confirm:
+    post:
+      summary: Confirm a sales invoice and apply inventory impact
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SalesInvoiceId' }]
+      responses:
+        '200': { description: Invoice confirmed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/sales-invoices/{salesInvoice}/cancel:
+    post:
+      summary: Cancel a confirmed sales invoice and reverse inventory impact
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SalesInvoiceId' }]
+      responses:
+        '200': { description: Invoice cancelled }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /operational/customer-payments:
     get:
       summary: List scoped customer payments
       security: [{ bearerAuth: [] }]
       responses: { '200': { description: Paginated customer payments } }
+    post:
+      summary: Create an idempotent customer payment draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerPaymentCreate' }
+      responses:
+        '201': { description: Draft created }
+        '200': { description: Existing draft replayed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/customer-payments/{customerPayment}:
+    parameters:
+      - { $ref: '#/components/parameters/CustomerPaymentId' }
+    get:
+      summary: Show one scoped customer payment
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Customer payment }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a permitted customer payment draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerPaymentUpdate' }
+      responses:
+        '200': { description: Draft updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      summary: Delete a permitted customer payment draft
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Draft deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /operational/customer-payments/{customerPayment}/confirm:
+    post:
+      summary: Confirm a customer payment and refresh linked invoice balance
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/CustomerPaymentId' }]
+      responses:
+        '200': { description: Payment confirmed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/customer-payments/{customerPayment}/cancel:
+    post:
+      summary: Cancel a confirmed customer payment
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/CustomerPaymentId' }]
+      responses:
+        '200': { description: Payment cancelled }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /operational/sales-returns:
     get:
       summary: List scoped sales returns
       security: [{ bearerAuth: [] }]
       responses: { '200': { description: Paginated sales returns } }
+    post:
+      summary: Create an idempotent sales return draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalesReturnCreate' }
+      responses:
+        '201': { description: Draft created }
+        '200': { description: Existing draft replayed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/sales-returns/{salesReturn}:
+    parameters:
+      - { $ref: '#/components/parameters/SalesReturnId' }
+    get:
+      summary: Show one scoped sales return
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Sales return }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a permitted sales return draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalesReturnUpdate' }
+      responses:
+        '200': { description: Draft updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      summary: Delete a permitted sales return draft
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Draft deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /operational/sales-returns/{salesReturn}/confirm:
+    post:
+      summary: Confirm a sales return and restore inventory
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SalesReturnId' }]
+      responses:
+        '200': { description: Return confirmed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/sales-returns/{salesReturn}/cancel:
+    post:
+      summary: Cancel a confirmed sales return and reverse inventory impact
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/SalesReturnId' }]
+      responses:
+        '200': { description: Return cancelled }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /operational/vehicle-expenses:
     get:
       summary: List scoped vehicle expenses
       security: [{ bearerAuth: [] }]
       responses: { '200': { description: Paginated vehicle expenses } }
+    post:
+      summary: Create an idempotent pending vehicle expense
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleExpenseCreate' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/VehicleExpenseMultipartCreate' }
+      responses:
+        '201': { description: Pending expense created }
+        '200': { description: Existing expense replayed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/vehicle-expenses/{vehicleExpense}:
+    parameters:
+      - { $ref: '#/components/parameters/VehicleExpenseId' }
+    get:
+      summary: Show one scoped vehicle expense
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Vehicle expense }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a permitted pending vehicle expense
+      description: For file replacement with clients that cannot send multipart PATCH, use POST with `_method=PATCH`.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleExpenseUpdate' }
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/VehicleExpenseMultipartUpdate' }
+      responses:
+        '200': { description: Expense updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      summary: Delete a permitted pending vehicle expense
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Expense deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /operational/vehicle-expenses/{vehicleExpense}/approve:
+    post:
+      summary: Approve a pending vehicle expense
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/VehicleExpenseId' }]
+      responses:
+        '200': { description: Expense approved }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/vehicle-expenses/{vehicleExpense}/reject:
+    post:
+      summary: Reject a pending vehicle expense
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/VehicleExpenseId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehicleExpenseReject' }
+      responses:
+        '200': { description: Expense rejected }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
   /operational/daily-closings:
     get:
       summary: List scoped daily closings
       security: [{ bearerAuth: [] }]
       responses: { '200': { description: Paginated daily closings } }
+    post:
+      summary: Create an idempotent daily closing draft and calculate totals
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DailyClosingCreate' }
+      responses:
+        '201': { description: Draft created and totals refreshed }
+        '200': { description: Existing draft replayed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/daily-closings/{dailyClosing}:
+    parameters:
+      - { $ref: '#/components/parameters/DailyClosingId' }
+    get:
+      summary: Show one scoped daily closing
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Daily closing }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Update a permitted daily closing draft and refresh totals
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DailyClosingUpdate' }
+      responses:
+        '200': { description: Draft updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      summary: Delete a permitted daily closing draft
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Draft deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /operational/daily-closings/{dailyClosing}/refresh-totals:
+    post:
+      summary: Recalculate a daily closing draft from operational records
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
+      responses:
+        '200': { description: Totals refreshed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/daily-closings/{dailyClosing}/confirm:
+    post:
+      summary: Confirm a daily closing draft
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
+      responses:
+        '200': { description: Closing confirmed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /operational/daily-closings/{dailyClosing}/cancel:
+    post:
+      summary: Cancel a confirmed daily closing
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
+      responses:
+        '200': { description: Closing cancelled }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -131,6 +494,10 @@ components:
       scheme: bearer
       bearerFormat: Sanctum
   parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
     PerPage:
       name: per_page
       in: query
@@ -139,6 +506,57 @@ components:
       name: search
       in: query
       schema: { type: string, maxLength: 120 }
+    SalesInvoiceId:
+      name: salesInvoice
+      in: path
+      required: true
+      schema: { type: integer }
+    CustomerPaymentId:
+      name: customerPayment
+      in: path
+      required: true
+      schema: { type: integer }
+    SalesReturnId:
+      name: salesReturn
+      in: path
+      required: true
+      schema: { type: integer }
+    VehicleExpenseId:
+      name: vehicleExpense
+      in: path
+      required: true
+      schema: { type: integer }
+    DailyClosingId:
+      name: dailyClosing
+      in: path
+      required: true
+      schema: { type: integer }
+  responses:
+    Unauthenticated:
+      description: Authentication is required
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: The role or effective data scope denies the operation
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Record is missing or hidden outside the effective data scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Business rule or idempotency conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ValidationErrorEnvelope' }
   schemas:
     LoginRequest:
       type: object
@@ -150,3 +568,206 @@ components:
         device_name: { type: string, maxLength: 100 }
         platform: { type: string, enum: [android, ios] }
         app_version: { type: [string, 'null'], maxLength: 30 }
+    ErrorEnvelope:
+      type: object
+      required: [success, message, code]
+      properties:
+        success: { type: boolean, const: false }
+        message: { type: string }
+        code: { type: string }
+    ValidationErrorEnvelope:
+      allOf:
+        - { $ref: '#/components/schemas/ErrorEnvelope' }
+        - type: object
+          properties:
+            errors:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    ClientReference:
+      type: string
+      minLength: 6
+      maxLength: 100
+      pattern: '^[A-Za-z0-9][A-Za-z0-9._:-]{5,99}$'
+      description: Stable client-generated identifier used for safe create retries.
+    NullableId:
+      type: [integer, 'null']
+    Money:
+      type: number
+      minimum: 0
+    SalesInvoiceItemInput:
+      type: object
+      required: [product_id, quantity, unit_price]
+      properties:
+        product_id: { type: integer }
+        batch_number: { type: [string, 'null'], maxLength: 255 }
+        expiry_date: { type: [string, 'null'], format: date }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit_price: { $ref: '#/components/schemas/Money' }
+        discount_amount: { $ref: '#/components/schemas/Money' }
+    SalesInvoicePayload:
+      type: object
+      properties:
+        customer_id: { type: integer }
+        vehicle_id: { $ref: '#/components/schemas/NullableId' }
+        route_id: { $ref: '#/components/schemas/NullableId' }
+        warehouse_id: { type: integer }
+        sales_representative_id: { $ref: '#/components/schemas/NullableId' }
+        invoice_date: { type: string, format: date }
+        payment_type: { type: string, enum: [cash, credit, partial] }
+        paid_amount: { $ref: '#/components/schemas/Money' }
+        discount_amount: { $ref: '#/components/schemas/Money' }
+        tax_amount: { $ref: '#/components/schemas/Money' }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SalesInvoiceItemInput' }
+    SalesInvoiceCreate:
+      allOf:
+        - { $ref: '#/components/schemas/SalesInvoicePayload' }
+        - type: object
+          required: [client_reference, customer_id, warehouse_id, invoice_date, payment_type, items]
+          properties:
+            client_reference: { $ref: '#/components/schemas/ClientReference' }
+    SalesInvoiceUpdate:
+      allOf:
+        - { $ref: '#/components/schemas/SalesInvoicePayload' }
+        - type: object
+          properties:
+            client_reference: { type: 'null', description: Prohibited on update }
+    CustomerPaymentPayload:
+      type: object
+      properties:
+        customer_id: { type: integer }
+        sales_invoice_id: { $ref: '#/components/schemas/NullableId' }
+        vehicle_id: { $ref: '#/components/schemas/NullableId' }
+        route_id: { $ref: '#/components/schemas/NullableId' }
+        warehouse_id: { $ref: '#/components/schemas/NullableId' }
+        sales_representative_id: { $ref: '#/components/schemas/NullableId' }
+        payment_date: { type: string, format: date }
+        payment_method: { type: string, enum: [cash, bank_transfer, cheque, other] }
+        amount: { type: number, exclusiveMinimum: 0 }
+        reference_number: { type: [string, 'null'], maxLength: 255 }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+    CustomerPaymentCreate:
+      allOf:
+        - { $ref: '#/components/schemas/CustomerPaymentPayload' }
+        - type: object
+          required: [client_reference, customer_id, payment_date, payment_method, amount]
+          properties:
+            client_reference: { $ref: '#/components/schemas/ClientReference' }
+    CustomerPaymentUpdate:
+      $ref: '#/components/schemas/CustomerPaymentPayload'
+    SalesReturnItemInput:
+      type: object
+      required: [product_id, quantity, unit_price]
+      properties:
+        product_id: { type: integer }
+        batch_number: { type: [string, 'null'], maxLength: 255 }
+        expiry_date: { type: [string, 'null'], format: date }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unit_price: { $ref: '#/components/schemas/Money' }
+    SalesReturnPayload:
+      type: object
+      properties:
+        customer_id: { type: integer }
+        sales_invoice_id: { $ref: '#/components/schemas/NullableId' }
+        vehicle_id: { $ref: '#/components/schemas/NullableId' }
+        route_id: { $ref: '#/components/schemas/NullableId' }
+        warehouse_id: { type: integer }
+        sales_representative_id: { $ref: '#/components/schemas/NullableId' }
+        return_date: { type: string, format: date }
+        return_reason: { type: [string, 'null'], maxLength: 255 }
+        discount_amount: { $ref: '#/components/schemas/Money' }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SalesReturnItemInput' }
+    SalesReturnCreate:
+      allOf:
+        - { $ref: '#/components/schemas/SalesReturnPayload' }
+        - type: object
+          required: [client_reference, customer_id, warehouse_id, return_date, items]
+          properties:
+            client_reference: { $ref: '#/components/schemas/ClientReference' }
+    SalesReturnUpdate:
+      $ref: '#/components/schemas/SalesReturnPayload'
+    VehicleExpensePayload:
+      type: object
+      properties:
+        expense_date: { type: string, format: date }
+        vehicle_id: { type: integer }
+        warehouse_id: { type: integer }
+        route_id: { $ref: '#/components/schemas/NullableId' }
+        driver_id: { $ref: '#/components/schemas/NullableId' }
+        sales_representative_id: { $ref: '#/components/schemas/NullableId' }
+        expense_type: { type: string, enum: [fuel, maintenance, washing, fees, parking, emergency, other] }
+        amount: { type: number, exclusiveMinimum: 0 }
+        payment_method: { type: string, enum: [cash, bank_transfer, cheque, other] }
+        remove_receipt: { type: boolean }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+    VehicleExpenseCreate:
+      allOf:
+        - { $ref: '#/components/schemas/VehicleExpensePayload' }
+        - type: object
+          required: [client_reference, expense_date, vehicle_id, warehouse_id, expense_type, amount, payment_method]
+          properties:
+            client_reference: { $ref: '#/components/schemas/ClientReference' }
+    VehicleExpenseUpdate:
+      $ref: '#/components/schemas/VehicleExpensePayload'
+    VehicleExpenseMultipartCreate:
+      allOf:
+        - { $ref: '#/components/schemas/VehicleExpenseCreate' }
+        - type: object
+          properties:
+            receipt: { type: string, format: binary }
+    VehicleExpenseMultipartUpdate:
+      allOf:
+        - { $ref: '#/components/schemas/VehicleExpenseUpdate' }
+        - type: object
+          properties:
+            _method: { type: string, enum: [PATCH] }
+            receipt: { type: string, format: binary }
+    VehicleExpenseReject:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 2000 }
+    DailyClosingItemInput:
+      type: object
+      required: [product_id]
+      properties:
+        product_id: { type: integer }
+        actual_quantity: { type: [number, 'null'], minimum: 0 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    DailyClosingPayload:
+      type: object
+      properties:
+        closing_date: { type: string, format: date }
+        vehicle_id: { $ref: '#/components/schemas/NullableId' }
+        route_id: { $ref: '#/components/schemas/NullableId' }
+        warehouse_id: { type: integer }
+        sales_representative_id: { $ref: '#/components/schemas/NullableId' }
+        actual_cash_amount: { $ref: '#/components/schemas/Money' }
+        notes: { type: [string, 'null'], maxLength: 5000 }
+    DailyClosingCreate:
+      allOf:
+        - { $ref: '#/components/schemas/DailyClosingPayload' }
+        - type: object
+          required: [client_reference, closing_date, warehouse_id]
+          properties:
+            client_reference: { $ref: '#/components/schemas/ClientReference' }
+    DailyClosingUpdate:
+      allOf:
+        - { $ref: '#/components/schemas/DailyClosingPayload' }
+        - type: object
+          properties:
+            items:
+              type: array
+              maxItems: 500
+              items: { $ref: '#/components/schemas/DailyClosingItemInput' }

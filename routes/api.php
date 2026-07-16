@@ -100,6 +100,63 @@ Route::prefix('v1')
                         ->only(['index', 'show'])
                         ->parameters(['daily-closings' => 'dailyClosing'])
                         ->middleware('can:daily_closings.view');
+
+                    Route::post('/sales-invoices', [SalesInvoiceController::class, 'store'])
+                        ->name('sales-invoices.store');
+                    Route::patch('/sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'update'])
+                        ->name('sales-invoices.update');
+                    Route::delete('/sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'destroy'])
+                        ->name('sales-invoices.destroy');
+                    Route::post('/sales-invoices/{salesInvoice}/confirm', [SalesInvoiceController::class, 'confirm'])
+                        ->name('sales-invoices.confirm');
+                    Route::post('/sales-invoices/{salesInvoice}/cancel', [SalesInvoiceController::class, 'cancel'])
+                        ->name('sales-invoices.cancel');
+
+                    Route::post('/customer-payments', [CustomerPaymentController::class, 'store'])
+                        ->name('customer-payments.store');
+                    Route::patch('/customer-payments/{customerPayment}', [CustomerPaymentController::class, 'update'])
+                        ->name('customer-payments.update');
+                    Route::delete('/customer-payments/{customerPayment}', [CustomerPaymentController::class, 'destroy'])
+                        ->name('customer-payments.destroy');
+                    Route::post('/customer-payments/{customerPayment}/confirm', [CustomerPaymentController::class, 'confirm'])
+                        ->name('customer-payments.confirm');
+                    Route::post('/customer-payments/{customerPayment}/cancel', [CustomerPaymentController::class, 'cancel'])
+                        ->name('customer-payments.cancel');
+
+                    Route::post('/sales-returns', [SalesReturnController::class, 'store'])
+                        ->name('sales-returns.store');
+                    Route::patch('/sales-returns/{salesReturn}', [SalesReturnController::class, 'update'])
+                        ->name('sales-returns.update');
+                    Route::delete('/sales-returns/{salesReturn}', [SalesReturnController::class, 'destroy'])
+                        ->name('sales-returns.destroy');
+                    Route::post('/sales-returns/{salesReturn}/confirm', [SalesReturnController::class, 'confirm'])
+                        ->name('sales-returns.confirm');
+                    Route::post('/sales-returns/{salesReturn}/cancel', [SalesReturnController::class, 'cancel'])
+                        ->name('sales-returns.cancel');
+
+                    Route::post('/vehicle-expenses', [VehicleExpenseController::class, 'store'])
+                        ->name('vehicle-expenses.store');
+                    Route::patch('/vehicle-expenses/{vehicleExpense}', [VehicleExpenseController::class, 'update'])
+                        ->name('vehicle-expenses.update');
+                    Route::delete('/vehicle-expenses/{vehicleExpense}', [VehicleExpenseController::class, 'destroy'])
+                        ->name('vehicle-expenses.destroy');
+                    Route::post('/vehicle-expenses/{vehicleExpense}/approve', [VehicleExpenseController::class, 'approve'])
+                        ->name('vehicle-expenses.approve');
+                    Route::post('/vehicle-expenses/{vehicleExpense}/reject', [VehicleExpenseController::class, 'reject'])
+                        ->name('vehicle-expenses.reject');
+
+                    Route::post('/daily-closings', [DailyClosingController::class, 'store'])
+                        ->name('daily-closings.store');
+                    Route::patch('/daily-closings/{dailyClosing}', [DailyClosingController::class, 'update'])
+                        ->name('daily-closings.update');
+                    Route::delete('/daily-closings/{dailyClosing}', [DailyClosingController::class, 'destroy'])
+                        ->name('daily-closings.destroy');
+                    Route::post('/daily-closings/{dailyClosing}/refresh-totals', [DailyClosingController::class, 'refreshTotals'])
+                        ->name('daily-closings.refresh-totals');
+                    Route::post('/daily-closings/{dailyClosing}/confirm', [DailyClosingController::class, 'confirm'])
+                        ->name('daily-closings.confirm');
+                    Route::post('/daily-closings/{dailyClosing}/cancel', [DailyClosingController::class, 'cancel'])
+                        ->name('daily-closings.cancel');
                 });
 
         });

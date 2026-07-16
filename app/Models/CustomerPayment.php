@@ -24,6 +24,8 @@ class CustomerPayment extends Model
         'reference_number',
         'notes',
         'created_by',
+        'client_reference',
+        'client_payload_hash',
         'confirmed_by',
         'confirmed_at',
     ];

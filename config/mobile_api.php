@@ -27,4 +27,9 @@ return [
 
     'default_page_size' => (int) env('MOBILE_API_DEFAULT_PAGE_SIZE', 25),
     'max_page_size' => (int) env('MOBILE_API_MAX_PAGE_SIZE', 100),
+
+    'expense_receipt_max_kb' => (int) env(
+        'MOBILE_API_EXPENSE_RECEIPT_MAX_KB',
+        5120,
+    ),
 ];

@@ -26,6 +26,8 @@ class VehicleExpense extends Model
         'notes',
         'rejection_reason',
         'created_by',
+        'client_reference',
+        'client_payload_hash',
         'approved_by',
         'approved_at',
         'rejected_by',

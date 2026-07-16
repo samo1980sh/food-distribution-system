@@ -40,6 +40,8 @@ class DailyClosing extends Model
         'cash_difference',
         'notes',
         'created_by',
+        'client_reference',
+        'client_payload_hash',
         'confirmed_by',
         'confirmed_at',
     ];
