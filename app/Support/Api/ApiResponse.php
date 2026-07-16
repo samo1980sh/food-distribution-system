@@ -2,6 +2,7 @@
 
 namespace App\Support\Api;
 
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 
 final class ApiResponse
@@ -24,6 +25,30 @@ final class ApiResponse
         }
 
         return response()->json($payload, $status);
+    }
+
+
+    /** @param list<mixed> $items */
+    public static function paginated(
+        array $items,
+        LengthAwarePaginator $paginator,
+        string $message = 'تم تحميل البيانات بنجاح.',
+    ): JsonResponse {
+        return self::success(
+            data: ['items' => $items],
+            message: $message,
+            meta: [
+                'pagination' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                    'from' => $paginator->firstItem(),
+                    'to' => $paginator->lastItem(),
+                    'has_more_pages' => $paginator->hasMorePages(),
+                ],
+            ],
+        );
     }
 
     /** @param array<string, mixed>|null $errors */

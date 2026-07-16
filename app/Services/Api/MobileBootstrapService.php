@@ -30,6 +30,7 @@ class MobileBootstrapService
             'user' => UserResource::make($user)->resolve($request),
             'scope' => EffectiveAccessScopeResource::make($scope)->resolve($request),
             'features' => [
+                'operational_read' => true,
                 'offline_sync' => false,
                 'push_notifications' => false,
                 'background_location' => false,

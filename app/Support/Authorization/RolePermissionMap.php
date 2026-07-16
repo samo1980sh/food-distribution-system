@@ -133,6 +133,10 @@ final class RolePermissionMap
             ]),
             UserRole::SALES_REPRESENTATIVE->value => self::values([
                 P::API_ACCESS,
+                P::PRODUCTS_VIEW,
+                P::DISTRIBUTION_ROUTES_VIEW,
+                P::VEHICLES_VIEW,
+                P::WAREHOUSES_VIEW,
                 P::CUSTOMERS_VIEW,
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
@@ -151,6 +155,10 @@ final class RolePermissionMap
             ]),
             UserRole::DRIVER->value => self::values([
                 P::API_ACCESS,
+                P::PRODUCTS_VIEW,
+                P::DISTRIBUTION_ROUTES_VIEW,
+                P::VEHICLES_VIEW,
+                P::WAREHOUSES_VIEW,
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
                 P::VEHICLE_EXPENSES_VIEW,

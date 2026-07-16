@@ -120,3 +120,8 @@ git diff --cached --stat
 ```
 
 لا تستخدم `git add .`.
+
+
+## Operational Read API
+
+راجع `docs/api/MOBILE_OPERATIONAL_READ_API_AR.md` للمرحلة الأولى من بيانات التشغيل.

@@ -1,0 +1,84 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\Operational;
+
+use App\Enums\PermissionName;
+use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\Operational\RouteResource;
+use App\Http\Resources\Api\V1\Operational\VehicleResource;
+use App\Http\Resources\Api\V1\Operational\WarehouseResource;
+use App\Models\Customer;
+use App\Models\CustomerPayment;
+use App\Models\DailyClosing;
+use App\Models\DistributionRoute;
+use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
+use App\Models\StockBalance;
+use App\Models\Vehicle;
+use App\Models\VehicleExpense;
+use App\Models\VehicleLoad;
+use App\Models\Warehouse;
+use App\Support\Api\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class OperationalBootstrapController extends Controller
+{
+    public function __invoke(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $today = today()->toDateString();
+
+        $modules = [
+            'routes' => $user->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
+            'vehicles' => $user->can(PermissionName::VEHICLES_VIEW->value),
+            'warehouses' => $user->can(PermissionName::WAREHOUSES_VIEW->value),
+            'products' => $user->can(PermissionName::PRODUCTS_VIEW->value),
+            'customers' => $user->can(PermissionName::CUSTOMERS_VIEW->value),
+            'stock_balances' => $user->can(PermissionName::STOCK_BALANCES_VIEW->value),
+            'vehicle_loads' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+            'sales_invoices' => $user->can(PermissionName::SALES_INVOICES_VIEW->value),
+            'customer_payments' => $user->can(PermissionName::CUSTOMER_PAYMENTS_VIEW->value),
+            'sales_returns' => $user->can(PermissionName::SALES_RETURNS_VIEW->value),
+            'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_VIEW->value),
+            'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value),
+        ];
+
+        $routes = $modules['routes']
+            ? DistributionRoute::query()
+                ->with(['area', 'vehicle.warehouse', 'driver', 'salesRepresentative'])
+                ->where('status', 'active')
+                ->orderBy('name')
+                ->get()
+            : collect();
+        $vehicles = $modules['vehicles']
+            ? Vehicle::query()->with('warehouse')->where('status', 'active')->orderBy('code')->get()
+            : collect();
+        $warehouses = $modules['warehouses']
+            ? Warehouse::query()->with('vehicle')->where('status', 'active')->orderBy('code')->get()
+            : collect();
+
+        return ApiResponse::success([
+            'date' => $today,
+            'server_time' => now()->toIso8601String(),
+            'modules' => $modules,
+            'context' => [
+                'routes' => RouteResource::collection($routes)->resolve($request),
+                'vehicles' => VehicleResource::collection($vehicles)->resolve($request),
+                'warehouses' => WarehouseResource::collection($warehouses)->resolve($request),
+            ],
+            'today' => [
+                'customers' => $modules['customers'] ? Customer::query()->where('status', 'active')->count() : null,
+                'stock_batches' => $modules['stock_balances'] ? StockBalance::query()->where('quantity', '>', 0)->count() : null,
+                'vehicle_loads' => $modules['vehicle_loads'] ? VehicleLoad::query()->whereDate('load_date', $today)->count() : null,
+                'sales_invoices' => $modules['sales_invoices'] ? SalesInvoice::query()->whereDate('invoice_date', $today)->count() : null,
+                'sales_amount' => $modules['sales_invoices'] ? (float) SalesInvoice::query()->whereDate('invoice_date', $today)->where('status', 'confirmed')->sum('total_amount') : null,
+                'customer_payments' => $modules['customer_payments'] ? CustomerPayment::query()->whereDate('payment_date', $today)->count() : null,
+                'collections_amount' => $modules['customer_payments'] ? (float) CustomerPayment::query()->whereDate('payment_date', $today)->where('status', 'confirmed')->sum('amount') : null,
+                'sales_returns' => $modules['sales_returns'] ? SalesReturn::query()->whereDate('return_date', $today)->count() : null,
+                'vehicle_expenses' => $modules['vehicle_expenses'] ? VehicleExpense::query()->whereDate('expense_date', $today)->count() : null,
+                'daily_closings' => $modules['daily_closings'] ? DailyClosing::query()->whereDate('closing_date', $today)->count() : null,
+            ],
+        ], 'تم تحميل البيانات التشغيلية الأساسية.');
+    }
+}

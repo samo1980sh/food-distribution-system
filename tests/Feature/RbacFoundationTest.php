@@ -58,6 +58,10 @@ class RbacFoundationTest extends TestCase
             'role' => User::ROLE_DRIVER,
         ]);
 
+        $salesRepresentative = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+
         $this->assertTrue(
             $warehouseKeeper->can(PermissionName::STOCK_MOVEMENTS_CREATE->value),
         );
@@ -80,6 +84,24 @@ class RbacFoundationTest extends TestCase
         );
         $this->assertTrue(
             $driver->can(PermissionName::API_ACCESS->value),
+        );
+        $this->assertTrue(
+            $driver->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
+        );
+        $this->assertTrue(
+            $driver->can(PermissionName::VEHICLES_VIEW->value),
+        );
+        $this->assertTrue(
+            $driver->can(PermissionName::WAREHOUSES_VIEW->value),
+        );
+        $this->assertTrue(
+            $driver->can(PermissionName::PRODUCTS_VIEW->value),
+        );
+        $this->assertTrue(
+            $salesRepresentative->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
+        );
+        $this->assertTrue(
+            $salesRepresentative->can(PermissionName::PRODUCTS_VIEW->value),
         );
     }
 

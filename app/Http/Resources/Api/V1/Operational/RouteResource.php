@@ -1,0 +1,4 @@
+<?php
+namespace App\Http\Resources\Api\V1\Operational;
+use Illuminate\Http\Request;
+class RouteResource extends OperationalResource { public function toArray(Request $request): array { return ['id'=>(int)$this->id,'code'=>$this->code,'name'=>$this->name,'visit_days'=>$this->visit_days ?? [],'status'=>$this->status,'area'=>$this->whenLoaded('area',fn()=> $this->area ? AreaResource::make($this->area)->resolve($request) : null),'vehicle'=>$this->whenLoaded('vehicle',fn()=> $this->vehicle ? VehicleResource::make($this->vehicle)->resolve($request) : null),'driver'=>$this->whenLoaded('driver',fn()=> $this->driver ? EmployeeSummaryResource::make($this->driver)->resolve($request) : null),'sales_representative'=>$this->whenLoaded('salesRepresentative',fn()=> $this->salesRepresentative ? EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request) : null)]; } }
