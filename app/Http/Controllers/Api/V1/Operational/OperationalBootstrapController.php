@@ -19,12 +19,21 @@ use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Api\MobileOfflineSyncService;
+use App\Services\Api\MobileSyncContextService;
+use App\Support\Api\MobileSyncEntityRegistry;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class OperationalBootstrapController extends Controller
 {
+    public function __construct(
+        private readonly MobileSyncContextService $syncContextService,
+        private readonly MobileOfflineSyncService $offlineSyncService,
+    ) {
+    }
+
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -96,10 +105,21 @@ class OperationalBootstrapController extends Controller
             ],
             'sync' => [
                 'server_time' => now()->toIso8601String(),
+                'context_key' => $this->syncContextService->key($user),
+                'registry_version' => MobileSyncEntityRegistry::VERSION,
+                'current_cursor' => $this->offlineSyncService->currentCursor(),
+                'minimum_cursor' => $this->offlineSyncService->minimumCursor(),
                 'supports_updated_since' => true,
-                'supports_deleted_records' => false,
+                'supports_cursor_pull' => true,
+                'supports_deleted_records' => true,
                 'write_api_enabled' => true,
-                'offline_queue_supported' => false,
+                'offline_queue_supported' => true,
+                'push_mode' => 'rest_idempotent',
+                'batch_push_supported' => false,
+                'endpoints' => [
+                    'status' => '/api/v1/operational/sync/status',
+                    'pull' => '/api/v1/operational/sync/pull',
+                ],
             ],
             'today' => [
                 'customers' => $modules['customers'] ? Customer::query()->where('status', 'active')->count() : null,

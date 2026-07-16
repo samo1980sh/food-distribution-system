@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Operational\CustomerController;
 use App\Http\Controllers\Api\V1\Operational\CustomerPaymentController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingController;
+use App\Http\Controllers\Api\V1\Operational\MobileSyncController;
 use App\Http\Controllers\Api\V1\Operational\OperationalBootstrapController;
 use App\Http\Controllers\Api\V1\Operational\ProductController;
 use App\Http\Controllers\Api\V1\Operational\RouteController as OperationalRouteController;
@@ -55,6 +56,11 @@ Route::prefix('v1')
                 ->group(function (): void {
                     Route::get('/bootstrap', OperationalBootstrapController::class)
                         ->name('bootstrap');
+
+                    Route::get('/sync/status', [MobileSyncController::class, 'status'])
+                        ->name('sync.status');
+                    Route::post('/sync/pull', [MobileSyncController::class, 'pull'])
+                        ->name('sync.pull');
 
                     Route::apiResource('routes', OperationalRouteController::class)
                         ->only(['index', 'show'])

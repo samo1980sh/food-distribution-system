@@ -11,3 +11,7 @@ Artisan::command('inspire', function (): void {
 Schedule::command('sanctum:prune-expired --hours=24')
     ->daily()
     ->withoutOverlapping();
+
+Schedule::command('mobile-sync:prune --apply')
+    ->dailyAt('02:30')
+    ->withoutOverlapping();

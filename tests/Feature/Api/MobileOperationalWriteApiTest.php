@@ -45,7 +45,7 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonPath('data.write.sales_invoices.update', true)
             ->assertJsonPath('data.write.sales_invoices.confirm', false)
             ->assertJsonPath('data.sync.write_api_enabled', true)
-            ->assertJsonPath('data.sync.offline_queue_supported', false);
+            ->assertJsonPath('data.sync.offline_queue_supported', true);
     }
 
     public function test_sales_representative_create_is_scoped_and_idempotent(): void

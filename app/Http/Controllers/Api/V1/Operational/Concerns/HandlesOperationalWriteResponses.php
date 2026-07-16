@@ -19,6 +19,7 @@ trait HandlesOperationalWriteResponses
                 $exception->getMessage(),
                 $exception->apiCode,
                 $exception->status,
+                $exception->errors,
             );
         } catch (RuntimeException $exception) {
             if ($exception::class !== RuntimeException::class) {

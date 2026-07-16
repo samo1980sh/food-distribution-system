@@ -29,4 +29,8 @@
 
 ## المرحلة التالية المكتملة
 
-تمت إضافة الكتابة التشغيلية Online First في وثيقة `MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md`. بقي Offline Sync الكامل خارج نطاق مرحلة القراءة والكتابة الحالية.
+تمت إضافة الكتابة التشغيلية Online First في وثيقة `MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md`. أصبحت القراءة والكتابة الأساس الذي تعتمد عليه مرحلة Mobile Offline Sync Foundation.
+
+## المزامنة غير المتصلة
+
+تمت إضافة سجل تغييرات Cursor-based وTombstones في مرحلة `Mobile Offline Sync Foundation — Phase 1`. يفضّل تطبيق Flutter استخدام `/operational/sync/pull` للمزامنة الدورية بدل تشغيل جميع قوائم القراءة منفردة.

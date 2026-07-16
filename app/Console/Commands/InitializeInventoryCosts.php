@@ -85,7 +85,7 @@ class InitializeInventoryCosts extends Command
                 if ($apply && $unitCost > 0) {
                     $balance->forceFill([
                         'average_unit_cost' => round($unitCost, 6),
-                    ])->saveQuietly();
+                    ])->save();
                 }
             });
 
@@ -93,12 +93,14 @@ class InitializeInventoryCosts extends Command
             ->pluck('purchase_price', 'id')
             ->map(fn ($cost): float => (float) $cost);
 
+        $invoiceIds = [];
+        $returnIds = [];
         $vehicleLoadIds = [];
 
         DB::table('sales_invoice_items')
             ->where('unit_cost', '<=', 0)
             ->orderBy('id')
-            ->each(function ($item) use ($apply, $productCosts, &$summary, &$vehicleLoadIds): void {
+            ->each(function ($item) use ($apply, $productCosts, &$summary, &$invoiceIds): void {
                 $unitCost = $this->referenceMovementCost(
                     SalesInvoice::class,
                     (int) $item->sales_invoice_id,
@@ -113,6 +115,8 @@ class InitializeInventoryCosts extends Command
                 $summary['invoice_items']++;
 
                 if ($apply) {
+                    $invoiceIds[] = (int) $item->sales_invoice_id;
+
                     DB::table('sales_invoice_items')
                         ->where('id', $item->id)
                         ->update([
@@ -131,7 +135,7 @@ class InitializeInventoryCosts extends Command
                 'sales_return_items.*',
                 'sales_returns.sales_invoice_id',
             ])
-            ->each(function ($item) use ($apply, $productCosts, &$summary): void {
+            ->each(function ($item) use ($apply, $productCosts, &$summary, &$returnIds): void {
                 $unitCost = $item->sales_invoice_id
                     ? $this->matchingInvoiceItemCost(
                         (int) $item->sales_invoice_id,
@@ -155,6 +159,8 @@ class InitializeInventoryCosts extends Command
                 $summary['return_items']++;
 
                 if ($apply) {
+                    $returnIds[] = (int) $item->sales_return_id;
+
                     DB::table('sales_return_items')
                         ->where('id', $item->id)
                         ->update([
@@ -168,7 +174,7 @@ class InitializeInventoryCosts extends Command
         DB::table('vehicle_load_items')
             ->where('unit_cost', '<=', 0)
             ->orderBy('id')
-            ->each(function ($item) use ($apply, $productCosts, &$summary): void {
+            ->each(function ($item) use ($apply, $productCosts, &$summary, &$vehicleLoadIds): void {
                 $unitCost = $this->referenceMovementCost(
                     VehicleLoad::class,
                     (int) $item->vehicle_load_id,
@@ -195,16 +201,28 @@ class InitializeInventoryCosts extends Command
             });
 
         if ($apply) {
-            foreach (array_unique($vehicleLoadIds) as $vehicleLoadId) {
-                DB::table('vehicle_loads')
-                    ->where('id', $vehicleLoadId)
-                    ->update([
+            SalesInvoice::withoutGlobalScopes()
+                ->whereIn('id', array_unique($invoiceIds))
+                ->get()
+                ->each
+                ->touch();
+
+            SalesReturn::withoutGlobalScopes()
+                ->whereIn('id', array_unique($returnIds))
+                ->get()
+                ->each
+                ->touch();
+
+            VehicleLoad::withoutGlobalScopes()
+                ->whereIn('id', array_unique($vehicleLoadIds))
+                ->get()
+                ->each(function (VehicleLoad $vehicleLoad): void {
+                    $vehicleLoad->forceFill([
                         'total_cost' => DB::table('vehicle_load_items')
-                            ->where('vehicle_load_id', $vehicleLoadId)
+                            ->where('vehicle_load_id', $vehicleLoad->id)
                             ->sum('total_cost'),
-                        'updated_at' => now(),
-                    ]);
-            }
+                    ])->save();
+                });
         }
 
         return $summary;

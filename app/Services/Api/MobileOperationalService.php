@@ -19,6 +19,7 @@ use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use App\Services\Authorization\AccessScopeService;
+use App\Support\Api\MobileSyncEntityRegistry;
 use Illuminate\Http\Request;
 
 class MobileOperationalService
@@ -26,6 +27,8 @@ class MobileOperationalService
     public function __construct(
         private readonly MobileBootstrapService $mobileBootstrapService,
         private readonly AccessScopeService $accessScopeService,
+        private readonly MobileSyncContextService $syncContextService,
+        private readonly MobileOfflineSyncService $offlineSyncService,
     ) {
     }
 
@@ -39,10 +42,17 @@ class MobileOperationalService
             'today' => $this->dashboard($user),
             'sync' => [
                 'server_time' => now()->toIso8601String(),
-                'cursor' => now()->toIso8601String(),
+                'context_key' => $this->syncContextService->key($user),
+                'registry_version' => MobileSyncEntityRegistry::VERSION,
+                'current_cursor' => $this->offlineSyncService->currentCursor(),
+                'minimum_cursor' => $this->offlineSyncService->minimumCursor(),
                 'supports_updated_since' => true,
-                'supports_deleted_records' => false,
-                'write_api_enabled' => false,
+                'supports_cursor_pull' => true,
+                'supports_deleted_records' => true,
+                'write_api_enabled' => true,
+                'offline_queue_supported' => true,
+                'push_mode' => 'rest_idempotent',
+                'batch_push_supported' => false,
             ],
         ];
     }

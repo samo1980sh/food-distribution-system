@@ -42,14 +42,11 @@ class CustomerPaymentService
             $this->validatePaymentScope($scope);
             app(DailyClosingGuard::class)->ensureOpen($payment->payment_date, (int) $scope['warehouse_id']);
 
-            DB::table('customer_payments')
-                ->where('id', $payment->id)
-                ->update($scope + [
-                    'status' => 'confirmed',
-                    'confirmed_by' => Auth::id(),
-                    'confirmed_at' => now(),
-                    'updated_at' => now(),
-                ]);
+            $payment->forceFill($scope + [
+                'status' => 'confirmed',
+                'confirmed_by' => Auth::id(),
+                'confirmed_at' => now(),
+            ])->save();
 
             if ($payment->sales_invoice_id) {
                 app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);
@@ -76,12 +73,9 @@ class CustomerPaymentService
 
             app(DailyClosingGuard::class)->ensureOpen($payment->payment_date, $payment->warehouse_id);
 
-            DB::table('customer_payments')
-                ->where('id', $payment->id)
-                ->update([
-                    'status' => 'cancelled',
-                    'updated_at' => now(),
-                ]);
+            $payment->forceFill([
+                'status' => 'cancelled',
+            ])->save();
 
             if ($payment->sales_invoice_id) {
                 app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);

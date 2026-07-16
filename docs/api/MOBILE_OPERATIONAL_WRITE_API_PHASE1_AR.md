@@ -102,6 +102,10 @@
 - `idempotent_create`
 - `client_reference_required`
 - `sync.write_api_enabled = true`
-- `sync.offline_queue_supported = false`
+- `sync.offline_queue_supported = true`
 
 تظل مصفوفة `actions` داخل كل Resource هي المرجع النهائي للإجراءات المتاحة على السجل نفسه، لأن الحالة الحالية للسجل تؤثر في الصلاحية.
+
+## Offline Queue
+
+بعد إضافة Mobile Offline Sync Foundation يمكن للتطبيق حفظ عمليات الكتابة محلياً وإعادة إرسالها عبر مسارات الكتابة الحالية عند عودة الاتصال. إنشاء السجلات قابل لإعادة المحاولة عبر `client_reference`. Batch Push وحل تعارضات التعديل المتقدمة مؤجلان للمرحلة التالية.

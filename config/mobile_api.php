@@ -28,6 +28,21 @@ return [
     'default_page_size' => (int) env('MOBILE_API_DEFAULT_PAGE_SIZE', 25),
     'max_page_size' => (int) env('MOBILE_API_MAX_PAGE_SIZE', 100),
 
+    'sync_default_pull_limit' => (int) env(
+        'MOBILE_API_SYNC_DEFAULT_PULL_LIMIT',
+        200,
+    ),
+
+    'sync_max_pull_limit' => (int) env(
+        'MOBILE_API_SYNC_MAX_PULL_LIMIT',
+        500,
+    ),
+
+    'sync_retention_days' => (int) env(
+        'MOBILE_API_SYNC_RETENTION_DAYS',
+        90,
+    ),
+
     'expense_receipt_max_kb' => (int) env(
         'MOBILE_API_EXPENSE_RECEIPT_MAX_KB',
         5120,

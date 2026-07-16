@@ -1,0 +1,70 @@
+Mobile Offline Sync Foundation — Phase 1
+Base commit: 68ce548 Add mobile operational write API
+
+Modified:
+- .env.example
+- app/Console/Commands/InitializeInventoryCosts.php
+- app/Exceptions/Api/OperationalApiException.php
+- app/Http/Controllers/Api/V1/Operational/Concerns/HandlesOperationalWriteResponses.php
+- app/Http/Controllers/Api/V1/Operational/OperationalBootstrapController.php
+- app/Services/Api/MobileBootstrapService.php
+- app/Services/Api/MobileOperationalService.php
+- app/Services/Sales/CustomerPaymentService.php
+- bootstrap/providers.php
+- config/mobile_api.php
+- docs/api/MOBILE_OPERATIONAL_READ_API_AR.md
+- docs/api/MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md
+- docs/api/openapi.yaml
+- routes/api.php
+- routes/console.php
+- tests/Feature/Api/MobileOperationalWriteApiTest.php
+
+Added:
+- app/Console/Commands/PruneMobileSyncChanges.php
+- app/Http/Controllers/Api/V1/Operational/MobileSyncController.php
+- app/Http/Requests/Api/V1/Operational/MobileSyncPullRequest.php
+- app/Http/Resources/Api/V1/Operational/ProductCategoryResource.php
+- app/Http/Resources/Api/V1/Operational/UnitResource.php
+- app/Models/MobileSyncChange.php
+- app/Models/MobileSyncCheckpoint.php
+- app/Models/MobileSyncState.php
+- app/Observers/MobileSyncChangeObserver.php
+- app/Providers/MobileOfflineSyncServiceProvider.php
+- app/Services/Api/MobileOfflineSyncService.php
+- app/Services/Api/MobileSyncCascadeService.php
+- app/Services/Api/MobileSyncChangeRecorder.php
+- app/Services/Api/MobileSyncContextService.php
+- app/Services/Api/MobileSyncScopeService.php
+- app/Support/Api/MobileSyncEntityRegistry.php
+- database/migrations/2026_07_16_160000_create_mobile_offline_sync_tables.php
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_INSTALL_AR.md
+- docs/api/MOBILE_OFFLINE_SYNC_FOUNDATION_MANIFEST.txt
+- scripts/mobile-offline-sync-foundation-git-add.ps1
+- tests/Feature/Api/MobileOfflineSyncFoundationTest.php
+
+Database:
+- Creates mobile_sync_changes.
+- Creates mobile_sync_checkpoints.
+- Creates mobile_sync_states.
+- Backfills existing syncable records as upsert changes.
+- Tracks a compaction watermark for expired incremental cursors.
+
+API:
+- GET /api/v1/operational/sync/status
+- POST /api/v1/operational/sync/pull
+- Cursor-based scoped full/incremental pull.
+- Context reset and expired-cursor reset contracts.
+- Tombstones, cascade-delete capture, and surviving-record refreshes.
+- REST idempotent outbound queue contract; no batch push yet.
+
+Maintenance:
+- mobile-sync:prune is dry-run by default.
+- --apply performs safe compaction and preserves the latest full-sync state.
+- Scheduled daily at 02:30.
+
+Tests:
+- Adds 10 focused offline-sync feature tests.
+- Existing read/write and inventory cost command suites remain part of validation.
+
+No new role or permission is added.
