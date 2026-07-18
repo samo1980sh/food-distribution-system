@@ -9,9 +9,15 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -26,40 +32,20 @@ class OverdueCustomerReportsTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')
-                    ->label('رمز العميل')
+                TextColumn::make('name')
+                    ->label('العميل')
                     ->searchable()
                     ->sortable()
+                    ->weight('medium')
+                    ->description(
+                        fn (Customer $record): ?string =>
+                            self::customerDescription($record)
+                    )
+                    ->wrap()
                     ->summarize(
                         Count::make()
                             ->label('عدد العملاء')
                     ),
-
-                TextColumn::make('name')
-                    ->label('العميل')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('area.name_ar')
-                    ->label('المنطقة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('contact_phone')
-                    ->label('الهاتف')
-                    ->getStateUsing(
-                        fn (Customer $record): string =>
-                            $record->mobile ?: ($record->phone ?: '-')
-                    )
-                    ->searchable(['phone', 'mobile'])
-                    ->toggleable(),
 
                 TextColumn::make('payment_type')
                     ->label('نوع الدفع')
@@ -75,12 +61,6 @@ class OverdueCustomerReportsTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('credit_limit')
-                    ->label('الحد الائتماني')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
                 TextColumn::make('current_balance_report')
                     ->label('الرصيد الحالي')
                     ->getStateUsing(
@@ -91,6 +71,8 @@ class OverdueCustomerReportsTable
                             )['current_balance']
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Summarizer::make()
                             ->label('إجمالي الرصيد')
@@ -115,6 +97,9 @@ class OverdueCustomerReportsTable
                             )['overdue_amount']
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->weight('bold')
+                    ->color('danger')
                     ->summarize(
                         Summarizer::make()
                             ->label('إجمالي المتأخر')
@@ -129,30 +114,6 @@ class OverdueCustomerReportsTable
                             ->money('SYP')
                     ),
 
-                TextColumn::make('not_due_amount_report')
-                    ->label('غير المتأخر')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): float =>
-                            (float) self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['not_due_amount']
-                    )
-                    ->money('SYP')
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('إجمالي غير المتأخر')
-                            ->using(
-                                fn (QueryBuilder $query, $livewire): float =>
-                                    self::summarizeQuery(
-                                        $query,
-                                        $livewire,
-                                        'not_due_amount',
-                                    )
-                            )
-                            ->money('SYP')
-                    ),
-
                 TextColumn::make('overdue_invoices_count_report')
                     ->label('الفواتير المتأخرة')
                     ->getStateUsing(
@@ -162,10 +123,12 @@ class OverdueCustomerReportsTable
                                 $livewire,
                             )['overdue_invoices_count']
                     )
-                    ->numeric(),
+                    ->numeric()
+                    ->alignEnd()
+                    ->weight('bold'),
 
                 TextColumn::make('oldest_overdue_date_report')
-                    ->label('أقدم مديونية متأخرة')
+                    ->label('أقدم استحقاق')
                     ->getStateUsing(
                         fn (Customer $record, $livewire): ?string =>
                             self::summaryForRecord(
@@ -187,27 +150,12 @@ class OverdueCustomerReportsTable
                     ->formatStateUsing(
                         fn (int $state): string =>
                             $state > 0 ? $state.' يوم' : '-'
-                    ),
-
-                TextColumn::make('credit_usage_report')
-                    ->label('استخدام الحد')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): ?float =>
-                            self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['credit_usage_percent']
                     )
-                    ->formatStateUsing(
-                        fn (?float $state): string =>
-                            $state === null
-                                ? 'لا يوجد حد'
-                                : number_format($state, 1).'%'
-                    )
-                    ->toggleable(),
+                    ->alignEnd()
+                    ->weight('bold'),
 
                 TextColumn::make('risk_status_report')
-                    ->label('المخاطر')
+                    ->label('مستوى المخاطر')
                     ->getStateUsing(
                         fn (Customer $record, $livewire): string =>
                             self::summaryForRecord(
@@ -224,6 +172,87 @@ class OverdueCustomerReportsTable
                         fn (string $state): string =>
                             OverdueCustomerReportService::riskColor($state)
                     ),
+
+                TextColumn::make('code')
+                    ->label('رمز العميل')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('contact_phone')
+                    ->label('الهاتف')
+                    ->getStateUsing(
+                        fn (Customer $record): string =>
+                            $record->mobile ?: ($record->phone ?: '-')
+                    )
+                    ->searchable(['phone', 'mobile'])
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم الهاتف')
+                    ->extraAttributes(['dir' => 'ltr'])
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('area.name_ar')
+                    ->label('المنطقة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('credit_limit')
+                    ->label('الحد الائتماني')
+                    ->money('SYP')
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('not_due_amount_report')
+                    ->label('غير المتأخر')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): float =>
+                            (float) self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['not_due_amount']
+                    )
+                    ->money('SYP')
+                    ->alignEnd()
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('إجمالي غير المتأخر')
+                            ->using(
+                                fn (QueryBuilder $query, $livewire): float =>
+                                    self::summarizeQuery(
+                                        $query,
+                                        $livewire,
+                                        'not_due_amount',
+                                    )
+                            )
+                            ->money('SYP')
+                    )
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('credit_usage_report')
+                    ->label('استخدام الحد')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): ?float =>
+                            self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['credit_usage_percent']
+                    )
+                    ->formatStateUsing(
+                        fn (?float $state): string =>
+                            $state === null
+                                ? 'لا يوجد حد'
+                                : number_format($state, 1).'%'
+                    )
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Filter::make('overdue_settings')
@@ -278,6 +307,7 @@ class OverdueCustomerReportsTable
                             ->minValue(0)
                             ->default(0),
                     ])
+                    ->columns(3)
                     ->query(function (Builder $query, array $data): Builder {
                         $settings = self::settingsFromFilterData($data);
 
@@ -332,12 +362,69 @@ class OverdueCustomerReportsTable
                         'active' => 'نشط',
                         'inactive' => 'غير نشط',
                     ]),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('نطاق التقرير والاستحقاق')
+                    ->description('حدد مرجع التقرير، مدة السماح، مستوى المخاطر والحد الأدنى للمبلغ المتأخر.')
+                    ->schema([
+                        $filters['overdue_settings'],
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('نطاق التوزيع')
+                    ->description('ضيّق العملاء حسب المنطقة أو خط التوزيع.')
+                    ->schema([
+                        $filters['area_id'],
+                        $filters['route_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('خصائص العميل')
+                    ->description('صفِّ النتائج حسب نوع الدفع أو نوع العميل أو حالته.')
+                    ->schema([
+                        $filters['payment_type'],
+                        $filters['customer_type'],
+                        $filters['status'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير العملاء المتأخرين')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير العملاء المتأخرين')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة كشف المديونية')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة تفاصيل مديونية العميل')
                     ->url(
                         fn (Customer $record, $livewire): string =>
                             self::printUrlFor(
@@ -356,7 +443,34 @@ class OverdueCustomerReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('name');
+            ->defaultSort('name')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-exclamation-circle')
+            ->emptyStateHeading('لا يوجد عملاء ضمن نطاق التأخير المحدد')
+            ->emptyStateDescription('غيّر خيارات التقرير أو وسّع نطاق الاستحقاق لعرض عملاء آخرين.');
+    }
+
+    private static function customerDescription(Customer $record): ?string
+    {
+        $parts = [];
+
+        if (filled($record->code)) {
+            $parts[] = 'الرمز: '.$record->code;
+        }
+
+        $phone = $record->mobile ?: $record->phone;
+
+        if (filled($phone)) {
+            $parts[] = 'الهاتف: '."\u{200E}".trim((string) $phone)."\u{200E}";
+        }
+
+        return $parts === [] ? null : implode(' • ', $parts);
     }
 
     public static function printUrlFor(
