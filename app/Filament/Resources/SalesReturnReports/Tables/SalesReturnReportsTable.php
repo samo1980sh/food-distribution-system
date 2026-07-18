@@ -4,12 +4,17 @@ namespace App\Filament\Resources\SalesReturnReports\Tables;
 
 use App\Enums\PermissionName;
 use App\Models\SalesReturn;
-
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -24,7 +29,10 @@ class SalesReturnReportsTable
                 TextColumn::make('return_number')
                     ->label('رقم المرتجع')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم المرتجع'),
 
                 TextColumn::make('return_date')
                     ->label('تاريخ المرتجع')
@@ -38,43 +46,14 @@ class SalesReturnReportsTable
                 TextColumn::make('customer.name')
                     ->label('العميل')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->wrap(),
 
                 TextColumn::make('salesInvoice.invoice_number')
                     ->label('الفاتورة الأصلية')
                     ->searchable()
-                    ->placeholder('مرتجع مستقل')
-                    ->toggleable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('مندوب المبيعات')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('items_count')
-                    ->label('عدد المواد')
-                    ->counts('items')
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(),
+                    ->placeholder('مرتجع مستقل'),
 
                 TextColumn::make('return_reason')
                     ->label('سبب المرتجع')
@@ -96,30 +75,19 @@ class SalesReturnReportsTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('subtotal')
-                    ->label('مجموع المواد')
-                    ->money('SYP')
+                TextColumn::make('items_count')
+                    ->label('عدد المواد')
+                    ->counts('items')
+                    ->numeric()
                     ->sortable()
-                    ->summarize(
-                        Sum::make()
-                            ->label('إجمالي المواد')
-                            ->money('SYP')
-                    ),
-
-                TextColumn::make('discount_amount')
-                    ->label('الحسم')
-                    ->money('SYP')
-                    ->sortable()
-                    ->summarize(
-                        Sum::make()
-                            ->label('إجمالي الحسومات')
-                            ->money('SYP')
-                    ),
+                    ->alignEnd(),
 
                 TextColumn::make('total_amount')
                     ->label('صافي المرتجع')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Sum::make()
                             ->label('إجمالي المرتجعات')
@@ -141,6 +109,54 @@ class SalesReturnReportsTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
+
+                TextColumn::make('warehouse.name')
+                    ->label('المستودع')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('مندوب المبيعات')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('subtotal')
+                    ->label('مجموع المواد')
+                    ->money('SYP')
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(
+                        Sum::make()
+                            ->label('إجمالي المواد')
+                            ->money('SYP')
+                    ),
+
+                TextColumn::make('discount_amount')
+                    ->label('الحسم')
+                    ->money('SYP')
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(
+                        Sum::make()
+                            ->label('إجمالي الحسومات')
+                            ->money('SYP')
+                    ),
 
                 TextColumn::make('confirmed_at')
                     ->label('تاريخ الاعتماد')
@@ -229,12 +245,66 @@ class SalesReturnReportsTable
                     ->relationship('salesRepresentative', 'name')
                     ->searchable()
                     ->preload(),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الفترة والتصنيف')
+                    ->description('حدد الفترة الزمنية وحالة المرتجع وسببه.')
+                    ->schema([
+                        $filters['return_date'],
+                        $filters['status'],
+                        $filters['return_reason'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
+
+                Section::make('العميل ونطاق التشغيل')
+                    ->description('ضيّق النتائج حسب العميل أو الفاتورة الأصلية أو المستودع أو السيارة أو خط التوزيع أو المندوب.')
+                    ->schema([
+                        $filters['customer_id'],
+                        $filters['sales_invoice_id'],
+                        $filters['warehouse_id'],
+                        $filters['vehicle_id'],
+                        $filters['route_id'],
+                        $filters['sales_representative_id'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير مرتجعات البيع')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير مرتجعات البيع')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة المرتجع')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة المرتجع')
                     ->url(
                         fn (SalesReturn $record): string => route(
                             'reports.sales-returns.print',
@@ -251,6 +321,16 @@ class SalesReturnReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('return_date', 'desc');
+            ->defaultSort('return_date', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-arrow-path-rounded-square')
+            ->emptyStateHeading('لا توجد نتائج في تقرير مرتجعات البيع')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض مرتجعات أخرى.');
     }
 }

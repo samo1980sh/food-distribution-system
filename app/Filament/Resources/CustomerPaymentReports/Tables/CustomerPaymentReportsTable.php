@@ -6,10 +6,16 @@ use App\Enums\PermissionName;
 use App\Models\CustomerPayment;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -25,12 +31,20 @@ class CustomerPaymentReportsTable
                 TextColumn::make('payment_number')
                     ->label('رقم التحصيل')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم التحصيل'),
 
                 TextColumn::make('payment_date')
-                    ->label('التاريخ')
+                    ->label('تاريخ التحصيل')
                     ->date('Y-m-d')
                     ->sortable()
+                    ->description(
+                        fn (CustomerPayment $record): ?string => $record->confirmed_at
+                            ? 'الاعتماد: '.$record->confirmed_at->format('Y-m-d H:i')
+                            : null,
+                    )
                     ->summarize(
                         Count::make()
                             ->label('عدد التحصيلات')
@@ -39,37 +53,14 @@ class CustomerPaymentReportsTable
                 TextColumn::make('customer.name')
                     ->label('العميل')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->wrap(),
 
                 TextColumn::make('salesInvoice.invoice_number')
                     ->label('الفاتورة')
                     ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('مندوب التحصيل')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('-'),
 
                 TextColumn::make('payment_method')
                     ->label('طريقة الدفع')
@@ -87,17 +78,64 @@ class CustomerPaymentReportsTable
                         'cheque' => 'warning',
                         'other' => 'gray',
                         default => 'gray',
-                    }),
+                    })
+                    ->description(
+                        fn (CustomerPayment $record): ?string => filled($record->reference_number)
+                            ? 'المرجع: '.$record->reference_number
+                            : null,
+                    ),
 
                 TextColumn::make('amount')
-                    ->label('إجمالي التحصيل')
+                    ->label('قيمة التحصيل')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Sum::make()
                             ->label('الإجمالي')
                             ->money('SYP')
                     ),
+
+                TextColumn::make('status')
+                    ->label('الحالة')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'draft' => 'مسودة',
+                        'confirmed' => 'معتمد',
+                        'cancelled' => 'ملغي',
+                        default => $state ?? '-',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'draft' => 'warning',
+                        'confirmed' => 'success',
+                        'cancelled' => 'danger',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('warehouse.name')
+                    ->label('المستودع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('مندوب التحصيل')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('cash_amount')
                     ->label('التحصيل النقدي')
@@ -107,6 +145,8 @@ class CustomerPaymentReportsTable
                             : 0
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي النقدي')
@@ -126,6 +166,8 @@ class CustomerPaymentReportsTable
                             : 0
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي غير النقدي')
@@ -145,23 +187,7 @@ class CustomerPaymentReportsTable
                     ->label('رقم المرجع / الشيك')
                     ->searchable()
                     ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('status')
-                    ->label('الحالة')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'مسودة',
-                        'confirmed' => 'معتمد',
-                        'cancelled' => 'ملغي',
-                        default => $state ?? '-',
-                    })
-                    ->color(fn (?string $state): string => match ($state) {
-                        'draft' => 'warning',
-                        'confirmed' => 'success',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('confirmed_at')
                     ->label('تاريخ الاعتماد')
@@ -249,12 +275,66 @@ class CustomerPaymentReportsTable
                     ->relationship('salesRepresentative', 'name')
                     ->searchable()
                     ->preload(),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الفترة والحالة')
+                    ->description('حدد الفترة الزمنية وحالة التحصيل وطريقة الدفع المطلوبة.')
+                    ->schema([
+                        $filters['payment_date'],
+                        $filters['status'],
+                        $filters['payment_method'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
+
+                Section::make('العميل ونطاق التشغيل')
+                    ->description('ضيّق النتائج حسب العميل أو الفاتورة أو المستودع أو السيارة أو خط التوزيع أو المندوب.')
+                    ->schema([
+                        $filters['customer_id'],
+                        $filters['sales_invoice_id'],
+                        $filters['warehouse_id'],
+                        $filters['vehicle_id'],
+                        $filters['route_id'],
+                        $filters['sales_representative_id'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير التحصيلات')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير التحصيلات')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة سند التحصيل')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة سند التحصيل')
                     ->url(
                         fn (CustomerPayment $record): string => route(
                             'reports.customer-payments.print',
@@ -271,6 +351,16 @@ class CustomerPaymentReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('payment_date', 'desc');
+            ->defaultSort('payment_date', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-banknotes')
+            ->emptyStateHeading('لا توجد نتائج في تقرير التحصيلات')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض تحصيلات أخرى.');
     }
 }
