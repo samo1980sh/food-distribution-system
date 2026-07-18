@@ -10,10 +10,16 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -31,63 +37,41 @@ class ExpiryRiskReportsTable
                 TextColumn::make('warehouse.name')
                     ->label('المستودع')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('warehouse.type')
-                    ->label('نوع المستودع')
-                    ->badge()
-                    ->formatStateUsing(
-                        fn (?string $state): string => self::warehouseTypeLabel($state)
+                    ->sortable()
+                    ->weight('medium')
+                    ->description(
+                        fn (StockBalance $record): ?string => match ($record->warehouse?->type) {
+                            'vehicle' => $record->warehouse?->vehicle?->plate_number,
+                            null => null,
+                            default => self::warehouseTypeLabel($record->warehouse?->type),
+                        }
                     )
-                    ->color(fn (?string $state): string => match ($state) {
-                        'main' => 'primary',
-                        'branch' => 'info',
-                        'vehicle' => 'warning',
-                        default => 'gray',
-                    }),
-
-                TextColumn::make('warehouse.vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('product.sku')
-                    ->label('SKU')
-                    ->searchable()
-                    ->sortable(),
+                    ->wrap(),
 
                 TextColumn::make('product.name_ar')
                     ->label('المنتج')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('product.category.name_ar')
-                    ->label('التصنيف')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('product.unit.name_ar')
-                    ->label('الوحدة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->description(fn (StockBalance $record): ?string => $record->product?->sku)
+                    ->wrap(),
 
                 TextColumn::make('batch_number')
                     ->label('رقم التشغيلة')
                     ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('غير مسجل')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم التشغيلة'),
 
                 TextColumn::make('expiry_date')
                     ->label('تاريخ الصلاحية')
                     ->date('Y-m-d')
                     ->placeholder('غير مسجل')
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('expiry_status')
-                    ->label('حالة الصلاحية')
+                    ->label('مستوى الخطورة')
                     ->getStateUsing(
                         fn (StockBalance $record): string =>
                             self::expiryStatus($record->expiry_date)
@@ -111,12 +95,21 @@ class ExpiryRiskReportsTable
                     ->formatStateUsing(
                         fn (?int $state): string =>
                             self::daysRemainingLabel($state)
-                    ),
+                    )
+                    ->weight('bold')
+                    ->color(fn ($state): string => match (true) {
+                        $state === null || (int) $state < 0 => 'danger',
+                        (int) $state <= 7 => 'warning',
+                        (int) $state <= 30 => 'info',
+                        default => 'gray',
+                    }),
 
                 TextColumn::make('quantity')
                     ->label('الكمية الحالية')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize([
                         Count::make()
                             ->label('عدد الأرصدة'),
@@ -126,12 +119,6 @@ class ExpiryRiskReportsTable
                             ->numeric(decimalPlaces: 3),
                     ]),
 
-                TextColumn::make('average_unit_cost')
-                    ->label('متوسط تكلفة الوحدة')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
                 TextColumn::make('inventory_value')
                     ->label('القيمة بالتكلفة')
                     ->getStateUsing(
@@ -139,6 +126,8 @@ class ExpiryRiskReportsTable
                             self::inventoryValue($record)
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize([
                         Summarizer::make()
                             ->label('إجمالي القيمة')
@@ -149,6 +138,51 @@ class ExpiryRiskReportsTable
                             )
                             ->money('SYP'),
                     ]),
+
+                TextColumn::make('warehouse.type')
+                    ->label('نوع المستودع')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn (?string $state): string => self::warehouseTypeLabel($state)
+                    )
+                    ->color(fn (?string $state): string => match ($state) {
+                        'main' => 'primary',
+                        'branch' => 'info',
+                        'vehicle' => 'warning',
+                        default => 'gray',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('warehouse.vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('product.sku')
+                    ->label('SKU')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('product.category.name_ar')
+                    ->label('التصنيف')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('product.unit.name_ar')
+                    ->label('الوحدة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('average_unit_cost')
+                    ->label('متوسط تكلفة الوحدة')
+                    ->money('SYP')
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label('آخر تحديث')
@@ -275,12 +309,70 @@ class ExpiryRiskReportsTable
                                 ),
                         );
                     }),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الصلاحية ومستوى الخطورة')
+                    ->description('حدد نطاق الصلاحية أو الحالة الدقيقة أو فترة صلاحية مخصصة.')
+                    ->schema([
+                        $filters['expiry_risk'],
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('موقع المخزون')
+                    ->description('ضيّق الأرصدة حسب المستودع أو نوعه أو السيارة المرتبطة به.')
+                    ->schema([
+                        $filters['warehouse_id'],
+                        $filters['warehouse_type'],
+                        $filters['vehicle_id'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
+
+                Section::make('المنتج والتشغيلة')
+                    ->description('ابحث حسب المنتج أو تصنيفه أو رقم التشغيلة.')
+                    ->schema([
+                        $filters['product_id'],
+                        $filters['category_id'],
+                        $filters['batch_number'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير المواد القريبة من الانتهاء')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير المواد القريبة من الانتهاء')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة الرصيد')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة تفاصيل الرصيد')
                     ->url(
                         fn (StockBalance $record): string => self::printUrlFor($record),
                         shouldOpenInNewTab: true,
@@ -295,7 +387,17 @@ class ExpiryRiskReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('expiry_date');
+            ->defaultSort('expiry_date')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-exclamation-triangle')
+            ->emptyStateHeading('لا توجد أرصدة ضمن نطاق مخاطر الصلاحية')
+            ->emptyStateDescription('غيّر خيارات التقرير أو وسّع نطاق الصلاحية لعرض أرصدة أخرى.');
     }
 
     public static function printUrlFor(StockBalance $record): string
