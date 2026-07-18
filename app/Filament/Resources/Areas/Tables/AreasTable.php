@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Areas\Tables;
 
-use App\Enums\PermissionName;
+use App\Models\Area;
+use App\Support\Filament\MasterDataStatusActions;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -14,23 +16,30 @@ class AreasTable
     {
         return $table
             ->columns([
-                TextColumn::make('code')->label('الرمز')->searchable()->sortable(),
-                TextColumn::make('name_ar')->label('الاسم')->searchable()->sortable(),
-                TextColumn::make('city')->label('المدينة')->searchable()->toggleable(),
-
+                TextColumn::make('code')
+                    ->label('الرمز')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable(),
+                TextColumn::make('name_ar')
+                    ->label('المنطقة')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('city')
+                    ->label('المدينة / المحافظة')
+                    ->searchable()
+                    ->placeholder('-'),
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'active' => 'فعال',
-                        'inactive' => 'غير فعال',
-                        default => $state ?? '-',
-                    })
-                    ->color(fn (?string $state): string => match ($state) {
-                        'active' => 'success',
-                        'inactive' => 'gray',
-                        default => 'gray',
-                    }),
+                    ->formatStateUsing(fn (?string $state): string => $state === 'active' ? 'فعال' : 'غير فعال')
+                    ->color(fn (?string $state): string => $state === 'active' ? 'success' : 'gray'),
+                TextColumn::make('updated_at')
+                    ->label('آخر تحديث')
+                    ->dateTime('Y-m-d H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -41,13 +50,29 @@ class AreasTable
                     ]),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->visible(fn (): bool => auth()->user()?->can(PermissionName::AREAS_UPDATE->value) === true)
-                    ->label('تعديل')
-                    ->modalHeading('تعديل منطقة')
-                    ->slideOver(),
+                ActionGroup::make([
+                    EditAction::make()
+                        ->label('تعديل المنطقة')
+                        ->modalHeading('تعديل منطقة')
+                        ->slideOver()
+                        ->visible(fn (Area $record): bool => auth()->user()?->can('update', $record) === true),
+                    MasterDataStatusActions::activate('المنطقة'),
+                    MasterDataStatusActions::deactivate('المنطقة'),
+                ])
+                    ->label('الإجراءات')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateIcon('heroicon-o-map-pin')
+            ->emptyStateHeading('لا توجد مناطق مسجلة')
+            ->emptyStateDescription('أضف أول منطقة، أو غيّر عوامل التصفية للعثور على منطقة غير فعالة.');
     }
 }
