@@ -6,9 +6,15 @@ use App\Enums\PermissionName;
 use App\Models\VehicleLoad;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -23,12 +29,20 @@ class VehicleLoadReportsTable
                 TextColumn::make('load_number')
                     ->label('رقم أمر التحميل')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم أمر التحميل'),
 
                 TextColumn::make('load_date')
                     ->label('تاريخ التحميل')
                     ->date('Y-m-d')
                     ->sortable()
+                    ->description(
+                        fn (VehicleLoad $record): ?string => $record->approved_at
+                            ? 'الاعتماد: '.$record->approved_at->format('Y-m-d H:i')
+                            : null,
+                    )
                     ->summarize(
                         Count::make()
                             ->label('عدد أوامر التحميل')
@@ -37,47 +51,27 @@ class VehicleLoadReportsTable
                 TextColumn::make('vehicle.plate_number')
                     ->label('السيارة')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium'),
 
                 TextColumn::make('route.name')
                     ->label('خط التوزيع')
                     ->searchable()
                     ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('مندوب المبيعات')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->wrap(),
 
                 TextColumn::make('fromWarehouse.name')
                     ->label('المستودع المصدر')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('toWarehouse.name')
-                    ->label('مستودع السيارة')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('items_count')
-                    ->label('عدد المواد')
-                    ->counts('items')
-                    ->numeric()
                     ->sortable()
-                    ->toggleable(),
+                    ->wrap(),
 
                 TextColumn::make('total_quantity')
                     ->label('إجمالي الكمية')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Sum::make()
                             ->label('إجمالي الكميات')
@@ -88,6 +82,8 @@ class VehicleLoadReportsTable
                     ->label('إجمالي التكلفة')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Sum::make()
                             ->label('إجمالي التكاليف')
@@ -112,10 +108,37 @@ class VehicleLoadReportsTable
                         default => 'gray',
                     }),
 
+                TextColumn::make('driver.name')
+                    ->label('السائق')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('مندوب المبيعات')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('toWarehouse.name')
+                    ->label('مستودع السيارة')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('items_count')
+                    ->label('عدد المواد')
+                    ->counts('items')
+                    ->numeric()
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('approved_at')
                     ->label('تاريخ الاعتماد')
                     ->dateTime('Y-m-d H:i')
                     ->placeholder('-')
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
@@ -190,12 +213,72 @@ class VehicleLoadReportsTable
                     ->relationship('toWarehouse', 'name')
                     ->searchable()
                     ->preload(),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الفترة والحالة')
+                    ->description('حدد فترة التحميل والحالة التشغيلية لأوامر التحميل المطلوبة.')
+                    ->schema([
+                        $filters['load_date'],
+                        $filters['status'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('السيارة وفريق التوزيع')
+                    ->description('ضيّق النتائج حسب السيارة وخط التوزيع والسائق ومندوب المبيعات.')
+                    ->schema([
+                        $filters['vehicle_id'],
+                        $filters['route_id'],
+                        $filters['driver_id'],
+                        $filters['sales_representative_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('المستودعات')
+                    ->description('حدد المستودع المصدر أو مستودع السيارة الوجهة عند الحاجة.')
+                    ->schema([
+                        $filters['from_warehouse_id'],
+                        $filters['to_warehouse_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير تحميلات السيارات')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير تحميلات السيارات')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة أمر التحميل')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة أمر التحميل')
                     ->url(
                         fn (VehicleLoad $record): string => route(
                             'reports.vehicle-loads.print',
@@ -212,6 +295,16 @@ class VehicleLoadReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('load_date', 'desc');
+            ->defaultSort('load_date', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-truck')
+            ->emptyStateHeading('لا توجد نتائج في تقرير تحميلات السيارات')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض أوامر تحميل أخرى.');
     }
 }

@@ -6,10 +6,16 @@ use App\Enums\PermissionName;
 use App\Models\VehicleExpense;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -25,12 +31,20 @@ class VehicleExpenseReportsTable
                 TextColumn::make('expense_number')
                     ->label('رقم المصروف')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم المصروف'),
 
                 TextColumn::make('expense_date')
                     ->label('التاريخ')
                     ->date('Y-m-d')
                     ->sortable()
+                    ->description(
+                        fn (VehicleExpense $record): ?string => $record->approved_at
+                            ? 'الاعتماد: '.$record->approved_at->format('Y-m-d H:i')
+                            : null,
+                    )
                     ->summarize(
                         Count::make()
                             ->label('عدد المصاريف')
@@ -39,30 +53,14 @@ class VehicleExpenseReportsTable
                 TextColumn::make('vehicle.plate_number')
                     ->label('السيارة')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium'),
 
                 TextColumn::make('warehouse.name')
                     ->label('المستودع')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('المندوب')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->sortable()
+                    ->wrap(),
 
                 TextColumn::make('expense_type')
                     ->label('نوع المصروف')
@@ -99,6 +97,8 @@ class VehicleExpenseReportsTable
                     ->label('المبلغ')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize([
                         Sum::make()
                             ->label('إجمالي المصاريف')
@@ -125,18 +125,36 @@ class VehicleExpenseReportsTable
                             ->money('SYP'),
                     ]),
 
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('driver.name')
+                    ->label('السائق')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('المندوب')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('approvedBy.name')
                     ->label('المعتمد بواسطة')
                     ->searchable()
                     ->placeholder('-')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('approved_at')
                     ->label('تاريخ الاعتماد')
                     ->dateTime('Y-m-d H:i')
                     ->placeholder('-')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('receipt_path')
                     ->label('الإيصال')
@@ -216,12 +234,72 @@ class VehicleExpenseReportsTable
                 SelectFilter::make('payment_method')
                     ->label('طريقة الدفع')
                     ->options(self::paymentMethodOptions()),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الفترة والتصنيف')
+                    ->description('حدد الفترة ونوع المصروف وطريقة الدفع المطلوبة.')
+                    ->schema([
+                        $filters['expense_date'],
+                        $filters['expense_type'],
+                        $filters['payment_method'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
+
+                Section::make('السيارة ونطاق التشغيل')
+                    ->description('ضيّق النتائج حسب السيارة أو المستودع أو خط التوزيع.')
+                    ->schema([
+                        $filters['vehicle_id'],
+                        $filters['warehouse_id'],
+                        $filters['route_id'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
+
+                Section::make('فريق التوزيع')
+                    ->description('حدد السائق أو مندوب المبيعات المرتبط بالمصروف عند الحاجة.')
+                    ->schema([
+                        $filters['driver_id'],
+                        $filters['sales_representative_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير مصاريف السيارات')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير مصاريف السيارات')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة المصروف')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة المصروف')
                     ->url(
                         fn (VehicleExpense $record): string => self::printUrlFor($record),
                         shouldOpenInNewTab: true,
@@ -237,7 +315,17 @@ class VehicleExpenseReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('expense_date', 'desc');
+            ->defaultSort('expense_date', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-receipt-percent')
+            ->emptyStateHeading('لا توجد نتائج في تقرير مصاريف السيارات')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض مصاريف أخرى.');
     }
 
     public static function printUrlFor(VehicleExpense $record): string
