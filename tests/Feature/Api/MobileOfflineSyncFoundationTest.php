@@ -428,6 +428,12 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'SOURCE-WH-'.$suffix,
+            'name' => 'مستودع مصدر '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
         $driver = Employee::query()->create([
             'employee_code' => 'DRV-'.$suffix,
             'name' => 'سائق '.$suffix,
@@ -501,7 +507,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'route_id' => $route->id,
             'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
-            'from_warehouse_id' => $warehouse->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $warehouse->id,
             'load_date' => today(),
             'status' => 'draft',

@@ -51,7 +51,8 @@ class DailyClosingRefreshTotalsTest extends TestCase
         $warehouse = Warehouse::query()->create([
             'code' => 'W-DCL-CLOSE-'.$suffix,
             'name' => 'Daily Closing Warehouse '.$suffix,
-            'type' => 'main',
+            'type' => 'vehicle',
+            'vehicle_id' => $vehicle->id,
             'status' => 'active',
         ]);
 

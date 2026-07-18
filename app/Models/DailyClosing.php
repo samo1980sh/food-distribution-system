@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Distribution\DailyClosingService;
+use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -90,6 +91,8 @@ class DailyClosing extends Model
         });
 
         static::saving(function (DailyClosing $closing): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($closing);
+
             $closing->active_scope_key = $closing->activeScopeKey();
 
             if ($closing->status === 'cancelled' || blank($closing->closing_date) || blank($closing->warehouse_id)) {

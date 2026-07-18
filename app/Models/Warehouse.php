@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,6 +18,13 @@ class Warehouse extends Model
         'status',
         'notes',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $warehouse): void {
+            app(OperationalContextValidator::class)->validateWarehouse($warehouse);
+        });
+    }
 
     public function vehicle(): BelongsTo
     {

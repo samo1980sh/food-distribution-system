@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Distribution\VehicleExpenseService;
+use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
@@ -66,6 +67,8 @@ class VehicleExpense extends Model
         });
 
         static::saving(function (VehicleExpense $expense): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($expense);
+
             if (
                 in_array($expense->status, ['pending', 'approved'], true)
                 && filled($expense->expense_date)

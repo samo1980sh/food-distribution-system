@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\SalesReturnService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,6 +43,10 @@ class SalesReturn extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (SalesReturn $record): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($record);
+        });
+
         static::creating(function (SalesReturn $salesReturn): void {
             if (blank($salesReturn->return_number)) {
                 $salesReturn->return_number = app(SalesReturnService::class)->generateReturnNumber();

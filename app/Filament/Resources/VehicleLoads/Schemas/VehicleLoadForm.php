@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\VehicleLoads\Schemas;
 
 use App\Enums\UserRole;
-
+use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -23,14 +23,16 @@ class VehicleLoadForm
             ->components([
                 Select::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                     ->searchable()
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('route_id', null);
-                        $set('to_warehouse_id', null);
+                        $set('driver_id', null);
+                        $set('sales_representative_id', null);
+                        $set('to_warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                     })
                     ->native(false),
 
@@ -45,15 +47,18 @@ class VehicleLoadForm
                         'route',
                         'name',
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
-                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
-                            ->where('status', 'active'),
+                            ->where('status', 'active')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
                     )
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
-                        $set('driver_id', null);
-                        $set('sales_representative_id', null);
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        $context = OperationalFormContext::forRoute($state);
+                        $set('vehicle_id', $context['vehicle_id']);
+                        $set('to_warehouse_id', $context['warehouse_id']);
+                        $set('driver_id', $context['driver_id']);
+                        $set('sales_representative_id', $context['sales_representative_id']);
                     })
                     ->native(false),
 
@@ -62,9 +67,15 @@ class VehicleLoadForm
                     ->relationship(
                         'driver',
                         'name',
-                        modifyQueryUsing: fn (Builder $query): Builder => $query
-                            ->where('status', 'active')
-                            ->forOperationalRole(UserRole::DRIVER),
+                        modifyQueryUsing: function (Builder $query, Get $get): Builder {
+                            $query
+                                ->where('status', 'active')
+                                ->forOperationalRole(UserRole::DRIVER);
+
+                            $driverId = OperationalFormContext::forRoute($get('route_id'))['driver_id'];
+
+                            return $driverId === null ? $query : $query->whereKey($driverId);
+                        },
                     )
                     ->searchable()
                     ->preload()
@@ -75,9 +86,19 @@ class VehicleLoadForm
                     ->relationship(
                         'salesRepresentative',
                         'name',
-                        modifyQueryUsing: fn (Builder $query): Builder => $query
-                            ->where('status', 'active')
-                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
+                        modifyQueryUsing: function (Builder $query, Get $get): Builder {
+                            $query
+                                ->where('status', 'active')
+                                ->forOperationalRole(UserRole::SALES_REPRESENTATIVE);
+
+                            $representativeId = OperationalFormContext::forRoute(
+                                $get('route_id'),
+                            )['sales_representative_id'];
+
+                            return $representativeId === null
+                                ? $query
+                                : $query->whereKey($representativeId);
+                        },
                     )
                     ->searchable()
                     ->preload()
@@ -105,13 +126,13 @@ class VehicleLoadForm
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
                             ->where('status', 'active')
                             ->where('type', 'vehicle')
-                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId)),
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
                     )
                     ->searchable()
                     ->preload()
                     ->required()
                     ->native(false)
-                    ->helperText('يتم عرض مستودعات السيارة المحددة فقط.'),
+                    ->helperText('يتم تثبيت مستودع السيارة المحددة تلقائيًا.'),
 
                 Textarea::make('notes')
                     ->label('ملاحظات')
@@ -127,7 +148,7 @@ class VehicleLoadForm
                     ->schema([
                         Select::make('product_id')
                             ->label('المنتج')
-                            ->relationship('product', 'name_ar')
+                            ->relationship('product', 'name_ar', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                             ->searchable()
                             ->preload()
                             ->required()

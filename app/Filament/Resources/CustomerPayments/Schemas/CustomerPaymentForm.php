@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\CustomerPayments\Schemas;
 
 use App\Enums\UserRole;
-
+use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -27,8 +27,11 @@ class CustomerPaymentForm
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('sales_invoice_id', null);
+                        self::applyContext($set, OperationalFormContext::forCustomer($state));
                     })
                     ->native(false),
 
@@ -45,12 +48,20 @@ class CustomerPaymentForm
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
                             ->where('status', 'confirmed')
                             ->where('remaining_amount', '>', 0)
-                            ->when($get('customer_id'), fn (Builder $query, $customerId) => $query->where('customer_id', $customerId)),
+                            ->when($get('customer_id'), fn (Builder $query, $customerId): Builder => $query->where('customer_id', $customerId)),
                     )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        self::applyContext($set, OperationalFormContext::forInvoice($state));
+                    })
                     ->native(false)
-                    ->helperText('تظهر الفواتير المعتمدة وغير المسددة للعميل المحدد فقط.'),
+                    ->helperText('عند اختيار فاتورة يتم تثبيت سياق التحصيل منها تلقائيًا.'),
 
                 Select::make('vehicle_id')
                     ->label('السيارة')
@@ -58,12 +69,14 @@ class CustomerPaymentForm
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('route_id', null);
-                        $set('warehouse_id', null);
+                        $set('sales_representative_id', null);
+                        $set('warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                     })
-                    ->native(false)
-                    ->helperText('اختياري. عند ربط التحصيل بفاتورة سيتم ملؤه عند الاعتماد من الفاتورة إذا ترك فارغاً.'),
+                    ->native(false),
 
                 Select::make('route_id')
                     ->label('خط التوزيع')
@@ -71,11 +84,17 @@ class CustomerPaymentForm
                         'route',
                         'name',
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
-                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
-                            ->where('status', 'active'),
+                            ->where('status', 'active')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
                     )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        self::applyContext($set, OperationalFormContext::forRoute($state));
+                    })
                     ->native(false),
 
                 Select::make('warehouse_id')
@@ -87,11 +106,15 @@ class CustomerPaymentForm
                             ->where('status', 'active')
                             ->when(
                                 $get('vehicle_id'),
-                                fn (Builder $query, $vehicleId) => $query->where('type', 'vehicle')->where('vehicle_id', $vehicleId),
+                                fn (Builder $query, $vehicleId): Builder => $query
+                                    ->where('type', 'vehicle')
+                                    ->where('vehicle_id', $vehicleId),
                             ),
                     )
                     ->searchable()
                     ->preload()
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
                     ->native(false)
                     ->helperText('مطلوب عند اعتماد تحصيل غير مرتبط بفاتورة حتى يدخل في الإغلاق الصحيح.'),
 
@@ -106,6 +129,8 @@ class CustomerPaymentForm
                     )
                     ->searchable()
                     ->preload()
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
                     ->native(false),
 
                 Select::make('payment_method')
@@ -134,5 +159,21 @@ class CustomerPaymentForm
                     ->label('ملاحظات')
                     ->columnSpanFull(),
             ]);
+    }
+
+    /** @param array<string, ?int> $context */
+    private static function applyContext(Set $set, array $context): void
+    {
+        foreach ([
+            'customer_id',
+            'route_id',
+            'vehicle_id',
+            'warehouse_id',
+            'sales_representative_id',
+        ] as $field) {
+            if (array_key_exists($field, $context)) {
+                $set($field, $context[$field]);
+            }
+        }
     }
 }

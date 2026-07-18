@@ -68,7 +68,7 @@ class DailyClosingDuplicateScopeTest extends TestCase
         $salesRepresentative = Employee::query()->create([
             'employee_code' => 'E-DCL-'.uniqid(),
             'name' => 'Daily Closing Representative',
-            'employee_type' => 'sales_representative',
+            'type' => 'sales_representative',
             'status' => 'active',
         ]);
 

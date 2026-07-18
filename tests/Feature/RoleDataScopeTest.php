@@ -42,7 +42,10 @@ class RoleDataScopeTest extends TestCase
         $this->assertSame([$first['area']->id], Area::query()->pluck('id')->all());
         $this->assertSame([$first['route']->id], DistributionRoute::query()->pluck('id')->all());
         $this->assertSame([$first['vehicle']->id], Vehicle::query()->pluck('id')->all());
-        $this->assertSame([$first['warehouse']->id], Warehouse::query()->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$first['warehouse']->id, $first['sourceWarehouse']->id],
+            Warehouse::query()->pluck('id')->all(),
+        );
         $this->assertSame([$first['customer']->id], Customer::query()->pluck('id')->all());
         $this->assertSame([$first['invoice']->id], SalesInvoice::query()->pluck('id')->all());
 
@@ -109,7 +112,7 @@ class RoleDataScopeTest extends TestCase
             'route_id' => $second['route']->id,
             'driver_id' => $second['driver']->id,
             'sales_representative_id' => $second['representative']->id,
-            'from_warehouse_id' => $first['warehouse']->id,
+            'from_warehouse_id' => $first['sourceWarehouse']->id,
             'to_warehouse_id' => $second['warehouse']->id,
             'load_date' => today()->toDateString(),
             'status' => 'draft',
@@ -118,11 +121,11 @@ class RoleDataScopeTest extends TestCase
         $warehouseKeeper = User::factory()->create([
             'role' => User::ROLE_WAREHOUSE_KEEPER,
         ]);
-        $warehouseKeeper->accessWarehouses()->attach($first['warehouse']);
+        $warehouseKeeper->accessWarehouses()->attach($first['sourceWarehouse']);
 
         $this->actingAs($warehouseKeeper);
 
-        $this->assertSame([$first['warehouse']->id], Warehouse::query()->pluck('id')->all());
+        $this->assertSame([$first['sourceWarehouse']->id], Warehouse::query()->pluck('id')->all());
         $this->assertTrue(VehicleLoad::query()->whereKey($crossLoad->id)->exists());
         $this->assertFalse($warehouseKeeper->can('approve', $crossLoad));
         $this->assertFalse(VehicleLoad::query()->whereKey($second['load']->id)->exists());
@@ -167,7 +170,10 @@ class RoleDataScopeTest extends TestCase
 
         $this->assertSame([$first['route']->id], DistributionRoute::query()->pluck('id')->all());
         $this->assertSame([$first['vehicle']->id], Vehicle::query()->pluck('id')->all());
-        $this->assertSame([$first['warehouse']->id], Warehouse::query()->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$first['warehouse']->id, $first['sourceWarehouse']->id],
+            Warehouse::query()->pluck('id')->all(),
+        );
         $this->assertEqualsCanonicalizing(
             [$first['driver']->id, $first['representative']->id],
             Employee::query()->pluck('id')->all(),
@@ -396,6 +402,13 @@ class RoleDataScopeTest extends TestCase
             'status' => 'active',
         ]);
 
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'SOURCE-WH-'.$suffix,
+            'name' => 'مستودع مصدر '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
         $driver = Employee::query()->create([
             'employee_code' => 'DRV-'.$suffix,
             'name' => 'سائق '.$suffix,
@@ -452,7 +465,7 @@ class RoleDataScopeTest extends TestCase
             'route_id' => $route->id,
             'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
-            'from_warehouse_id' => $warehouse->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $warehouse->id,
             'load_date' => today()->toDateString(),
             'status' => 'draft',
@@ -462,6 +475,7 @@ class RoleDataScopeTest extends TestCase
             'area',
             'vehicle',
             'warehouse',
+            'sourceWarehouse',
             'driver',
             'representative',
             'route',

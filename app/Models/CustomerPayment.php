@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\CustomerPaymentService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -38,6 +39,10 @@ class CustomerPayment extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (CustomerPayment $record): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($record);
+        });
+
         static::creating(function (CustomerPayment $payment): void {
             if (blank($payment->payment_number)) {
                 $payment->payment_number = app(CustomerPaymentService::class)->generatePaymentNumber();

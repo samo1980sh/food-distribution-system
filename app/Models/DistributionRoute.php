@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,13 @@ class DistributionRoute extends Model
     protected $casts = [
         'visit_days' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $route): void {
+            app(OperationalContextValidator::class)->validateRoute($route);
+        });
+    }
 
     public function area(): BelongsTo
     {

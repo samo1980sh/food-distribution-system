@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Rules\AllowedUserRoleCombination;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -58,7 +59,8 @@ class UserForm
                             ->all(),
                     )
                     ->multiple()
-                    ->maxItems(1)
+                    ->maxItems(2)
+                    ->rules([new AllowedUserRoleCombination])
                     ->required()
                     ->live()
                     ->preload()
@@ -71,7 +73,7 @@ class UserForm
                     ->helperText(
                         fn (?User $record): string => $record?->isLastActiveSuperAdmin() === true
                             ? 'لا يمكن تغيير دور آخر مدير نظام فعّال.'
-                            : 'لا يمكن للمستخدم تغيير دوره بنفسه.',
+                            : 'يمكن الجمع فقط بين دوري السائق ومندوب المبيعات، ولا يمكن للمستخدم تغيير دوره بنفسه.',
                     ),
 
                 Select::make('accessAreas')

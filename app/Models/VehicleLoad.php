@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use App\Services\Distribution\VehicleLoadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,10 @@ class VehicleLoad extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (VehicleLoad $record): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($record);
+        });
+
         static::creating(function (VehicleLoad $vehicleLoad): void {
             if (blank($vehicleLoad->load_number)) {
                 $vehicleLoad->load_number = app(VehicleLoadService::class)->generateLoadNumber();

@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\Customers\Schemas;
 
+use App\Models\DistributionRoute;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class CustomerForm
 {
@@ -34,8 +38,49 @@ class CustomerForm
 
                 TextInput::make('phone')->label('الهاتف')->tel()->maxLength(255),
                 TextInput::make('mobile')->label('الموبايل')->tel()->maxLength(255),
-                Select::make('area_id')->label('المنطقة')->relationship('area', 'name_ar')->searchable()->preload()->native(false),
-                Select::make('route_id')->label('خط التوزيع')->relationship('route', 'name')->searchable()->preload()->native(false),
+
+                Select::make('area_id')
+                    ->label('المنطقة')
+                    ->relationship(
+                        'area',
+                        'name_ar',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (Set $set): void {
+                        $set('route_id', null);
+                    })
+                    ->native(false),
+
+                Select::make('route_id')
+                    ->label('خط التوزيع')
+                    ->relationship(
+                        'route',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->when(
+                                $get('area_id'),
+                                fn (Builder $query, $areaId): Builder => $query->where('area_id', $areaId),
+                            ),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        $route = filled($state)
+                            ? DistributionRoute::query()->find((int) $state)
+                            : null;
+
+                        if ($route !== null) {
+                            $set('area_id', $route->area_id);
+                        }
+                    })
+                    ->native(false)
+                    ->helperText('تعرض القائمة الخطوط الفعالة التابعة للمنطقة المحددة فقط.'),
+
                 TextInput::make('address')->label('العنوان')->maxLength(255)->columnSpanFull(),
                 TextInput::make('latitude')->label('خط العرض')->numeric()->step('0.0000001'),
                 TextInput::make('longitude')->label('خط الطول')->numeric()->step('0.0000001'),

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\SalesInvoiceService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,10 @@ class SalesInvoice extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (SalesInvoice $record): void {
+            app(OperationalContextValidator::class)->validateOperationalRecord($record);
+        });
+
         static::creating(function (SalesInvoice $invoice): void {
             if (blank($invoice->invoice_number)) {
                 $invoice->invoice_number = app(SalesInvoiceService::class)->generateInvoiceNumber();

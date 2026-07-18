@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\SalesReturns\Schemas;
 
 use App\Enums\UserRole;
-
+use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -28,8 +28,11 @@ class SalesReturnForm
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('sales_invoice_id', null);
+                        self::applyContext($set, OperationalFormContext::forCustomer($state));
                     })
                     ->native(false),
 
@@ -45,11 +48,20 @@ class SalesReturnForm
                         'invoice_number',
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
                             ->where('status', 'confirmed')
-                            ->when($get('customer_id'), fn (Builder $query, $customerId) => $query->where('customer_id', $customerId)),
+                            ->when($get('customer_id'), fn (Builder $query, $customerId): Builder => $query->where('customer_id', $customerId)),
                     )
                     ->searchable()
                     ->preload()
-                    ->native(false),
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        self::applyContext($set, OperationalFormContext::forInvoice($state));
+                    })
+                    ->native(false)
+                    ->helperText('عند اختيار فاتورة يتم تثبيت العميل والسيارة والخط والمستودع والمندوب منها.'),
 
                 Select::make('vehicle_id')
                     ->label('السيارة')
@@ -57,9 +69,12 @@ class SalesReturnForm
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('route_id', null);
-                        $set('warehouse_id', null);
+                        $set('sales_representative_id', null);
+                        $set('warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                     })
                     ->native(false),
 
@@ -69,11 +84,17 @@ class SalesReturnForm
                         'route',
                         'name',
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
-                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
-                            ->where('status', 'active'),
+                            ->where('status', 'active')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
                     )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        self::applyContext($set, OperationalFormContext::forRoute($state));
+                    })
                     ->native(false),
 
                 Select::make('warehouse_id')
@@ -85,14 +106,17 @@ class SalesReturnForm
                             ->where('status', 'active')
                             ->when(
                                 $get('vehicle_id'),
-                                fn (Builder $query, $vehicleId) => $query->where('type', 'vehicle')->where('vehicle_id', $vehicleId),
+                                fn (Builder $query, $vehicleId): Builder => $query
+                                    ->where('type', 'vehicle')
+                                    ->where('vehicle_id', $vehicleId),
                             ),
                     )
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->native(false)
-                    ->helperText('عند اختيار سيارة، يتم عرض مستودع السيارة المحددة فقط.'),
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
+                    ->native(false),
 
                 Select::make('sales_representative_id')
                     ->label('مندوب المبيعات')
@@ -105,6 +129,8 @@ class SalesReturnForm
                     )
                     ->searchable()
                     ->preload()
+                    ->disabled(fn (Get $get): bool => filled($get('sales_invoice_id')))
+                    ->dehydrated()
                     ->native(false),
 
                 Select::make('return_reason')
@@ -137,7 +163,7 @@ class SalesReturnForm
                     ->schema([
                         Select::make('product_id')
                             ->label('المنتج')
-                            ->relationship('product', 'name_ar')
+                            ->relationship('product', 'name_ar', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                             ->searchable()
                             ->preload()
                             ->required()
@@ -172,5 +198,21 @@ class SalesReturnForm
                             ->helperText('للمرتجع المرتبط بفاتورة تُستعاد التكلفة تلقائيًا من الفاتورة الأصلية.'),
                     ]),
             ]);
+    }
+
+    /** @param array<string, ?int> $context */
+    private static function applyContext(Set $set, array $context): void
+    {
+        foreach ([
+            'customer_id',
+            'route_id',
+            'vehicle_id',
+            'warehouse_id',
+            'sales_representative_id',
+        ] as $field) {
+            if (array_key_exists($field, $context)) {
+                $set($field, $context[$field]);
+            }
+        }
     }
 }

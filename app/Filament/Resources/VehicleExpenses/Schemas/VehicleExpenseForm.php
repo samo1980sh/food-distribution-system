@@ -4,11 +4,14 @@ namespace App\Filament\Resources\VehicleExpenses\Schemas;
 
 use App\Enums\UserRole;
 use App\Models\VehicleExpense;
+use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -26,26 +29,58 @@ class VehicleExpenseForm
 
                 Select::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                     ->searchable()
                     ->preload()
                     ->required()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        $set('route_id', null);
+                        $set('driver_id', null);
+                        $set('sales_representative_id', null);
+                        $set('warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
+                    })
                     ->native(false),
 
                 Select::make('warehouse_id')
-                    ->label('مستودع السيارة / المستودع')
-                    ->relationship('warehouse', 'name')
+                    ->label('مستودع السيارة')
+                    ->relationship(
+                        'warehouse',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->where('type', 'vehicle')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
+                    )
                     ->searchable()
                     ->preload()
                     ->required()
                     ->native(false)
-                    ->helperText('هذا الحقل مهم حتى تدخل المصاريف ضمن إغلاق اليوم الصحيح.'),
+                    ->helperText('يتم ربط المصروف بمستودع السيارة حتى يدخل في الإغلاق الصحيح.'),
 
                 Select::make('route_id')
                     ->label('خط التوزيع')
-                    ->relationship('route', 'name')
+                    ->relationship(
+                        'route',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
+                            ->where('status', 'active')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
+                    )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        $context = OperationalFormContext::forRoute($state);
+
+                        if ($context['vehicle_id'] !== null) {
+                            $set('vehicle_id', $context['vehicle_id']);
+                            $set('warehouse_id', $context['warehouse_id']);
+                        }
+
+                        $set('driver_id', $context['driver_id']);
+                        $set('sales_representative_id', $context['sales_representative_id']);
+                    })
                     ->native(false),
 
                 Select::make('driver_id')
@@ -91,7 +126,7 @@ class VehicleExpenseForm
                 TextInput::make('amount')
                     ->label('المبلغ')
                     ->numeric()
-                    ->minValue(0)
+                    ->minValue(0.01)
                     ->step('0.01')
                     ->default(0)
                     ->required(),

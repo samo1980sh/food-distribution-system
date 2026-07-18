@@ -97,6 +97,37 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
+    public function test_api_rejects_internally_inconsistent_but_in_scope_context(): void
+    {
+        $first = $this->context('A');
+        $second = $this->context('B');
+
+        $second['route']->update([
+            'sales_representative_id' => $first['representative']->id,
+        ]);
+
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $first['representative'],
+        );
+        $payload = $this->invoicePayload(
+            $second,
+            'context-mismatch-invoice-0001',
+        );
+        $payload['customer_id'] = $first['customer']->id;
+        $payload['sales_representative_id'] = $first['representative']->id;
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-invoices', $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_failed')
+            ->assertJsonValidationErrors(['route_id']);
+
+        $this->assertDatabaseMissing('sales_invoices', [
+            'client_reference' => 'context-mismatch-invoice-0001',
+        ]);
+    }
+
     public function test_sales_representative_can_update_but_cannot_delete_a_draft_invoice(): void
     {
         $context = $this->context('A');

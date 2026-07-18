@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\DistributionRoutes\Schemas;
 
 use App\Enums\UserRole;
-
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -20,8 +19,19 @@ class DistributionRouteForm
                 TextInput::make('code')->label('رمز الخط')->required()->unique(ignoreRecord: true)->maxLength(255),
                 TextInput::make('name')->label('اسم خط التوزيع')->required()->maxLength(255),
 
-                Select::make('area_id')->label('المنطقة')->relationship('area', 'name_ar')->searchable()->preload()->required()->native(false),
-                Select::make('vehicle_id')->label('السيارة')->relationship('vehicle', 'plate_number')->searchable()->preload()->native(false),
+                Select::make('area_id')
+                    ->label('المنطقة')
+                    ->relationship('area', 'name_ar', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
+                    ->searchable()
+                    ->preload()
+                    ->required()
+                    ->native(false),
+                Select::make('vehicle_id')
+                    ->label('السيارة')
+                    ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
                 Select::make('driver_id')
                     ->label('السائق')
                     ->relationship(

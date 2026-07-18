@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
 use App\Enums\UserRole;
-
+use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -27,7 +27,12 @@ class SalesInvoiceForm
                     ->searchable()
                     ->preload()
                     ->required()
-                    ->native(false),
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        self::applyContext($set, OperationalFormContext::forCustomer($state));
+                    })
+                    ->native(false)
+                    ->helperText('عند اختيار العميل يتم تعبئة الخط والسيارة والمستودع والمندوب من تكليف العميل.'),
 
                 DatePicker::make('invoice_date')
                     ->label('تاريخ الفاتورة')
@@ -40,9 +45,10 @@ class SalesInvoiceForm
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(function (Set $set): void {
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
                         $set('route_id', null);
-                        $set('warehouse_id', null);
+                        $set('sales_representative_id', null);
+                        $set('warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                     })
                     ->native(false),
 
@@ -52,11 +58,15 @@ class SalesInvoiceForm
                         'route',
                         'name',
                         modifyQueryUsing: fn (Builder $query, Get $get): Builder => $query
-                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId) => $query->where('vehicle_id', $vehicleId))
-                            ->where('status', 'active'),
+                            ->where('status', 'active')
+                            ->when($get('vehicle_id'), fn (Builder $query, $vehicleId): Builder => $query->where('vehicle_id', $vehicleId)),
                     )
                     ->searchable()
                     ->preload()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                        self::applyContext($set, OperationalFormContext::forRoute($state));
+                    })
                     ->native(false),
 
                 Select::make('warehouse_id')
@@ -68,23 +78,35 @@ class SalesInvoiceForm
                             ->where('status', 'active')
                             ->when(
                                 $get('vehicle_id'),
-                                fn (Builder $query, $vehicleId) => $query->where('type', 'vehicle')->where('vehicle_id', $vehicleId),
+                                fn (Builder $query, $vehicleId): Builder => $query
+                                    ->where('type', 'vehicle')
+                                    ->where('vehicle_id', $vehicleId),
                             ),
                     )
                     ->searchable()
                     ->preload()
                     ->required()
                     ->native(false)
-                    ->helperText('عند اختيار سيارة، يتم عرض مستودع السيارة المحددة فقط.'),
+                    ->helperText('عند اختيار سيارة، يتم تثبيت مستودع السيارة المطابق.'),
 
                 Select::make('sales_representative_id')
                     ->label('مندوب المبيعات')
                     ->relationship(
                         'salesRepresentative',
                         'name',
-                        modifyQueryUsing: fn (Builder $query): Builder => $query
-                            ->where('status', 'active')
-                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
+                        modifyQueryUsing: function (Builder $query, Get $get): Builder {
+                            $query
+                                ->where('status', 'active')
+                                ->forOperationalRole(UserRole::SALES_REPRESENTATIVE);
+
+                            $representativeId = OperationalFormContext::forRoute(
+                                $get('route_id'),
+                            )['sales_representative_id'];
+
+                            return $representativeId === null
+                                ? $query
+                                : $query->whereKey($representativeId);
+                        },
                     )
                     ->searchable()
                     ->preload()
@@ -130,7 +152,7 @@ class SalesInvoiceForm
                     ->schema([
                         Select::make('product_id')
                             ->label('المنتج')
-                            ->relationship('product', 'name_ar')
+                            ->relationship('product', 'name_ar', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                             ->searchable()
                             ->preload()
                             ->required()
@@ -163,5 +185,20 @@ class SalesInvoiceForm
                             ->default(0),
                     ]),
             ]);
+    }
+
+    /** @param array<string, ?int> $context */
+    private static function applyContext(Set $set, array $context): void
+    {
+        foreach ($context as $field => $value) {
+            if (in_array($field, [
+                'route_id',
+                'vehicle_id',
+                'warehouse_id',
+                'sales_representative_id',
+            ], true)) {
+                $set($field, $value);
+            }
+        }
     }
 }
