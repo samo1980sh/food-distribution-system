@@ -17,6 +17,10 @@ class SalesReturnService
     public function confirm(SalesReturn $salesReturn): SalesReturn
     {
         return DB::transaction(function () use ($salesReturn): SalesReturn {
+            $salesReturn = SalesReturn::query()
+                ->lockForUpdate()
+                ->findOrFail($salesReturn->getKey());
+
             $salesReturn->loadMissing([
                 'items.product',
                 'warehouse',
@@ -86,6 +90,10 @@ class SalesReturnService
     public function cancel(SalesReturn $salesReturn): SalesReturn
     {
         return DB::transaction(function () use ($salesReturn): SalesReturn {
+            $salesReturn = SalesReturn::query()
+                ->lockForUpdate()
+                ->findOrFail($salesReturn->getKey());
+
             $salesReturn->loadMissing([
                 'items.product',
                 'warehouse',

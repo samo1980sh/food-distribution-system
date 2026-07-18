@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName;
 
-class VehiclePolicy extends PermissionPolicy
+class VehiclePolicy extends ProtectedMasterDataPolicy
 {
     protected const VIEW_ANY = PermissionName::VEHICLES_VIEW;
     protected const CREATE = PermissionName::VEHICLES_CREATE;

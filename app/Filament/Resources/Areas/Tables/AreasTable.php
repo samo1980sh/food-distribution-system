@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Areas\Tables;
 
 use App\Enums\PermissionName;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -49,13 +47,7 @@ class AreasTable
                     ->modalHeading('تعديل منطقة')
                     ->slideOver(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::AREAS_DELETE->value) === true),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

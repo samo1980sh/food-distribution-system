@@ -17,6 +17,10 @@ class SalesInvoiceService
     public function confirm(SalesInvoice $invoice): SalesInvoice
     {
         return DB::transaction(function () use ($invoice): SalesInvoice {
+            $invoice = SalesInvoice::query()
+                ->lockForUpdate()
+                ->findOrFail($invoice->getKey());
+
             $invoice->loadMissing([
                 'items.product',
                 'warehouse',
@@ -77,6 +81,10 @@ class SalesInvoiceService
     public function cancel(SalesInvoice $invoice): SalesInvoice
     {
         return DB::transaction(function () use ($invoice): SalesInvoice {
+            $invoice = SalesInvoice::query()
+                ->lockForUpdate()
+                ->findOrFail($invoice->getKey());
+
             $invoice->loadMissing([
                 'items.product',
                 'warehouse',

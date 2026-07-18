@@ -168,6 +168,22 @@ class RbacFoundationTest extends TestCase
         $this->assertFalse($accountant->can('approve', $draftLoad));
     }
 
+    public function test_super_admin_permissions_do_not_bypass_operational_state_rules(): void
+    {
+        $superAdmin = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+        ]);
+
+        $draftInvoice = new SalesInvoice(['status' => 'draft']);
+        $confirmedInvoice = new SalesInvoice(['status' => 'confirmed']);
+
+        $this->assertTrue($superAdmin->can('update', $draftInvoice));
+        $this->assertTrue($superAdmin->can('delete', $draftInvoice));
+        $this->assertFalse($superAdmin->can('update', $confirmedInvoice));
+        $this->assertFalse($superAdmin->can('delete', $confirmedInvoice));
+        $this->assertFalse($superAdmin->can('confirm', $confirmedInvoice));
+    }
+
     public function test_permission_seeder_is_idempotent(): void
     {
         $this->seed(RolesAndPermissionsSeeder::class);

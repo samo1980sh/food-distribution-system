@@ -76,12 +76,8 @@ class AppServiceProvider extends ServiceProvider
             Gate::policy($model, $policy);
         }
 
-        Gate::before(function (User $user, string $ability): ?bool {
-            if (! $user->isActive()) {
-                return false;
-            }
-
-            return $user->isSuperAdmin() ? true : null;
+        Gate::before(function (User $user): ?bool {
+            return $user->isActive() ? null : false;
         });
     }
 }

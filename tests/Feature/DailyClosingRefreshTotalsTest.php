@@ -16,6 +16,7 @@ use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
 use App\Services\Distribution\DailyClosingService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use RuntimeException;
 use Tests\TestCase;
 
 class DailyClosingRefreshTotalsTest extends TestCase
@@ -185,5 +186,30 @@ class DailyClosingRefreshTotalsTest extends TestCase
 
         $this->assertSame('50.00', $closing->expected_cash_amount);
         $this->assertSame('5.00', $closing->cash_difference);
+    }
+
+    public function test_refresh_totals_rejects_confirmed_closing(): void
+    {
+        $suffix = uniqid();
+
+        $warehouse = Warehouse::query()->create([
+            'code' => 'W-DCL-LOCK-'.$suffix,
+            'name' => 'Confirmed Closing Warehouse '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
+        $closing = DailyClosing::query()->create([
+            'closing_number' => 'DCL-LOCK-'.$suffix,
+            'closing_date' => today(),
+            'warehouse_id' => $warehouse->id,
+            'status' => 'confirmed',
+            'actual_cash_amount' => 0,
+        ]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('لا يمكن تحديث إجماليات إغلاق يوم ليس بحالة مسودة.');
+
+        app(DailyClosingService::class)->refreshTotals($closing);
     }
 }

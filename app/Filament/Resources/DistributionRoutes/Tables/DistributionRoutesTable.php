@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\DistributionRoutes\Tables;
 
 use App\Enums\PermissionName;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -50,13 +48,7 @@ class DistributionRoutesTable
                     ->modalHeading('تعديل خط توزيع')
                     ->slideOver(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::DISTRIBUTION_ROUTES_DELETE->value) === true),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

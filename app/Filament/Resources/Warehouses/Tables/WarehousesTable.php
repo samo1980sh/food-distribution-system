@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Warehouses\Tables;
 
 use App\Filament\Resources\Warehouses\WarehouseResource;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -66,13 +64,7 @@ class WarehousesTable
                     ->slideOver()
                     ->visible(fn (): bool => WarehouseResource::canManageWarehouseStructure()),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->visible(fn (): bool => WarehouseResource::canManageWarehouseStructure()),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

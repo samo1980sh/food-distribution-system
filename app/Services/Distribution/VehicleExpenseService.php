@@ -13,6 +13,10 @@ class VehicleExpenseService
     public function approve(VehicleExpense $expense): VehicleExpense
     {
         return DB::transaction(function () use ($expense): VehicleExpense {
+            $expense = VehicleExpense::query()
+                ->lockForUpdate()
+                ->findOrFail($expense->getKey());
+
             if (! $expense->isPending()) {
                 throw new RuntimeException('لا يمكن اعتماد مصروف ليس بحالة قيد المراجعة.');
             }
@@ -35,6 +39,10 @@ class VehicleExpenseService
     public function reject(VehicleExpense $expense, ?string $reason = null): VehicleExpense
     {
         return DB::transaction(function () use ($expense, $reason): VehicleExpense {
+            $expense = VehicleExpense::query()
+                ->lockForUpdate()
+                ->findOrFail($expense->getKey());
+
             if (! $expense->isPending()) {
                 throw new RuntimeException('لا يمكن رفض مصروف ليس بحالة قيد المراجعة.');
             }

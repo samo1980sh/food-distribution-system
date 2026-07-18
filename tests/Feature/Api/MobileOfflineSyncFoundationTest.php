@@ -21,6 +21,7 @@ use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use App\Services\Authorization\AccessScopeService;
 use App\Services\Sales\CustomerPaymentService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -252,42 +253,43 @@ class MobileOfflineSyncFoundationTest extends TestCase
         $this->assertSame('delete', $customerChanges->first()['operation']);
     }
 
-    public function test_database_cascades_emit_tombstones_and_refresh_surviving_records(): void
+    public function test_restricted_master_data_delete_preserves_records_without_tombstones(): void
     {
         $context = $this->context('A');
         $cursor = (int) (MobileSyncChange::query()->max('id') ?? 0);
         $areaId = (int) $context['area']->id;
         $routeId = (int) $context['route']->id;
+        $customerId = (int) $context['customer']->id;
+        $invoiceId = (int) $context['invoice']->id;
+        $deleteWasBlocked = false;
 
-        $context['area']->delete();
+        try {
+            $context['area']->delete();
+        } catch (QueryException) {
+            $deleteWasBlocked = true;
+        }
+
+        $this->assertTrue($deleteWasBlocked);
+        $this->assertDatabaseHas('areas', ['id' => $areaId]);
+        $this->assertDatabaseHas('distribution_routes', ['id' => $routeId]);
+        $this->assertDatabaseHas('customers', ['id' => $customerId]);
+        $this->assertDatabaseHas('sales_invoices', ['id' => $invoiceId]);
 
         $changes = MobileSyncChange::query()
             ->where('id', '>', $cursor)
             ->get();
 
-        $this->assertTrue($changes->contains(
+        $this->assertFalse($changes->contains(
             fn (MobileSyncChange $change): bool =>
                 $change->entity === 'areas'
                 && (int) $change->record_id === $areaId
                 && $change->operation === 'delete',
         ));
-        $this->assertTrue($changes->contains(
+        $this->assertFalse($changes->contains(
             fn (MobileSyncChange $change): bool =>
                 $change->entity === 'routes'
                 && (int) $change->record_id === $routeId
                 && $change->operation === 'delete',
-        ));
-        $this->assertTrue($changes->contains(
-            fn (MobileSyncChange $change): bool =>
-                $change->entity === 'customers'
-                && (int) $change->record_id === (int) $context['customer']->id
-                && $change->operation === 'upsert',
-        ));
-        $this->assertTrue($changes->contains(
-            fn (MobileSyncChange $change): bool =>
-                $change->entity === 'sales_invoices'
-                && (int) $change->record_id === (int) $context['invoice']->id
-                && $change->operation === 'upsert',
         ));
     }
 

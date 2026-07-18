@@ -14,6 +14,10 @@ class VehicleLoadService
     public function approve(VehicleLoad $vehicleLoad): VehicleLoad
     {
         return DB::transaction(function () use ($vehicleLoad): VehicleLoad {
+            $vehicleLoad = VehicleLoad::query()
+                ->lockForUpdate()
+                ->findOrFail($vehicleLoad->getKey());
+
             $vehicleLoad->loadMissing([
                 'items.product',
                 'fromWarehouse',
@@ -68,6 +72,10 @@ class VehicleLoadService
     public function cancel(VehicleLoad $vehicleLoad): VehicleLoad
     {
         return DB::transaction(function () use ($vehicleLoad): VehicleLoad {
+            $vehicleLoad = VehicleLoad::query()
+                ->lockForUpdate()
+                ->findOrFail($vehicleLoad->getKey());
+
             $vehicleLoad->loadMissing([
                 'items.product',
                 'fromWarehouse',

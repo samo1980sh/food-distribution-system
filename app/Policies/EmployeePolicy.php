@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName;
 
-class EmployeePolicy extends PermissionPolicy
+class EmployeePolicy extends ProtectedMasterDataPolicy
 {
     protected const VIEW_ANY = PermissionName::EMPLOYEES_VIEW;
     protected const CREATE = PermissionName::EMPLOYEES_CREATE;

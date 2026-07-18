@@ -14,6 +14,14 @@ class DailyClosingService
     public function refreshTotals(DailyClosing $closing): DailyClosing
     {
         return DB::transaction(function () use ($closing): DailyClosing {
+            $closing = DailyClosing::query()
+                ->lockForUpdate()
+                ->findOrFail($closing->getKey());
+
+            if (! $closing->isDraft()) {
+                throw new RuntimeException('لا يمكن تحديث إجماليات إغلاق يوم ليس بحالة مسودة.');
+            }
+
             $closing->loadMissing('warehouse');
             $this->validateClosingScope($closing);
 
@@ -161,11 +169,15 @@ class DailyClosingService
     public function confirm(DailyClosing $closing): DailyClosing
     {
         return DB::transaction(function () use ($closing): DailyClosing {
+            $closing = DailyClosing::query()
+                ->lockForUpdate()
+                ->findOrFail($closing->getKey());
+
             if (! $closing->isDraft()) {
                 throw new RuntimeException('لا يمكن اعتماد إغلاق يوم ليس بحالة مسودة.');
             }
 
-            $this->refreshTotals($closing);
+            $closing = $this->refreshTotals($closing);
 
             $closing->forceFill([
                 'status' => 'confirmed',
@@ -180,6 +192,10 @@ class DailyClosingService
     public function cancel(DailyClosing $closing): DailyClosing
     {
         return DB::transaction(function () use ($closing): DailyClosing {
+            $closing = DailyClosing::query()
+                ->lockForUpdate()
+                ->findOrFail($closing->getKey());
+
             if (! $closing->isConfirmed()) {
                 throw new RuntimeException('لا يمكن إلغاء إغلاق يوم غير معتمد.');
             }

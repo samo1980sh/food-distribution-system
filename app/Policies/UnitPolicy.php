@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName;
 
-class UnitPolicy extends PermissionPolicy
+class UnitPolicy extends ProtectedMasterDataPolicy
 {
     protected const VIEW_ANY = PermissionName::UNITS_VIEW;
     protected const CREATE = PermissionName::UNITS_CREATE;

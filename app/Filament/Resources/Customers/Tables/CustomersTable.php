@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\Customers\Tables;
 
 use App\Enums\PermissionName;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -89,13 +87,7 @@ class CustomersTable
                     ->modalHeading('تعديل عميل')
                     ->slideOver(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->visible(fn (): bool => auth()->user()?->can(PermissionName::CUSTOMERS_DELETE->value) === true),
-                ]),
-            ])
+            ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
     }
 }

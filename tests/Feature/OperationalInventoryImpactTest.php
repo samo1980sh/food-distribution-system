@@ -9,6 +9,7 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Models\StockBalance;
+use App\Models\StockMovement;
 use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
@@ -19,6 +20,7 @@ use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Tests\TestCase;
 
 class OperationalInventoryImpactTest extends TestCase
@@ -230,6 +232,69 @@ class OperationalInventoryImpactTest extends TestCase
 
         $this->assertEqualsWithDelta(5, $this->balanceQuantity($warehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(12, $this->balanceAverageCost($warehouse, $product), 0.000001);
+    }
+
+    public function test_stale_invoice_instance_cannot_apply_inventory_twice(): void
+    {
+        $suffix = uniqid();
+
+        $warehouse = $this->createWarehouse('W-LOCK-'.$suffix, 'Lock Warehouse '.$suffix);
+        $customer = $this->createCustomer($suffix);
+        $product = $this->createProduct($suffix);
+
+        app(InventoryMovementService::class)->addStock(
+            warehouse: $warehouse,
+            product: $product,
+            quantity: 10,
+            movementType: 'opening_balance',
+        );
+
+        $invoice = SalesInvoice::query()->create([
+            'invoice_number' => 'INV-LOCK-'.$suffix,
+            'customer_id' => $customer->id,
+            'warehouse_id' => $warehouse->id,
+            'invoice_date' => now()->toDateString(),
+            'status' => 'draft',
+            'payment_type' => 'credit',
+            'subtotal' => 60,
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+            'total_amount' => 60,
+            'paid_amount' => 0,
+            'invoice_cash_amount' => 0,
+            'remaining_amount' => 60,
+        ]);
+
+        SalesInvoiceItem::query()->create([
+            'sales_invoice_id' => $invoice->id,
+            'product_id' => $product->id,
+            'quantity' => 3,
+            'unit_price' => 20,
+            'discount_amount' => 0,
+            'line_total' => 60,
+        ]);
+
+        $firstCopy = SalesInvoice::query()->findOrFail($invoice->id);
+        $staleCopy = SalesInvoice::query()->findOrFail($invoice->id);
+
+        app(SalesInvoiceService::class)->confirm($firstCopy);
+
+        try {
+            app(SalesInvoiceService::class)->confirm($staleCopy);
+            $this->fail('A stale invoice instance must not apply inventory twice.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame(
+                'لا يمكن اعتماد فاتورة ليست بحالة مسودة.',
+                $exception->getMessage(),
+            );
+        }
+
+        $this->assertEqualsWithDelta(7, $this->balanceQuantity($warehouse, $product), 0.0001);
+        $this->assertSame(1, StockMovement::query()
+            ->where('movement_type', 'sales_invoice')
+            ->where('reference_type', SalesInvoice::class)
+            ->where('reference_id', $invoice->id)
+            ->count());
     }
 
     private function syncStockMovementSequenceForToday(): void

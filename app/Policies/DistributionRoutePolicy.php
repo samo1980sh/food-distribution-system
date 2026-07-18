@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Enums\PermissionName;
 
-class DistributionRoutePolicy extends PermissionPolicy
+class DistributionRoutePolicy extends ProtectedMasterDataPolicy
 {
     protected const VIEW_ANY = PermissionName::DISTRIBUTION_ROUTES_VIEW;
     protected const CREATE = PermissionName::DISTRIBUTION_ROUTES_CREATE;

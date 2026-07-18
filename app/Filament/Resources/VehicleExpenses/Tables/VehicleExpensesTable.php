@@ -183,7 +183,7 @@ class VehicleExpensesTable
                             ->required()
                             ->columnSpanFull(),
                     ])
-                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('approve', $record) === true)
+                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('reject', $record) === true)
                     ->action(function (VehicleExpense $record, array $data): void {
                         try {
                             Gate::authorize('reject', $record);

@@ -11,11 +11,7 @@ abstract class PermissionPolicy
 {
     public function before(User $user, string $ability): ?bool
     {
-        if (! $user->isActive()) {
-            return false;
-        }
-
-        return $user->isSuperAdmin() ? true : null;
+        return $user->isActive() ? null : false;
     }
 
     protected const VIEW_ANY = null;
