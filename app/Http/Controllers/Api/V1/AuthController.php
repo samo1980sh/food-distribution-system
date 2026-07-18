@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Api\MobileBootstrapService;
 use App\Services\Api\MobileTokenService;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\MobileAppAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -47,6 +48,14 @@ class AuthController extends Controller
             return ApiResponse::error(
                 'الحساب غير فعّال. يرجى التواصل مع الإدارة.',
                 'account_inactive',
+                403,
+            );
+        }
+
+        if (! MobileAppAccess::allows($user)) {
+            return ApiResponse::error(
+                'هذا التطبيق مخصص لحسابات السائقين ومندوبي المبيعات فقط.',
+                'mobile_role_denied',
                 403,
             );
         }

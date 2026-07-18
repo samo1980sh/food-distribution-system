@@ -97,16 +97,19 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_manager_can_update_and_delete_a_draft_invoice(): void
+    public function test_sales_representative_can_update_but_cannot_delete_a_draft_invoice(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager);
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($user);
 
         $response = $this->withToken($token)
             ->postJson('/api/v1/operational/sales-invoices', $this->invoicePayload(
                 $context,
-                'manager-invoice-0001',
+                'field-invoice-0001',
             ))
             ->assertCreated();
 
@@ -114,7 +117,7 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->withToken($token)
             ->patchJson('/api/v1/operational/sales-invoices/'.$invoiceId, [
-                'notes' => 'تم التعديل من التطبيق',
+                'notes' => 'Updated from field app',
                 'items' => [[
                     'product_id' => $context['product']->id,
                     'quantity' => 3,
@@ -124,27 +127,31 @@ class MobileOperationalWriteApiTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.total_amount', '30.00')
-            ->assertJsonPath('data.notes', 'تم التعديل من التطبيق');
+            ->assertJsonPath('data.notes', 'Updated from field app');
 
         $this->withToken($token)
             ->deleteJson('/api/v1/operational/sales-invoices/'.$invoiceId)
-            ->assertOk()
-            ->assertJsonPath('data.id', $invoiceId);
+            ->assertForbidden();
 
-        $this->assertDatabaseMissing('sales_invoices', ['id' => $invoiceId]);
+        $this->assertDatabaseHas('sales_invoices', [
+            'id' => $invoiceId,
+            'notes' => 'Updated from field app',
+        ]);
     }
 
-    public function test_supervisor_can_confirm_invoice_and_inventory_service_is_reused(): void
+    public function test_field_user_cannot_confirm_invoice(): void
     {
         $context = $this->context('A');
-        $supervisor = User::factory()->create(['role' => User::ROLE_SUPERVISOR]);
-        $supervisor->accessRoutes()->sync([$context['route']->id]);
-        $token = $this->tokenFor($supervisor);
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($user);
 
         $created = $this->withToken($token)
             ->postJson('/api/v1/operational/sales-invoices', $this->invoicePayload(
                 $context,
-                'supervisor-invoice-0001',
+                'field-confirm-denied-0001',
             ))
             ->assertCreated();
 
@@ -152,30 +159,31 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sales-invoices/'.$invoiceId.'/confirm')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'confirmed')
-            ->assertJsonPath('data.paid_amount', '20.00')
-            ->assertJsonPath('data.remaining_amount', '0.00');
+            ->assertForbidden();
 
+        $this->assertDatabaseHas('sales_invoices', [
+            'id' => $invoiceId,
+            'status' => 'draft',
+        ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 18,
+            'quantity' => 20,
         ]);
     }
 
-    public function test_customer_payment_confirmation_updates_credit_invoice_balance(): void
+    public function test_field_user_can_create_payment_but_cannot_confirm_it(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager);
-
-        $invoice = $this->createAndConfirmInvoice(
-            $token,
+        $invoice = $this->confirmedInvoice(
             $context,
-            'credit-invoice-0001',
-            'credit',
+            'payment-source-invoice-0001',
         );
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($user);
 
         $payment = $this->withToken($token)
             ->postJson('/api/v1/operational/customer-payments', [
@@ -185,7 +193,7 @@ class MobileOperationalWriteApiTest extends TestCase
                 'payment_date' => today()->toDateString(),
                 'payment_method' => 'cash',
                 'amount' => 7,
-                'notes' => 'دفعة من التطبيق',
+                'notes' => 'Field payment',
             ])
             ->assertCreated();
 
@@ -193,24 +201,24 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/customer-payments/'.$paymentId.'/confirm')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'confirmed');
+            ->assertForbidden();
 
         $invoice->refresh();
-        $this->assertSame('7.00', $invoice->paid_amount);
-        $this->assertSame('13.00', $invoice->remaining_amount);
+        $this->assertSame('0.00', $invoice->paid_amount);
+        $this->assertSame('20.00', $invoice->remaining_amount);
+        $this->assertDatabaseHas('customer_payments', [
+            'id' => $paymentId,
+            'status' => 'draft',
+        ]);
     }
 
     public function test_scoped_user_cannot_link_payment_to_out_of_scope_invoice(): void
     {
         $first = $this->context('A');
         $second = $this->context('B');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $outsideInvoice = $this->createAndConfirmInvoice(
-            $this->tokenFor($manager),
+        $outsideInvoice = $this->confirmedInvoice(
             $second,
             'outside-scope-invoice-0001',
-            'credit',
         );
         $representative = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
@@ -231,17 +239,18 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonValidationErrors(['sales_invoice_id']);
     }
 
-    public function test_sales_return_confirmation_restores_stock(): void
+    public function test_field_user_can_create_return_but_cannot_confirm_it(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager);
-        $invoice = $this->createAndConfirmInvoice(
-            $token,
+        $invoice = $this->confirmedInvoice(
             $context,
             'return-source-invoice-0001',
-            'credit',
         );
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($user);
 
         $salesReturn = $this->withToken($token)
             ->postJson('/api/v1/operational/sales-returns', [
@@ -253,7 +262,7 @@ class MobileOperationalWriteApiTest extends TestCase
                 'warehouse_id' => $context['warehouse']->id,
                 'sales_representative_id' => $context['representative']->id,
                 'return_date' => today()->toDateString(),
-                'return_reason' => 'تالف',
+                'return_reason' => 'damaged',
                 'items' => [[
                     'product_id' => $context['product']->id,
                     'quantity' => 1,
@@ -266,20 +275,26 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sales-returns/'.$returnId.'/confirm')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'confirmed');
+            ->assertForbidden();
 
+        $this->assertDatabaseHas('sales_returns', [
+            'id' => $returnId,
+            'status' => 'draft',
+        ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 19,
+            'quantity' => 20,
         ]);
     }
 
-    public function test_driver_can_submit_expense_and_supervisor_can_approve_it(): void
+    public function test_driver_can_submit_and_update_expense_but_cannot_approve_it(): void
     {
         $context = $this->context('A');
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
+        $driver = $this->userForEmployee(
+            User::ROLE_DRIVER,
+            $context['driver'],
+        );
         $driverToken = $this->tokenFor($driver);
 
         $created = $this->withToken($driverToken)
@@ -310,25 +325,22 @@ class MobileOperationalWriteApiTest extends TestCase
             ->postJson('/api/v1/operational/vehicle-expenses/'.$expenseId.'/approve')
             ->assertForbidden();
 
-        $this->app['auth']->forgetGuards();
-        $this->flushHeaders();
-
-        $supervisor = User::factory()->create(['role' => User::ROLE_SUPERVISOR]);
-        $supervisor->accessRoutes()->sync([$context['route']->id]);
-
-        $this->withToken($this->tokenFor($supervisor))
-            ->postJson('/api/v1/operational/vehicle-expenses/'.$expenseId.'/approve')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'approved');
+        $this->assertDatabaseHas('vehicle_expenses', [
+            'id' => $expenseId,
+            'status' => 'pending',
+            'amount' => 18,
+        ]);
     }
 
-    public function test_daily_closing_create_update_refresh_and_confirm(): void
+    public function test_field_user_cannot_create_daily_closing(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager);
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
 
-        $created = $this->withToken($token)
+        $this->withToken($this->tokenFor($user))
             ->postJson('/api/v1/operational/daily-closings', [
                 'client_reference' => 'daily-closing-0001',
                 'closing_date' => today()->toDateString(),
@@ -338,35 +350,20 @@ class MobileOperationalWriteApiTest extends TestCase
                 'sales_representative_id' => $context['representative']->id,
                 'actual_cash_amount' => 0,
             ])
-            ->assertCreated()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertForbidden();
 
-        $closingId = (int) $created->json('data.id');
-
-        $this->withToken($token)
-            ->patchJson('/api/v1/operational/daily-closings/'.$closingId, [
-                'actual_cash_amount' => 25,
-                'notes' => 'جرد التطبيق',
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.actual_cash_amount', '25.00')
-            ->assertJsonPath('data.notes', 'جرد التطبيق');
-
-        $this->withToken($token)
-            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/refresh-totals')
-            ->assertOk();
-
-        $this->withToken($token)
-            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/confirm')
-            ->assertOk()
-            ->assertJsonPath('data.status', 'confirmed');
+        $this->assertDatabaseMissing('daily_closings', [
+            'client_reference' => 'daily-closing-0001',
+        ]);
     }
 
     public function test_write_validation_uses_standard_api_envelope(): void
     {
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
+        $user = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
 
-        $this->withToken($this->tokenFor($manager))
+        $this->withToken($this->tokenFor($user))
             ->postJson('/api/v1/operational/sales-invoices', [])
             ->assertUnprocessable()
             ->assertJsonPath('code', 'validation_failed')
@@ -498,27 +495,27 @@ class MobileOperationalWriteApiTest extends TestCase
     }
 
     /** @param array<string, mixed> $context */
-    private function createAndConfirmInvoice(
-        string $token,
+    private function confirmedInvoice(
         array $context,
         string $clientReference,
-        string $paymentType,
     ): SalesInvoice {
-        $created = $this->withToken($token)
-            ->postJson('/api/v1/operational/sales-invoices', $this->invoicePayload(
-                $context,
-                $clientReference,
-                $paymentType,
-            ))
-            ->assertCreated();
-
-        $invoiceId = (int) $created->json('data.id');
-
-        $this->withToken($token)
-            ->postJson('/api/v1/operational/sales-invoices/'.$invoiceId.'/confirm')
-            ->assertOk();
-
-        return SalesInvoice::query()->findOrFail($invoiceId);
+        return SalesInvoice::query()->create([
+            'invoice_number' => 'TEST-'.$clientReference,
+            'client_reference' => $clientReference,
+            'customer_id' => $context['customer']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'route_id' => $context['route']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'invoice_date' => today()->toDateString(),
+            'status' => 'confirmed',
+            'payment_type' => 'credit',
+            'subtotal' => 20,
+            'total_amount' => 20,
+            'paid_amount' => 0,
+            'remaining_amount' => 20,
+            'invoice_cash_amount' => 0,
+        ]);
     }
 
     private function userForEmployee(string $role, Employee $employee): User

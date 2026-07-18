@@ -25,6 +25,11 @@ return [
     'token_ability' => 'api:v1',
     'token_name_prefix' => 'mobile:',
 
+    'allowed_roles' => [
+        'driver',
+        'sales_representative',
+    ],
+
     'default_page_size' => (int) env('MOBILE_API_DEFAULT_PAGE_SIZE', 25),
     'max_page_size' => (int) env('MOBILE_API_MAX_PAGE_SIZE', 100),
 

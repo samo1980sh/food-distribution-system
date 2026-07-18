@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\PermissionName;
 use App\Models\User;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\MobileAppAccess;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -30,6 +31,16 @@ class EnsureMobileApiAccess
             return ApiResponse::error(
                 'الحساب غير فعّال أو لم يعد متاحًا.',
                 'account_inactive',
+                403,
+            );
+        }
+
+        if (! MobileAppAccess::allows($user)) {
+            $user->currentAccessToken()?->delete();
+
+            return ApiResponse::error(
+                'هذا التطبيق مخصص لحسابات السائقين ومندوبي المبيعات فقط.',
+                'mobile_role_denied',
                 403,
             );
         }

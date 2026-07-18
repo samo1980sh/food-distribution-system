@@ -50,6 +50,57 @@ class MobileApiFoundationTest extends TestCase
         ]);
     }
 
+    public function test_user_with_driver_and_sales_roles_can_login(): void
+    {
+        $user = $this->createUser(UserRole::DRIVER);
+        $user->assignRole(UserRole::SALES_REPRESENTATIVE->value);
+
+        $this->postJson('/api/v1/auth/login', $this->loginPayload(
+            $user->email,
+            'dual-field-device-0001',
+        ))
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'tokenable_id' => $user->id,
+            'device_id' => 'dual-field-device-0001',
+        ]);
+    }
+
+    public function test_non_field_role_cannot_login_even_with_api_permission(): void
+    {
+        $user = $this->createUser(UserRole::MANAGER);
+
+        $this->postJson('/api/v1/auth/login', $this->loginPayload(
+            $user->email,
+            'manager-device-0001',
+        ))
+            ->assertForbidden()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'mobile_role_denied');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_existing_token_is_denied_after_field_roles_are_removed(): void
+    {
+        $user = $this->createUser(UserRole::DRIVER);
+        $token = $user->createToken(
+            'mobile:android:field-role-change',
+            [(string) config('mobile_api.token_ability')],
+        )->plainTextToken;
+
+        $user->syncRoles([UserRole::MANAGER->value]);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/auth/me')
+            ->assertForbidden()
+            ->assertJsonPath('code', 'mobile_role_denied');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
     public function test_invalid_credentials_use_standard_validation_response(): void
     {
         $user = $this->createUser(UserRole::DRIVER);
@@ -121,17 +172,11 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_me_returns_permissions_and_effective_scope(): void
     {
-        $user = $this->createUser(UserRole::SUPERVISOR);
-        $area = Area::query()->create([
-            'code' => 'API-DAM',
-            'name_ar' => 'دمشق API',
-            'status' => 'active',
-        ]);
-        $user->accessAreas()->sync([$area->id]);
+        $user = $this->createUser(UserRole::DRIVER);
 
         $token = $this->loginAndGetToken(
             $user,
-            'supervisor-device-0001',
+            'driver-device-me-0001',
         );
 
         $response = $this->withToken($token)
@@ -140,9 +185,9 @@ class MobileApiFoundationTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.role', UserRole::SUPERVISOR->value)
-            ->assertJsonPath('data.scope.area_ids.0', $area->id)
-            ->assertJsonPath('data.scope.unrestricted', false);
+            ->assertJsonPath('data.user.role', UserRole::DRIVER->value)
+            ->assertJsonPath('data.scope.unrestricted', false)
+            ->assertJsonPath('data.scope.has_assignments', false);
 
         $this->assertContains(
             PermissionName::API_ACCESS->value,

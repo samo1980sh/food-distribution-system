@@ -41,8 +41,8 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
     public function test_incremental_cursor_requires_a_valid_context_key(): void
     {
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'sync-device-validation');
+        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $token = $this->tokenFor($user, 'sync-device-validation');
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sync/pull', [
@@ -62,8 +62,8 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
     public function test_bootstrap_and_status_expose_offline_sync_contract(): void
     {
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'sync-device-bootstrap');
+        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $token = $this->tokenFor($user, 'sync-device-bootstrap');
 
         $bootstrap = $this->withToken($token)
             ->getJson('/api/v1/operational/bootstrap')
@@ -141,12 +141,13 @@ class MobileOfflineSyncFoundationTest extends TestCase
     public function test_incremental_pull_returns_updates_and_deletion_tombstones(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'sync-device-incremental');
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $context['representative']->update(['user_id' => $user->id]);
+        $token = $this->tokenFor($user, 'sync-device-incremental');
         $contextKey = $this->contextKey($token);
         $cursor = $this->initialCursor($token, $contextKey);
 
-        $context['customer']->update(['name' => 'عميل محدث']);
+        $context['customer']->update(['name' => 'Updated customer']);
 
         $updated = $this->withToken($token)
             ->postJson('/api/v1/operational/sync/pull', [
@@ -162,7 +163,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
                 && $change['operation'] === 'upsert');
 
         $this->assertNotNull($customerChange);
-        $this->assertSame('عميل محدث', $customerChange['record']['name']);
+        $this->assertSame('Updated customer', $customerChange['record']['name']);
         $cursor = (int) $updated->json('data.cursor');
 
         $invoiceId = (int) $context['invoice']->id;
@@ -254,69 +255,56 @@ class MobileOfflineSyncFoundationTest extends TestCase
     public function test_database_cascades_emit_tombstones_and_refresh_surviving_records(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'sync-device-cascade');
-        $contextKey = $this->contextKey($token);
-        $cursor = $this->initialCursor($token, $contextKey);
+        $cursor = (int) (MobileSyncChange::query()->max('id') ?? 0);
         $areaId = (int) $context['area']->id;
         $routeId = (int) $context['route']->id;
 
         $context['area']->delete();
 
-        $response = $this->withToken($token)
-            ->postJson('/api/v1/operational/sync/pull', [
-                'cursor' => $cursor,
-                'limit' => 500,
-                'context_key' => $contextKey,
-            ])
-            ->assertOk();
+        $changes = MobileSyncChange::query()
+            ->where('id', '>', $cursor)
+            ->get();
 
-        $changes = collect($response->json('data.changes'));
-        $areaDelete = $changes
-            ->where('entity', 'areas')
-            ->where('record_id', $areaId)
-            ->where('operation', 'delete')
-            ->first();
-        $routeDelete = $changes
-            ->where('entity', 'routes')
-            ->where('record_id', $routeId)
-            ->where('operation', 'delete')
-            ->first();
-        $customerUpsert = $changes
-            ->where('entity', 'customers')
-            ->where('record_id', $context['customer']->id)
-            ->where('operation', 'upsert')
-            ->last();
-        $invoiceUpsert = $changes
-            ->where('entity', 'sales_invoices')
-            ->where('record_id', $context['invoice']->id)
-            ->where('operation', 'upsert')
-            ->last();
-
-        $this->assertNotNull($areaDelete);
-        $this->assertNotNull($routeDelete);
-        $this->assertNotNull($customerUpsert);
-        $this->assertNull($customerUpsert['record']['area']);
-        $this->assertNull($customerUpsert['record']['route']);
-        $this->assertNotNull($invoiceUpsert);
-        $this->assertNull($invoiceUpsert['record']['route']);
+        $this->assertTrue($changes->contains(
+            fn (MobileSyncChange $change): bool =>
+                $change->entity === 'areas'
+                && (int) $change->record_id === $areaId
+                && $change->operation === 'delete',
+        ));
+        $this->assertTrue($changes->contains(
+            fn (MobileSyncChange $change): bool =>
+                $change->entity === 'routes'
+                && (int) $change->record_id === $routeId
+                && $change->operation === 'delete',
+        ));
+        $this->assertTrue($changes->contains(
+            fn (MobileSyncChange $change): bool =>
+                $change->entity === 'customers'
+                && (int) $change->record_id === (int) $context['customer']->id
+                && $change->operation === 'upsert',
+        ));
+        $this->assertTrue($changes->contains(
+            fn (MobileSyncChange $change): bool =>
+                $change->entity === 'sales_invoices'
+                && (int) $change->record_id === (int) $context['invoice']->id
+                && $change->operation === 'upsert',
+        ));
     }
 
     public function test_context_change_requires_full_reset(): void
     {
         $first = $this->context('A');
         $second = $this->context('B');
-        $supervisor = User::factory()->create(['role' => User::ROLE_SUPERVISOR]);
-        $supervisor->accessRoutes()->sync([$first['route']->id]);
-        $token = $this->tokenFor($supervisor, 'sync-device-context-change');
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $first['representative']->update(['user_id' => $user->id]);
+        $token = $this->tokenFor($user, 'sync-device-context-change');
         $oldContextKey = $this->contextKey($token);
         $cursor = $this->initialCursor($token, $oldContextKey);
 
-        $supervisor->accessRoutes()->sync([
-            $first['route']->id,
-            $second['route']->id,
+        $second['route']->update([
+            'sales_representative_id' => $first['representative']->id,
         ]);
-        app(AccessScopeService::class)->forget($supervisor);
+        app(AccessScopeService::class)->forget($user);
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sync/pull', [
@@ -339,13 +327,14 @@ class MobileOfflineSyncFoundationTest extends TestCase
     public function test_compaction_preserves_full_sync_state_and_expires_old_cursors(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'sync-device-compaction');
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $context['representative']->update(['user_id' => $user->id]);
+        $token = $this->tokenFor($user, 'sync-device-compaction');
         $contextKey = $this->contextKey($token);
         $oldCursor = $this->initialCursor($token, $contextKey);
 
-        $context['customer']->update(['name' => 'عميل بعد الضغط الأول']);
-        $context['customer']->update(['name' => 'عميل محفوظ بعد الضغط']);
+        $context['customer']->update(['name' => 'Customer after first update']);
+        $context['customer']->update(['name' => 'Customer preserved after compaction']);
         $invoiceId = (int) $context['invoice']->id;
         $context['invoice']->delete();
 
@@ -403,7 +392,10 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
         $this->assertNotNull($customer);
         $this->assertSame('upsert', $customer['operation']);
-        $this->assertSame('عميل محفوظ بعد الضغط', $customer['record']['name']);
+        $this->assertSame(
+            'Customer preserved after compaction',
+            $customer['record']['name'],
+        );
         $this->assertFalse($changes
             ->where('entity', 'sales_invoices')
             ->where('record_id', $invoiceId)

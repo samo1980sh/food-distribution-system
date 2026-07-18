@@ -94,16 +94,24 @@ class MobileOperationalReadApiTest extends TestCase
     public function test_operational_lists_validate_filters_and_return_pagination_metadata(): void
     {
         $first = $this->context('A');
-        $user = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $user->createToken('test', [(string) config('mobile_api.token_ability')])->plainTextToken;
+        $user = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+        $first['representative']->update(['user_id' => $user->id]);
+        $token = $user->createToken(
+            'test',
+            [(string) config('mobile_api.token_ability')],
+        )->plainTextToken;
 
-        $this->withToken($token)->getJson('/api/v1/operational/customers?search=CUS-A&per_page=1')
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/customers?search=CUS-A&per_page=1')
             ->assertOk()
             ->assertJsonPath('data.items.0.id', $first['customer']->id)
             ->assertJsonPath('meta.pagination.per_page', 1)
             ->assertJsonPath('meta.pagination.total', 1);
 
-        $this->withToken($token)->getJson('/api/v1/operational/customers?per_page=101')
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/customers?per_page=101')
             ->assertUnprocessable()
             ->assertJsonPath('code', 'validation_failed');
     }

@@ -32,8 +32,8 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
     public function test_bootstrap_and_status_expose_batch_push_contract(): void
     {
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-contract-device');
+        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $token = $this->tokenFor($user, 'push-contract-device');
 
         $this->withToken($token)
             ->getJson('/api/v1/operational/bootstrap')
@@ -53,8 +53,8 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
     public function test_context_mismatch_rejects_the_entire_batch(): void
     {
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-context-mismatch-device');
+        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $token = $this->tokenFor($user, 'push-context-mismatch-device');
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sync/push', [
@@ -78,8 +78,8 @@ class MobileOfflineSyncPushBatchTest extends TestCase
     public function test_batch_create_and_exact_batch_replay_are_idempotent(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-batch-replay-device');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-batch-replay-device');
         $contextKey = $this->contextKey($token);
         $payload = [
             'context_key' => $contextKey,
@@ -103,7 +103,10 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
         $invoiceId = (int) $first->json('data.results.0.record_id');
         $this->assertGreaterThan(0, $invoiceId);
-        $this->assertMatchesRegularExpression('/^c:[1-9][0-9]*$/', (string) $first->json('data.results.0.version'));
+        $this->assertMatchesRegularExpression(
+            '/^c:[1-9][0-9]*$/',
+            (string) $first->json('data.results.0.version'),
+        );
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sync/push', $payload)
@@ -111,7 +114,12 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.replayed', true)
             ->assertJsonPath('data.results.0.record_id', $invoiceId);
 
-        $this->assertSame(1, SalesInvoice::withoutGlobalScopes()->where('client_reference', 'push-invoice-0001')->count());
+        $this->assertSame(
+            1,
+            SalesInvoice::withoutGlobalScopes()
+                ->where('client_reference', 'push-invoice-0001')
+                ->count(),
+        );
         $this->assertSame(1, MobileSyncPushBatch::query()->count());
         $this->assertSame(1, MobileSyncPushOperation::query()->count());
     }
@@ -120,9 +128,9 @@ class MobileOfflineSyncPushBatchTest extends TestCase
     public function test_stale_processing_batch_is_resumed_using_operation_idempotency(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
+        $user = $this->fieldUserForContext($context);
         $deviceId = 'push-stale-batch-device';
-        $token = $this->tokenFor($manager, $deviceId);
+        $token = $this->tokenFor($user, $deviceId);
         $contextKey = $this->contextKey($token);
         $payload = [
             'context_key' => $contextKey,
@@ -136,7 +144,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         ];
 
         $batch = MobileSyncPushBatch::query()->create([
-            'user_id' => $manager->id,
+            'user_id' => $user->id,
             'device_id' => $deviceId,
             'batch_id' => $payload['batch_id'],
             'request_hash' => $this->requestHash($payload),
@@ -152,14 +160,16 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.results.0.code', 'created');
 
         $this->assertSame('completed', $batch->refresh()->status);
-        $this->assertDatabaseHas('sales_invoices', ['client_reference' => 'push-stale-invoice-0001']);
+        $this->assertDatabaseHas('sales_invoices', [
+            'client_reference' => 'push-stale-invoice-0001',
+        ]);
     }
 
     public function test_operation_replay_across_batches_and_id_reuse_conflicts_are_reported(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-operation-replay-device');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-operation-replay-device');
         $contextKey = $this->contextKey($token);
         $operation = [
             'operation_id' => 'operation-replay-invoice-0001',
@@ -179,7 +189,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.results.0.replay_source', 'operation_id');
 
         $changed = $operation;
-        $changed['payload']['notes'] = 'محتوى مختلف';
+        $changed['payload']['notes'] = 'Different operation payload';
 
         $this->push($token, $contextKey, 'batch-operation-replay-0003', [$changed])
             ->assertOk()
@@ -195,8 +205,11 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ]],
         ];
 
-        $this->withToken($token)->postJson('/api/v1/operational/sync/push', $batchPayload)->assertOk();
-        $batchPayload['operations'][0]['payload']['notes'] = 'تغيير الدفعة';
+        $this->withToken($token)
+            ->postJson('/api/v1/operational/sync/push', $batchPayload)
+            ->assertOk();
+
+        $batchPayload['operations'][0]['payload']['notes'] = 'Changed batch payload';
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sync/push', $batchPayload)
@@ -207,8 +220,8 @@ class MobileOfflineSyncPushBatchTest extends TestCase
     public function test_stale_update_returns_server_record_without_overwriting_it(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-conflict-device');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-conflict-device');
         $contextKey = $this->contextKey($token);
 
         $created = $this->push($token, $contextKey, 'batch-conflict-create-0001', [[
@@ -221,7 +234,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $invoiceId = (int) $created->json('data.results.0.record_id');
         $baseVersion = (string) $created->json('data.results.0.version');
         $invoice = SalesInvoice::withoutGlobalScopes()->findOrFail($invoiceId);
-        $invoice->update(['notes' => 'تعديل من الخادم']);
+        $invoice->update(['notes' => 'Server update']);
 
         $this->push($token, $contextKey, 'batch-conflict-update-0001', [[
             'operation_id' => 'operation-conflict-update-0001',
@@ -229,23 +242,29 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             'action' => 'update',
             'record_id' => $invoiceId,
             'base_version' => $baseVersion,
-            'payload' => ['notes' => 'تعديل قديم من الجهاز'],
+            'payload' => ['notes' => 'Stale device update'],
         ]])
             ->assertOk()
             ->assertJsonPath('data.summary.conflicts', 1)
             ->assertJsonPath('data.results.0.status', 'conflict')
             ->assertJsonPath('data.results.0.code', 'sync_version_conflict')
-            ->assertJsonPath('data.results.0.errors.conflict.resolution', 'server_wins_pull_then_retry')
-            ->assertJsonPath('data.results.0.errors.conflict.server_record.notes', 'تعديل من الخادم');
+            ->assertJsonPath(
+                'data.results.0.errors.conflict.resolution',
+                'server_wins_pull_then_retry',
+            )
+            ->assertJsonPath(
+                'data.results.0.errors.conflict.server_record.notes',
+                'Server update',
+            );
 
-        $this->assertSame('تعديل من الخادم', $invoice->refresh()->notes);
+        $this->assertSame('Server update', $invoice->refresh()->notes);
     }
 
     public function test_partial_batch_keeps_valid_operation_and_reports_validation_failure(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-partial-device');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-partial-device');
         $contextKey = $this->contextKey($token);
 
         $this->push($token, $contextKey, 'batch-partial-0001', [
@@ -269,18 +288,21 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.results.1.code', 'validation_failed')
             ->assertJsonPath('data.results.1.http_status', 422);
 
-        $this->assertDatabaseHas('sales_invoices', ['client_reference' => 'push-partial-invoice-0001']);
+        $this->assertDatabaseHas('sales_invoices', [
+            'client_reference' => 'push-partial-invoice-0001',
+        ]);
     }
 
     public function test_scoped_user_cannot_update_out_of_scope_record_through_batch(): void
     {
         $first = $this->context('A');
         $second = $this->context('B');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $managerToken = $this->tokenFor($manager, 'push-scope-manager');
+
+        $outsideUser = $this->fieldUserForContext($second);
+        $outsideToken = $this->tokenFor($outsideUser, 'push-scope-outside');
         $outside = $this->push(
-            $managerToken,
-            $this->contextKey($managerToken),
+            $outsideToken,
+            $this->contextKey($outsideToken),
             'batch-scope-outside-create-0001',
             [[
                 'operation_id' => 'operation-scope-outside-create-0001',
@@ -293,8 +315,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->flushHeaders();
 
-        $representative = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
-        $first['representative']->update(['user_id' => $representative->id]);
+        $representative = $this->fieldUserForContext($first);
         $token = $this->tokenFor($representative, 'push-scope-representative');
 
         $this->push($token, $this->contextKey($token), 'batch-scope-denied-0001', [[
@@ -303,18 +324,18 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             'action' => 'update',
             'record_id' => (int) $outside->json('data.results.0.record_id'),
             'base_version' => (string) $outside->json('data.results.0.version'),
-            'payload' => ['notes' => 'محاولة خارج النطاق'],
+            'payload' => ['notes' => 'Out of scope update'],
         ]])
             ->assertOk()
             ->assertJsonPath('data.results.0.status', 'failed')
             ->assertJsonPath('data.results.0.code', 'http_404');
     }
 
-    public function test_batch_action_reuses_business_service_and_records_incremental_change(): void
+    public function test_batch_rejects_privileged_action_for_field_user(): void
     {
         $context = $this->context('A');
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-        $token = $this->tokenFor($manager, 'push-confirm-device');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-confirm-device');
         $contextKey = $this->contextKey($token);
 
         $created = $this->push($token, $contextKey, 'batch-confirm-create-0001', [[
@@ -327,38 +348,32 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $invoiceId = (int) $created->json('data.results.0.record_id');
         $version = (string) $created->json('data.results.0.version');
 
-        $this->push($token, $contextKey, 'batch-confirm-action-0001', [[
-            'operation_id' => 'operation-confirm-action-0001',
-            'entity' => 'sales_invoices',
-            'action' => 'confirm',
-            'record_id' => $invoiceId,
-            'base_version' => $version,
-        ]])
-            ->assertOk()
-            ->assertJsonPath('data.results.0.status', 'applied')
-            ->assertJsonPath('data.results.0.record.status', 'confirmed');
+        $response = $this->push(
+            $token,
+            $contextKey,
+            'batch-confirm-action-0001',
+            [[
+                'operation_id' => 'operation-confirm-action-0001',
+                'entity' => 'sales_invoices',
+                'action' => 'confirm',
+                'record_id' => $invoiceId,
+                'base_version' => $version,
+            ]],
+        )->assertOk();
 
+        $this->assertNotSame(
+            'applied',
+            $response->json('data.results.0.status'),
+        );
+        $this->assertDatabaseHas('sales_invoices', [
+            'id' => $invoiceId,
+            'status' => 'draft',
+        ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 18,
+            'quantity' => 20,
         ]);
-
-        $pulled = $this->withToken($token)
-            ->postJson('/api/v1/operational/sync/pull', [
-                'cursor' => 0,
-                'context_key' => $contextKey,
-                'limit' => 500,
-            ])
-            ->assertOk();
-
-        $invoiceChange = collect($pulled->json('data.changes'))
-            ->where('entity', 'sales_invoices')
-            ->where('record_id', $invoiceId)
-            ->last();
-
-        $this->assertNotNull($invoiceChange);
-        $this->assertSame('confirmed', $invoiceChange['record']['status']);
     }
 
     /** @param list<array<string, mixed>> $operations */
@@ -487,6 +502,17 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
 
     /** @param array<string, mixed> $payload */
+    /** @param array<string, mixed> $context */
+    private function fieldUserForContext(array $context): User
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+        $context['representative']->update(['user_id' => $user->id]);
+
+        return $user;
+    }
+
     private function requestHash(array $payload): string
     {
         return hash('sha256', json_encode(
