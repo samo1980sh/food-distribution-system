@@ -154,6 +154,16 @@ class DailyClosing extends Model
         return $this->belongsTo(Employee::class, 'sales_representative_id');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function confirmer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === 'draft';

@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\DailyClosings;
 
-use App\Filament\Resources\DailyClosings\Pages\ManageDailyClosings;
+use App\Filament\Resources\DailyClosings\Pages\CreateDailyClosing;
+use App\Filament\Resources\DailyClosings\Pages\EditDailyClosing;
+use App\Filament\Resources\DailyClosings\Pages\ListDailyClosings;
+use App\Filament\Resources\DailyClosings\Pages\ViewDailyClosing;
 use App\Filament\Resources\DailyClosings\Schemas\DailyClosingForm;
+use App\Filament\Resources\DailyClosings\Schemas\DailyClosingInfolist;
 use App\Filament\Resources\DailyClosings\Tables\DailyClosingsTable;
 use App\Models\DailyClosing;
 use BackedEnum;
@@ -54,6 +58,11 @@ class DailyClosingResource extends Resource
         return DailyClosingForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return DailyClosingInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return DailyClosingsTable::configure($table);
@@ -62,7 +71,10 @@ class DailyClosingResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageDailyClosings::route('/'),
+            'index' => ListDailyClosings::route('/'),
+            'create' => CreateDailyClosing::route('/create'),
+            'view' => ViewDailyClosing::route('/{record}'),
+            'edit' => EditDailyClosing::route('/{record}/edit'),
         ];
     }
 }
