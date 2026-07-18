@@ -2,50 +2,52 @@
 
 namespace App\Filament\Resources\CustomerPayments\Tables;
 
+use App\Filament\Resources\CustomerPayments\Actions\CustomerPaymentActions;
+use App\Filament\Resources\CustomerPayments\CustomerPaymentResource;
 use App\Models\CustomerPayment;
-use App\Services\Sales\CustomerPaymentService;
-use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
-use RuntimeException;
 
 class CustomerPaymentsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (CustomerPayment $record): string => CustomerPaymentResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('payment_number')
                     ->label('رقم التحصيل')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable(),
+
+                TextColumn::make('customer.name')
+                    ->label('العميل')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (CustomerPayment $record): ?string => $record->route?->name),
 
                 TextColumn::make('payment_date')
                     ->label('تاريخ التحصيل')
                     ->date('Y-m-d')
                     ->sortable(),
 
-                TextColumn::make('customer.name')
-                    ->label('العميل')
-                    ->searchable()
-                    ->sortable(),
-
                 TextColumn::make('salesInvoice.invoice_number')
                     ->label('الفاتورة')
                     ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('-'),
 
-                TextColumn::make('salesRepresentative.name')
-                    ->label('المندوب')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                TextColumn::make('amount')
+                    ->label('المبلغ')
+                    ->money('SYP')
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('payment_method')
                     ->label('طريقة الدفع')
@@ -61,20 +63,8 @@ class CustomerPaymentsTable
                         'cash' => 'success',
                         'bank_transfer' => 'info',
                         'cheque' => 'warning',
-                        'other' => 'gray',
                         default => 'gray',
                     }),
-
-                TextColumn::make('amount')
-                    ->label('المبلغ')
-                    ->money('SYP')
-                    ->sortable(),
-
-                TextColumn::make('reference_number')
-                    ->label('المرجع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
 
                 TextColumn::make('status')
                     ->label('الحالة')
@@ -91,6 +81,30 @@ class CustomerPaymentsTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
+
+                TextColumn::make('reference_number')
+                    ->label('المرجع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('warehouse.name')
+                    ->label('المستودع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('المندوب')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('confirmed_at')
                     ->label('تاريخ الاعتماد')
@@ -113,6 +127,12 @@ class CustomerPaymentsTable
                     ->searchable()
                     ->preload(),
 
+                SelectFilter::make('sales_invoice_id')
+                    ->label('الفاتورة')
+                    ->relationship('salesInvoice', 'invoice_number')
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('payment_method')
                     ->label('طريقة الدفع')
                     ->options([
@@ -121,71 +141,42 @@ class CustomerPaymentsTable
                         'cheque' => 'شيك',
                         'other' => 'أخرى',
                     ]),
+
+                SelectFilter::make('warehouse_id')
+                    ->label('المستودع')
+                    ->relationship('warehouse', 'name')
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
-                Action::make('confirm')
-                    ->label('اعتماد التحصيل')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('اعتماد التحصيل')
-                    ->modalDescription('إذا كان التحصيل مرتبطًا بفاتورة، سيتم تحديث المدفوع والمتبقي على الفاتورة.')
-                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('confirm', $record) === true)
-                    ->action(function (CustomerPayment $record): void {
-                        try {
-                            Gate::authorize('confirm', $record);
-                            app(CustomerPaymentService::class)->confirm($record);
-
-                            Notification::make()
-                                ->title('تم اعتماد التحصيل بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر اعتماد التحصيل')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('cancel')
-                    ->label('إلغاء')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('إلغاء التحصيل')
-                    ->modalDescription('سيتم عكس أثر التحصيل على الفاتورة المرتبطة إن وجدت.')
-                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('cancel', $record) === true)
-                    ->action(function (CustomerPayment $record): void {
-                        try {
-                            Gate::authorize('cancel', $record);
-                            app(CustomerPaymentService::class)->cancel($record);
-
-                            Notification::make()
-                                ->title('تم إلغاء التحصيل بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر إلغاء التحصيل')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                EditAction::make()
-                    ->label('تعديل')
-                    ->modalHeading('تعديل تحصيل عميل')
-                    ->slideOver()
-                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('update', $record) === true),
-
-                DeleteAction::make()
-                    ->label('حذف')
-                    ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('delete', $record) === true),
+                ActionGroup::make([
+                    ViewAction::make()->label('عرض التفاصيل الكاملة'),
+                    EditAction::make()
+                        ->label('تعديل المسودة')
+                        ->modalHeading('تعديل تحصيل عميل')
+                        ->slideOver()
+                        ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('update', $record) === true),
+                    CustomerPaymentActions::confirm(),
+                    CustomerPaymentActions::cancel(),
+                    CustomerPaymentActions::print(),
+                    DeleteAction::make()
+                        ->label('حذف المسودة')
+                        ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('delete', $record) === true),
+                ])
+                    ->label('الإجراءات')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateIcon('heroicon-o-banknotes')
+            ->emptyStateHeading('لا توجد تحصيلات عملاء بعد')
+            ->emptyStateDescription('أنشئ أول سند تحصيل، أو غيّر عوامل التصفية إذا كنت تبحث عن عملية موجودة.');
     }
 }

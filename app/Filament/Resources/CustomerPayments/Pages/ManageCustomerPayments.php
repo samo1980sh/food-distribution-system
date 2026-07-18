@@ -10,14 +10,26 @@ class ManageCustomerPayments extends ManageRecords
 {
     protected static string $resource = CustomerPaymentResource::class;
 
+    public function getHeading(): string
+    {
+        return 'تحصيلات العملاء';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'تنفيذ التحصيلات بسرعة من المودال الجانبي، مع إبقاء صفحة تفاصيل كاملة للمراجعة والطباعة.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->visible(fn (): bool => CustomerPaymentResource::canCreate())
-                ->label('إضافة تحصيل')
+                ->label('تحصيل عميل جديد')
+                ->icon('heroicon-o-plus')
                 ->modalHeading('إضافة تحصيل عميل')
-                ->slideOver(),
+                ->modalDescription('حدد العميل والفاتورة والمبلغ وطريقة الدفع، ثم احفظ السند كمسودة لمراجعته قبل الاعتماد.')
+                ->slideOver()
+                ->visible(fn (): bool => CustomerPaymentResource::canCreate()),
         ];
     }
 }

@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\CustomerPayments;
 
 use App\Filament\Resources\CustomerPayments\Pages\ManageCustomerPayments;
+use App\Filament\Resources\CustomerPayments\Pages\ViewCustomerPayment;
 use App\Filament\Resources\CustomerPayments\Schemas\CustomerPaymentForm;
+use App\Filament\Resources\CustomerPayments\Schemas\CustomerPaymentInfolist;
 use App\Filament\Resources\CustomerPayments\Tables\CustomerPaymentsTable;
 use App\Models\CustomerPayment;
 use BackedEnum;
@@ -54,6 +56,11 @@ class CustomerPaymentResource extends Resource
         return CustomerPaymentForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return CustomerPaymentInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return CustomerPaymentsTable::configure($table);
@@ -63,6 +70,7 @@ class CustomerPaymentResource extends Resource
     {
         return [
             'index' => ManageCustomerPayments::route('/'),
+            'view' => ViewCustomerPayment::route('/{record}'),
         ];
     }
 }

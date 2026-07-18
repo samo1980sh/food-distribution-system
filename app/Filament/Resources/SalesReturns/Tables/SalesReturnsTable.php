@@ -2,54 +2,52 @@
 
 namespace App\Filament\Resources\SalesReturns\Tables;
 
+use App\Filament\Resources\SalesReturns\Actions\SalesReturnActions;
+use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Models\SalesReturn;
-use App\Services\Sales\SalesReturnService;
-use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
-use RuntimeException;
 
 class SalesReturnsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (SalesReturn $record): string => SalesReturnResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('return_number')
                     ->label('رقم المرتجع')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable(),
+
+                TextColumn::make('customer.name')
+                    ->label('العميل')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (SalesReturn $record): ?string => $record->route?->name),
 
                 TextColumn::make('return_date')
                     ->label('تاريخ المرتجع')
                     ->date('Y-m-d')
                     ->sortable(),
 
-                TextColumn::make('customer.name')
-                    ->label('العميل')
-                    ->searchable()
-                    ->sortable(),
-
                 TextColumn::make('salesInvoice.invoice_number')
-                    ->label('الفاتورة')
+                    ->label('الفاتورة الأصلية')
                     ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('-'),
 
-                TextColumn::make('vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->searchable(),
+                TextColumn::make('total_amount')
+                    ->label('صافي المرتجع')
+                    ->money('SYP')
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('return_reason')
                     ->label('السبب')
@@ -65,22 +63,9 @@ class SalesReturnsTable
                     ->color(fn (?string $state): string => match ($state) {
                         'expired' => 'danger',
                         'damaged' => 'warning',
-                        'customer_refused' => 'gray',
                         'wrong_item' => 'info',
-                        'other' => 'gray',
                         default => 'gray',
                     }),
-
-                TextColumn::make('subtotal')
-                    ->label('المجموع')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
-                TextColumn::make('total_amount')
-                    ->label('الإجمالي')
-                    ->money('SYP')
-                    ->sortable(),
 
                 TextColumn::make('status')
                     ->label('الحالة')
@@ -97,6 +82,35 @@ class SalesReturnsTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
+
+                TextColumn::make('warehouse.name')
+                    ->label('المستودع')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('المندوب')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('subtotal')
+                    ->label('المجموع')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('discount_amount')
+                    ->label('الحسم')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('confirmed_at')
                     ->label('تاريخ الاعتماد')
@@ -119,6 +133,12 @@ class SalesReturnsTable
                     ->searchable()
                     ->preload(),
 
+                SelectFilter::make('sales_invoice_id')
+                    ->label('الفاتورة الأصلية')
+                    ->relationship('salesInvoice', 'invoice_number')
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('warehouse_id')
                     ->label('المستودع')
                     ->relationship('warehouse', 'name')
@@ -136,69 +156,32 @@ class SalesReturnsTable
                     ]),
             ])
             ->recordActions([
-                Action::make('confirm')
-                    ->label('اعتماد المرتجع')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('اعتماد مرتجع البيع')
-                    ->modalDescription('سيتم إضافة الكميات المرتجعة إلى المستودع المحدد، ولا يمكن تعديل المرتجع بعد الاعتماد.')
-                    ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('confirm', $record) === true)
-                    ->action(function (SalesReturn $record): void {
-                        try {
-                            Gate::authorize('confirm', $record);
-                            app(SalesReturnService::class)->confirm($record);
-
-                            Notification::make()
-                                ->title('تم اعتماد المرتجع بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر اعتماد المرتجع')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('cancel')
-                    ->label('إلغاء')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('إلغاء مرتجع البيع')
-                    ->modalDescription('سيتم عكس حركة المخزون وإخراج الكميات المرتجعة من المستودع.')
-                    ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('cancel', $record) === true)
-                    ->action(function (SalesReturn $record): void {
-                        try {
-                            Gate::authorize('cancel', $record);
-                            app(SalesReturnService::class)->cancel($record);
-
-                            Notification::make()
-                                ->title('تم إلغاء المرتجع بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر إلغاء المرتجع')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                EditAction::make()
-                    ->label('تعديل')
-                    ->modalHeading('تعديل مرتجع بيع')
-                    ->slideOver()
-                    ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('update', $record) === true),
-
-                DeleteAction::make()
-                    ->label('حذف')
-                    ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('delete', $record) === true),
+                ActionGroup::make([
+                    ViewAction::make()->label('عرض التفاصيل'),
+                    EditAction::make()
+                        ->label('تعديل المسودة')
+                        ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('update', $record) === true),
+                    SalesReturnActions::confirm(),
+                    SalesReturnActions::cancel(),
+                    SalesReturnActions::print(),
+                    DeleteAction::make()
+                        ->label('حذف المسودة')
+                        ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('delete', $record) === true),
+                ])
+                    ->label('الإجراءات')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateIcon('heroicon-o-arrow-uturn-left')
+            ->emptyStateHeading('لا توجد مرتجعات مبيعات بعد')
+            ->emptyStateDescription('أنشئ أول مرتجع، أو غيّر عوامل التصفية إذا كنت تبحث عن مستند موجود.');
     }
 }
