@@ -7,9 +7,15 @@ use App\Models\StockBalance;
 use App\Models\Vehicle;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -25,29 +31,30 @@ class VehicleStockReportsTable
                 TextColumn::make('warehouse.vehicle.plate_number')
                     ->label('السيارة')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('مستودع السيارة')
-                    ->searchable()
                     ->sortable()
-                    ->toggleable(),
-
-                TextColumn::make('product.sku')
-                    ->label('SKU')
-                    ->searchable()
-                    ->sortable(),
+                    ->weight('bold')
+                    ->description(
+                        fn (StockBalance $record): ?string => filled($record->warehouse?->name)
+                            ? 'المستودع: '.$record->warehouse->name
+                            : null,
+                    ),
 
                 TextColumn::make('product.name_ar')
                     ->label('المنتج')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('medium')
+                    ->wrap()
+                    ->description(
+                        fn (StockBalance $record): ?string => filled($record->product?->sku)
+                            ? 'SKU: '.$record->product->sku
+                            : null,
+                    ),
 
                 TextColumn::make('batch_number')
                     ->label('رقم التشغيلة')
                     ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->placeholder('-'),
 
                 TextColumn::make('expiry_date')
                     ->label('تاريخ الصلاحية')
@@ -61,6 +68,8 @@ class VehicleStockReportsTable
                     ->label('الكمية الحالية')
                     ->numeric(decimalPlaces: 3)
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize([
                         Count::make()
                             ->label('عدد الأرصدة'),
@@ -70,12 +79,6 @@ class VehicleStockReportsTable
                             ->numeric(decimalPlaces: 3),
                     ]),
 
-                TextColumn::make('average_unit_cost')
-                    ->label('متوسط تكلفة الوحدة')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
                 TextColumn::make('inventory_value')
                     ->label('قيمة المخزون')
                     ->getStateUsing(
@@ -84,7 +87,27 @@ class VehicleStockReportsTable
                             * (float) $record->average_unit_cost
                     )
                     ->money('SYP')
-                    ->toggleable(),
+                    ->alignEnd()
+                    ->weight('bold'),
+
+                TextColumn::make('warehouse.name')
+                    ->label('مستودع السيارة')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('product.sku')
+                    ->label('SKU')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('average_unit_cost')
+                    ->label('متوسط تكلفة الوحدة')
+                    ->money('SYP')
+                    ->sortable()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label('آخر تحديث')
@@ -182,12 +205,61 @@ class VehicleStockReportsTable
                             default => $query,
                         };
                     }),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('السيارة والمنتج')
+                    ->description('حدد السيارة أو المنتج للوصول إلى الرصيد الحالي المطلوب بسرعة.')
+                    ->schema([
+                        $filters['vehicle_id'],
+                        $filters['product_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('الصلاحية')
+                    ->description('اعرض الأرصدة ضمن فترة صلاحية محددة أو حسب حالة انتهاء المنتج.')
+                    ->schema([
+                        $filters['expiry_date'],
+                        $filters['expiry_status'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير مخزون السيارات')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير مخزون السيارات')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('printVehicleStock')
                     ->label('طباعة مخزون السيارة')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة مخزون السيارة')
                     ->url(
                         fn (StockBalance $record): string => route(
                             'reports.vehicle-stock.vehicle.print',
@@ -206,7 +278,17 @@ class VehicleStockReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('updated_at', 'desc');
+            ->defaultSort('updated_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-cube')
+            ->emptyStateHeading('لا توجد أرصدة في تقرير مخزون السيارات')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض أرصدة أخرى.');
     }
 
     private static function expiryColor(mixed $state): string
