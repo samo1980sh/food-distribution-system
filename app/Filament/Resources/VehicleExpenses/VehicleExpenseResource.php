@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\VehicleExpenses;
 
 use App\Filament\Resources\VehicleExpenses\Pages\ManageVehicleExpenses;
+use App\Filament\Resources\VehicleExpenses\Pages\ViewVehicleExpense;
 use App\Filament\Resources\VehicleExpenses\Schemas\VehicleExpenseForm;
+use App\Filament\Resources\VehicleExpenses\Schemas\VehicleExpenseInfolist;
 use App\Filament\Resources\VehicleExpenses\Tables\VehicleExpensesTable;
 use App\Models\VehicleExpense;
 use BackedEnum;
@@ -41,7 +43,7 @@ class VehicleExpenseResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 35;
+        return 40;
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -54,6 +56,11 @@ class VehicleExpenseResource extends Resource
         return VehicleExpenseForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return VehicleExpenseInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return VehicleExpensesTable::configure($table);
@@ -63,6 +70,7 @@ class VehicleExpenseResource extends Resource
     {
         return [
             'index' => ManageVehicleExpenses::route('/'),
+            'view' => ViewVehicleExpense::route('/{record}'),
         ];
     }
 }

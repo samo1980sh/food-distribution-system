@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\VehicleLoads;
 
-use App\Filament\Resources\VehicleLoads\Pages\ManageVehicleLoads;
+use App\Filament\Resources\VehicleLoads\Pages\CreateVehicleLoad;
+use App\Filament\Resources\VehicleLoads\Pages\EditVehicleLoad;
+use App\Filament\Resources\VehicleLoads\Pages\ListVehicleLoads;
+use App\Filament\Resources\VehicleLoads\Pages\ViewVehicleLoad;
 use App\Filament\Resources\VehicleLoads\Schemas\VehicleLoadForm;
+use App\Filament\Resources\VehicleLoads\Schemas\VehicleLoadInfolist;
 use App\Filament\Resources\VehicleLoads\Tables\VehicleLoadsTable;
 use App\Models\VehicleLoad;
 use BackedEnum;
@@ -54,6 +58,11 @@ class VehicleLoadResource extends Resource
         return VehicleLoadForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return VehicleLoadInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return VehicleLoadsTable::configure($table);
@@ -62,7 +71,10 @@ class VehicleLoadResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageVehicleLoads::route('/'),
+            'index' => ListVehicleLoads::route('/'),
+            'create' => CreateVehicleLoad::route('/create'),
+            'view' => ViewVehicleLoad::route('/{record}'),
+            'edit' => EditVehicleLoad::route('/{record}/edit'),
         ];
     }
 }

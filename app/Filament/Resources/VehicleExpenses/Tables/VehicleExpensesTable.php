@@ -2,29 +2,30 @@
 
 namespace App\Filament\Resources\VehicleExpenses\Tables;
 
+use App\Filament\Resources\VehicleExpenses\Actions\VehicleExpenseActions;
+use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
 use App\Models\VehicleExpense;
-use App\Services\Distribution\VehicleExpenseService;
-use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\Textarea;
-use Filament\Notifications\Notification;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
-use RuntimeException;
 
 class VehicleExpensesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (VehicleExpense $record): string => VehicleExpenseResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('expense_number')
                     ->label('رقم المصروف')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable(),
 
                 TextColumn::make('expense_date')
                     ->label('التاريخ')
@@ -34,30 +35,8 @@ class VehicleExpensesTable
                 TextColumn::make('vehicle.plate_number')
                     ->label('السيارة')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->searchable()
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('المندوب')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                    ->sortable()
+                    ->description(fn (VehicleExpense $record): ?string => $record->route?->name),
 
                 TextColumn::make('expense_type')
                     ->label('نوع المصروف')
@@ -76,18 +55,25 @@ class VehicleExpensesTable
                 TextColumn::make('amount')
                     ->label('المبلغ')
                     ->money('SYP')
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('payment_method')
-                    ->label('الدفع')
+                    ->label('طريقة الدفع')
+                    ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
                         'cash' => 'نقدي',
-                        'bank_transfer' => 'تحويل',
+                        'bank_transfer' => 'تحويل بنكي',
                         'cheque' => 'شيك',
                         'other' => 'أخرى',
                         default => $state ?? '-',
                     })
-                    ->toggleable(),
+                    ->color(fn (?string $state): string => match ($state) {
+                        'cash' => 'success',
+                        'bank_transfer' => 'info',
+                        'cheque' => 'warning',
+                        default => 'gray',
+                    }),
 
                 TextColumn::make('status')
                     ->label('الحالة')
@@ -105,8 +91,31 @@ class VehicleExpensesTable
                         default => 'gray',
                     }),
 
+                TextColumn::make('warehouse.name')
+                    ->label('مستودع السيارة')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('driver.name')
+                    ->label('السائق')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('مندوب المبيعات')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('approved_at')
                     ->label('تاريخ الاعتماد')
+                    ->dateTime('Y-m-d H:i')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('rejected_at')
+                    ->label('تاريخ الرفض')
                     ->dateTime('Y-m-d H:i')
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -145,74 +154,34 @@ class VehicleExpensesTable
                     ->preload(),
             ])
             ->recordActions([
-                Action::make('approve')
-                    ->label('اعتماد')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('اعتماد مصروف السيارة')
-                    ->modalDescription('بعد الاعتماد سيدخل هذا المصروف لاحقاً ضمن إغلاق اليوم.')
-                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('approve', $record) === true)
-                    ->action(function (VehicleExpense $record): void {
-                        try {
-                            Gate::authorize('approve', $record);
-                            app(VehicleExpenseService::class)->approve($record);
-
-                            Notification::make()
-                                ->title('تم اعتماد المصروف بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر اعتماد المصروف')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('reject')
-                    ->label('رفض')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('رفض مصروف السيارة')
-                    ->schema([
-                        Textarea::make('rejection_reason')
-                            ->label('سبب الرفض')
-                            ->required()
-                            ->columnSpanFull(),
-                    ])
-                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('reject', $record) === true)
-                    ->action(function (VehicleExpense $record, array $data): void {
-                        try {
-                            Gate::authorize('reject', $record);
-                            app(VehicleExpenseService::class)->reject($record, $data['rejection_reason'] ?? null);
-
-                            Notification::make()
-                                ->title('تم رفض المصروف')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر رفض المصروف')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                EditAction::make()
-                    ->label('تعديل')
-                    ->modalHeading('تعديل مصروف سيارة')
-                    ->slideOver()
-                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('update', $record) === true),
-
-                DeleteAction::make()
-                    ->label('حذف')
-                    ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('delete', $record) === true),
+                ActionGroup::make([
+                    ViewAction::make()->label('عرض التفاصيل الكاملة'),
+                    EditAction::make()
+                        ->label('تعديل المصروف')
+                        ->modalHeading('تعديل مصروف سيارة')
+                        ->slideOver()
+                        ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('update', $record) === true),
+                    VehicleExpenseActions::approve(),
+                    VehicleExpenseActions::reject(),
+                    VehicleExpenseActions::print(),
+                    DeleteAction::make()
+                        ->label('حذف المصروف')
+                        ->visible(fn (VehicleExpense $record): bool => auth()->user()?->can('delete', $record) === true),
+                ])
+                    ->label('الإجراءات')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateIcon('heroicon-o-banknotes')
+            ->emptyStateHeading('لا توجد مصاريف سيارات بعد')
+            ->emptyStateDescription('أضف أول مصروف من المودال الجانبي، أو غيّر عوامل التصفية إذا كنت تبحث عن عملية موجودة.');
     }
 }
