@@ -159,6 +159,7 @@ class AccessScopeService
         return hash('sha256', json_encode([
             'user' => (int) $user->getKey(),
             'role' => $scope->role?->value,
+            'roles' => $this->roleValues($user),
             'unrestricted' => $scope->unrestricted,
             'areas' => $scope->areaIds,
             'routes' => $scope->routeIds,
@@ -222,13 +223,14 @@ class AccessScopeService
             return $this->cache[$key];
         }
 
-        $role = UserRole::tryFrom((string) $user->primaryRoleName());
+        $roles = $this->rolesFor($user);
+        $role = $roles[0] ?? null;
 
-        if (in_array($role, [
+        if ($this->hasAnyRole($roles, [
             UserRole::SUPER_ADMIN,
             UserRole::MANAGER,
             UserRole::ACCOUNTANT,
-        ], true)) {
+        ])) {
             return $this->cache[$key] = new EffectiveAccessScope(
                 role: $role,
                 unrestricted: true,
@@ -265,7 +267,7 @@ class AccessScopeService
 
         $employeeId = $employee?->getKey();
 
-        if ($role === UserRole::SUPERVISOR) {
+        if (in_array(UserRole::SUPERVISOR, $roles, true)) {
             $initialVehicleIds = $this->ids(array_merge(
                 $directVehicleIds,
                 Warehouse::withoutGlobalScopes()
@@ -327,7 +329,7 @@ class AccessScopeService
             );
         }
 
-        if ($role === UserRole::WAREHOUSE_KEEPER) {
+        if (in_array(UserRole::WAREHOUSE_KEEPER, $roles, true)) {
             $warehouseIds = $directWarehouseIds;
             $vehicleIds = $this->ids(Warehouse::withoutGlobalScopes()
                 ->whereIn('id', $warehouseIds)
@@ -355,7 +357,14 @@ class AccessScopeService
             );
         }
 
-        if (in_array($role, [UserRole::SALES_REPRESENTATIVE, UserRole::DRIVER], true)) {
+        $isDriver = in_array(UserRole::DRIVER, $roles, true);
+        $isSalesRepresentative = in_array(
+            UserRole::SALES_REPRESENTATIVE,
+            $roles,
+            true,
+        );
+
+        if ($isDriver || $isSalesRepresentative) {
             if ($employeeId === null) {
                 return $this->cache[$key] = new EffectiveAccessScope(
                     role: $role,
@@ -363,12 +372,21 @@ class AccessScopeService
                 );
             }
 
-            $employeeColumn = $role === UserRole::DRIVER
-                ? 'driver_id'
-                : 'sales_representative_id';
-
             $routeIds = $this->ids(DistributionRoute::withoutGlobalScopes()
-                ->where($employeeColumn, $employeeId)
+                ->where(function (Builder $query) use (
+                    $employeeId,
+                    $isDriver,
+                    $isSalesRepresentative,
+                ): void {
+                    if ($isDriver) {
+                        $query->where('driver_id', $employeeId);
+                    }
+
+                    if ($isSalesRepresentative) {
+                        $method = $isDriver ? 'orWhere' : 'where';
+                        $query->{$method}('sales_representative_id', $employeeId);
+                    }
+                })
                 ->pluck('id')
                 ->all());
             $areaIds = $this->ids(DistributionRoute::withoutGlobalScopes()
@@ -728,6 +746,39 @@ class AccessScopeService
         sort($ids);
 
         return $ids;
+    }
+
+    /** @return list<UserRole> */
+    private function rolesFor(User $user): array
+    {
+        return array_values(array_filter(
+            UserRole::cases(),
+            fn (UserRole $role): bool => $user->hasRole($role->value),
+        ));
+    }
+
+    /** @return list<string> */
+    private function roleValues(User $user): array
+    {
+        return array_map(
+            fn (UserRole $role): string => $role->value,
+            $this->rolesFor($user),
+        );
+    }
+
+    /**
+     * @param list<UserRole> $roles
+     * @param list<UserRole> $expected
+     */
+    private function hasAnyRole(array $roles, array $expected): bool
+    {
+        foreach ($expected as $role) {
+            if (in_array($role, $roles, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function deny(Builder $query): Builder

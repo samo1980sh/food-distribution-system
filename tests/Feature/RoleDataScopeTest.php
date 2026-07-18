@@ -176,6 +176,56 @@ class RoleDataScopeTest extends TestCase
         $this->assertFalse(VehicleLoad::query()->whereKey($second['load']->id)->exists());
     }
 
+    public function test_driver_and_sales_roles_merge_linked_employee_route_scopes(): void
+    {
+        $driverContext = $this->createOperationalContext('DUAL-DRIVER');
+        $salesContext = $this->createOperationalContext('DUAL-SALES');
+
+        $fieldUser = User::factory()->create([
+            'role' => User::ROLE_DRIVER,
+        ]);
+        $fieldUser->assignRole(User::ROLE_SALES_REPRESENTATIVE);
+
+        $driverContext['driver']->update([
+            'user_id' => $fieldUser->id,
+        ]);
+
+        $salesContext['route']->update([
+            'sales_representative_id' => $driverContext['driver']->id,
+        ]);
+        $salesContext['invoice']->update([
+            'sales_representative_id' => $driverContext['driver']->id,
+        ]);
+
+        $this->assertTrue(
+            $driverContext['driver']
+                ->fresh()
+                ->canFulfillOperationalRole(User::ROLE_DRIVER),
+        );
+        $this->assertTrue(
+            $driverContext['driver']
+                ->fresh()
+                ->canFulfillOperationalRole(User::ROLE_SALES_REPRESENTATIVE),
+        );
+
+        $this->actingAs($fieldUser);
+
+        $scope = app(AccessScopeService::class)->for($fieldUser);
+
+        $this->assertEqualsCanonicalizing(
+            [$driverContext['route']->id, $salesContext['route']->id],
+            $scope->routeIds,
+        );
+        $this->assertEqualsCanonicalizing(
+            [$driverContext['route']->id, $salesContext['route']->id],
+            DistributionRoute::query()->pluck('id')->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            [$driverContext['invoice']->id, $salesContext['invoice']->id],
+            SalesInvoice::query()->pluck('id')->all(),
+        );
+    }
+
     public function test_accountant_keeps_global_financial_visibility(): void
     {
         $this->createOperationalContext('A');

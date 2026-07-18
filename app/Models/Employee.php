@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserRole;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -60,6 +61,34 @@ class Employee extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function scopeForOperationalRole(
+        Builder $query,
+        UserRole|string $role,
+    ): Builder {
+        $roleValue = $role instanceof UserRole ? $role->value : $role;
+
+        return $query->where(function (Builder $query) use ($roleValue): void {
+            $query
+                ->where('type', $roleValue)
+                ->orWhereHas('user', function (Builder $userQuery) use ($roleValue): void {
+                    $userQuery
+                        ->where('status', User::STATUS_ACTIVE)
+                        ->role($roleValue);
+                });
+        });
+    }
+
+    public function canFulfillOperationalRole(UserRole|string $role): bool
+    {
+        $roleValue = $role instanceof UserRole ? $role->value : $role;
+
+        return $this->type === $roleValue
+            || (
+                $this->user?->isActive() === true
+                && $this->user->hasRole($roleValue)
+            );
     }
 
     public function driverRoutes(): HasMany
