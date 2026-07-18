@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\CustomerPayments\Schemas;
 
+use App\Enums\UserRole;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -100,7 +102,7 @@ class CustomerPaymentForm
                         'name',
                         modifyQueryUsing: fn (Builder $query): Builder => $query
                             ->where('status', 'active')
-                            ->where('type', 'sales_representative'),
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
                     )
                     ->searchable()
                     ->preload()

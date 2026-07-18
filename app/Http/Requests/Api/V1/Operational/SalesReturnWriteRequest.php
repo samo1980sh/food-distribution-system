@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Operational;
 
+use App\Enums\UserRole;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use Illuminate\Validation\Rule;
@@ -37,7 +39,12 @@ class SalesReturnWriteRequest extends OperationalWriteRequest
                 'integer',
                 Rule::exists('warehouses', 'id')->where('status', 'active'),
             ]),
-            'sales_representative_id' => ['sometimes', 'nullable', 'integer', Rule::exists('employees', 'id')->where(fn ($query) => $query->where('status', 'active')->where('type', 'sales_representative'))],
+            'sales_representative_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
+            ],
             'return_date' => $this->requiredOrSometimes(['date']),
             'return_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
             'discount_amount' => ['sometimes', 'numeric', 'min:0'],

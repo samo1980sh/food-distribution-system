@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Operational;
 
+use App\Enums\UserRole;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\CustomerPayment;
 use App\Models\SalesInvoice;
 use Illuminate\Validation\Rule;
@@ -34,7 +36,12 @@ class CustomerPaymentWriteRequest extends OperationalWriteRequest
             'vehicle_id' => ['sometimes', 'nullable', 'integer', Rule::exists('vehicles', 'id')->where('status', 'active')],
             'route_id' => ['sometimes', 'nullable', 'integer', Rule::exists('distribution_routes', 'id')->where('status', 'active')],
             'warehouse_id' => ['sometimes', 'nullable', 'integer', Rule::exists('warehouses', 'id')->where('status', 'active')],
-            'sales_representative_id' => ['sometimes', 'nullable', 'integer', Rule::exists('employees', 'id')->where(fn ($query) => $query->where('status', 'active')->where('type', 'sales_representative'))],
+            'sales_representative_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
+            ],
             'payment_date' => $this->requiredOrSometimes(['date']),
             'payment_method' => $this->requiredOrSometimes([Rule::in(['cash', 'bank_transfer', 'cheque', 'other'])]),
             'amount' => $this->requiredOrSometimes(['numeric', 'gt:0']),

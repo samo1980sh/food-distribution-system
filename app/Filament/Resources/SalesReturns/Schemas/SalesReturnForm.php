@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SalesReturns\Schemas;
 
+use App\Enums\UserRole;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -99,7 +101,7 @@ class SalesReturnForm
                         'name',
                         modifyQueryUsing: fn (Builder $query): Builder => $query
                             ->where('status', 'active')
-                            ->where('type', 'sales_representative'),
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
                     )
                     ->searchable()
                     ->preload()

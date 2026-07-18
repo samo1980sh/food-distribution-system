@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\DistributionRoutes\Schemas;
 
+use App\Enums\UserRole;
+
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class DistributionRouteForm
 {
@@ -19,8 +22,30 @@ class DistributionRouteForm
 
                 Select::make('area_id')->label('المنطقة')->relationship('area', 'name_ar')->searchable()->preload()->required()->native(false),
                 Select::make('vehicle_id')->label('السيارة')->relationship('vehicle', 'plate_number')->searchable()->preload()->native(false),
-                Select::make('driver_id')->label('السائق')->relationship('driver', 'name')->searchable()->preload()->native(false),
-                Select::make('sales_representative_id')->label('مندوب المبيعات')->relationship('salesRepresentative', 'name')->searchable()->preload()->native(false),
+                Select::make('driver_id')
+                    ->label('السائق')
+                    ->relationship(
+                        'driver',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->forOperationalRole(UserRole::DRIVER),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
+                Select::make('sales_representative_id')
+                    ->label('مندوب المبيعات')
+                    ->relationship(
+                        'salesRepresentative',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->native(false),
 
                 Select::make('visit_days')
                     ->label('أيام الزيارة')

@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\VehicleLoads\Schemas;
 
+use App\Enums\UserRole;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -62,7 +64,7 @@ class VehicleLoadForm
                         'name',
                         modifyQueryUsing: fn (Builder $query): Builder => $query
                             ->where('status', 'active')
-                            ->where('type', 'driver'),
+                            ->forOperationalRole(UserRole::DRIVER),
                     )
                     ->searchable()
                     ->preload()
@@ -75,7 +77,7 @@ class VehicleLoadForm
                         'name',
                         modifyQueryUsing: fn (Builder $query): Builder => $query
                             ->where('status', 'active')
-                            ->where('type', 'sales_representative'),
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
                     )
                     ->searchable()
                     ->preload()

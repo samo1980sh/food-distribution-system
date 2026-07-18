@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenses\Schemas;
 
+use App\Enums\UserRole;
 use App\Models\VehicleExpense;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -9,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class VehicleExpenseForm
 {
@@ -48,14 +50,26 @@ class VehicleExpenseForm
 
                 Select::make('driver_id')
                     ->label('السائق')
-                    ->relationship('driver', 'name')
+                    ->relationship(
+                        'driver',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->forOperationalRole(UserRole::DRIVER),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),
 
                 Select::make('sales_representative_id')
                     ->label('المندوب')
-                    ->relationship('salesRepresentative', 'name')
+                    ->relationship(
+                        'salesRepresentative',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $query
+                            ->where('status', 'active')
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false),

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RoutePerformanceReports\Tables;
 
 use App\Enums\PermissionName;
+use App\Enums\UserRole;
 use App\Models\Area;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
@@ -477,7 +478,8 @@ class RoutePerformanceReportsTable
                             ->label('السائق')
                             ->options(
                                 fn (): array => Employee::query()
-                                    ->where('type', 'driver')
+                                    ->where('status', 'active')
+                                    ->forOperationalRole(UserRole::DRIVER)
                                     ->orderBy('name')
                                     ->pluck('name', 'id')
                                     ->all()
@@ -489,7 +491,8 @@ class RoutePerformanceReportsTable
                             ->label('المندوب')
                             ->options(
                                 fn (): array => Employee::query()
-                                    ->where('type', 'sales_representative')
+                                    ->where('status', 'active')
+                                    ->forOperationalRole(UserRole::SALES_REPRESENTATIVE)
                                     ->orderBy('name')
                                     ->pluck('name', 'id')
                                     ->all()

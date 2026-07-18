@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
+use App\Enums\UserRole;
+
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -82,7 +84,7 @@ class SalesInvoiceForm
                         'name',
                         modifyQueryUsing: fn (Builder $query): Builder => $query
                             ->where('status', 'active')
-                            ->where('type', 'sales_representative'),
+                            ->forOperationalRole(UserRole::SALES_REPRESENTATIVE),
                     )
                     ->searchable()
                     ->preload()

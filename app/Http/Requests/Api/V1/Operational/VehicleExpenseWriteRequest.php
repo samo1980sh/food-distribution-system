@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Operational;
 
+use App\Enums\UserRole;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\VehicleExpense;
 use Illuminate\Validation\Rule;
 
@@ -34,8 +36,18 @@ class VehicleExpenseWriteRequest extends OperationalWriteRequest
                 Rule::exists('warehouses', 'id')->where('status', 'active'),
             ]),
             'route_id' => ['sometimes', 'nullable', 'integer', Rule::exists('distribution_routes', 'id')->where('status', 'active')],
-            'driver_id' => ['sometimes', 'nullable', 'integer', Rule::exists('employees', 'id')->where(fn ($query) => $query->where('status', 'active')->where('type', 'driver'))],
-            'sales_representative_id' => ['sometimes', 'nullable', 'integer', Rule::exists('employees', 'id')->where(fn ($query) => $query->where('status', 'active')->where('type', 'sales_representative'))],
+            'driver_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::DRIVER),
+            ],
+            'sales_representative_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
+            ],
             'expense_type' => $this->requiredOrSometimes([Rule::in(['fuel', 'maintenance', 'washing', 'fees', 'parking', 'emergency', 'other'])]),
             'amount' => $this->requiredOrSometimes(['numeric', 'gt:0']),
             'payment_method' => $this->requiredOrSometimes([Rule::in(['cash', 'bank_transfer', 'cheque', 'other'])]),

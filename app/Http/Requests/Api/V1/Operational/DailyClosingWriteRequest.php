@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Operational;
 
+use App\Enums\UserRole;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\DailyClosing;
 use Illuminate\Validation\Rule;
 
@@ -31,7 +33,12 @@ class DailyClosingWriteRequest extends OperationalWriteRequest
                 'integer',
                 Rule::exists('warehouses', 'id')->where('status', 'active'),
             ]),
-            'sales_representative_id' => ['sometimes', 'nullable', 'integer', Rule::exists('employees', 'id')->where(fn ($query) => $query->where('status', 'active')->where('type', 'sales_representative'))],
+            'sales_representative_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
+            ],
             'actual_cash_amount' => ['sometimes', 'numeric', 'min:0'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
             'items' => $this->isMethod('post')
