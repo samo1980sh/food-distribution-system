@@ -1,5 +1,6 @@
 @php
     $money = fn ($value): string => number_format((float) $value, 2) . ' ل.س';
+    $quantity = fn ($value): string => number_format((float) $value, 3);
 
     $statusClasses = [
         'draft' => 'status-draft',
@@ -356,6 +357,26 @@
                 <div class="summary-card">
                     <span>عدد الإغلاقات</span>
                     <strong>{{ number_format($totals['count']) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي أرصدة البداية</span>
+                    <strong>{{ $quantity($totals['total_opening_quantity']) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي الوارد الدفتري</span>
+                    <strong>{{ $quantity($totals['total_movement_in_quantity']) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي الصادر الدفتري</span>
+                    <strong>{{ $quantity($totals['total_movement_out_quantity']) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي الرصيد المتوقع</span>
+                    <strong>{{ $quantity($totals['total_expected_quantity']) }}</strong>
                 </div>
 
                 <div class="summary-card">

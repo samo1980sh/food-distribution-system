@@ -400,6 +400,11 @@
                 </div>
 
                 <div class="meta-item">
+                    <span>تاريخ الاستحقاق</span>
+                    <strong>{{ $salesInvoice->due_date?->format('Y-m-d') ?? '-' }}</strong>
+                </div>
+
+                <div class="meta-item">
                     <span>العميل</span>
                     <strong>{{ $salesInvoice->customer?->name ?? '-' }}</strong>
                 </div>
@@ -454,6 +459,11 @@
                 <div class="meta-item">
                     <span>تاريخ الاعتماد</span>
                     <strong>{{ $salesInvoice->confirmed_at?->format('Y-m-d H:i') ?? '-' }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>الاستثناء الائتماني</span>
+                    <strong>{{ $salesInvoice->credit_limit_overridden ? 'معتمد' : 'لا يوجد' }}</strong>
                 </div>
             </div>
 
@@ -560,6 +570,19 @@
                 </div>
             </div>
         </section>
+
+        @if ($salesInvoice->credit_limit_overridden)
+            <section class="section">
+                <h3 class="section-title">توثيق الاستثناء الائتماني</h3>
+
+                <div class="customer-address">
+                    <strong>الحد المسجل:</strong> {{ $money($salesInvoice->credit_limit_snapshot) }} —
+                    <strong>التعرض بعد الفاتورة:</strong> {{ $money($salesInvoice->credit_exposure_after) }}
+                    <br>
+                    <strong>السبب:</strong> {{ $salesInvoice->credit_limit_override_reason }}
+                </div>
+            </section>
+        @endif
 
         @if (filled($salesInvoice->notes))
             <section class="section">

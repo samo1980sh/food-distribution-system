@@ -2,9 +2,10 @@
 
 namespace App\Http\Requests\Api\V1\Operational;
 
+use App\Enums\PermissionName;
 use App\Enums\UserRole;
-use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\SalesInvoice;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -44,7 +45,10 @@ class SalesInvoiceWriteRequest extends OperationalWriteRequest
                 new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
             ],
             'invoice_date' => $this->requiredOrSometimes(['date']),
+            'due_date' => ['sometimes', 'nullable', 'date'],
             'payment_type' => $this->requiredOrSometimes([Rule::in(['cash', 'credit', 'partial'])]),
+            'credit_limit_override_requested' => ['sometimes', 'boolean'],
+            'credit_limit_override_reason' => ['sometimes', 'nullable', 'string', 'min:10', 'max:2000'],
             'paid_amount' => ['sometimes', 'numeric', 'min:0'],
             'discount_amount' => ['sometimes', 'numeric', 'min:0'],
             'tax_amount' => ['sometimes', 'numeric', 'min:0'],
@@ -63,6 +67,35 @@ class SalesInvoiceWriteRequest extends OperationalWriteRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
+            $routeInvoice = $this->route('salesInvoice');
+            $invoiceDate = $this->date('invoice_date')
+                ?? ($routeInvoice instanceof SalesInvoice ? $routeInvoice->invoice_date : null);
+            $dueDate = $this->date('due_date')
+                ?? ($routeInvoice instanceof SalesInvoice ? $routeInvoice->due_date : null);
+
+            if ($invoiceDate && $dueDate && $dueDate->lt($invoiceDate)) {
+                $validator->errors()->add(
+                    'due_date',
+                    'تاريخ الاستحقاق لا يمكن أن يسبق تاريخ الفاتورة.',
+                );
+            }
+
+            if ($this->boolean('credit_limit_override_requested')) {
+                if (! $this->user()?->can(PermissionName::SALES_INVOICES_OVERRIDE_CREDIT_LIMIT->value)) {
+                    $validator->errors()->add(
+                        'credit_limit_override_requested',
+                        'لا تملك صلاحية طلب تجاوز حد ائتمان العميل.',
+                    );
+                }
+
+                if (mb_strlen(trim((string) $this->input('credit_limit_override_reason'))) < 10) {
+                    $validator->errors()->add(
+                        'credit_limit_override_reason',
+                        'يجب إدخال سبب واضح لتجاوز حد الائتمان لا يقل عن 10 أحرف.',
+                    );
+                }
+            }
+
             $keys = [];
 
             foreach ((array) $this->input('items', []) as $index => $item) {

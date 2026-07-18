@@ -80,6 +80,7 @@ enum PermissionName: string
     case SALES_INVOICES_UPDATE = 'sales_invoices.update';
     case SALES_INVOICES_DELETE = 'sales_invoices.delete';
     case SALES_INVOICES_CONFIRM = 'sales_invoices.confirm';
+    case SALES_INVOICES_OVERRIDE_CREDIT_LIMIT = 'sales_invoices.override_credit_limit';
     case SALES_INVOICES_CANCEL = 'sales_invoices.cancel';
     case SALES_INVOICES_PRINT = 'sales_invoices.print';
 

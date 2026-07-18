@@ -6,8 +6,11 @@ use App\Models\Product;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Support\DocumentNumberService;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -24,6 +27,7 @@ class InventoryMovementService
         string $movementType = 'opening_balance',
         ?string $notes = null,
         ?object $reference = null,
+        CarbonInterface|string|null $movementDate = null,
     ): StockMovement {
         return DB::transaction(function () use (
             $warehouse,
@@ -34,8 +38,12 @@ class InventoryMovementService
             $unitCost,
             $movementType,
             $notes,
-            $reference
+            $reference,
+            $movementDate,
         ): StockMovement {
+            $date = $this->normalizeMovementDate($movementDate);
+            app(DailyClosingGuard::class)->ensureOpen($date, $warehouse->id);
+
             $appliedUnitCost = $this->normalizeInboundUnitCost(
                 $product,
                 $unitCost,
@@ -52,6 +60,7 @@ class InventoryMovementService
 
             return $this->createMovement([
                 'movement_type' => $movementType,
+                'movement_date' => $date,
                 'to_warehouse_id' => $warehouse->id,
                 'product_id' => $product->id,
                 'batch_number' => $batchNumber,
@@ -75,6 +84,7 @@ class InventoryMovementService
         string $movementType = 'manual_out',
         ?string $notes = null,
         ?object $reference = null,
+        CarbonInterface|string|null $movementDate = null,
     ): StockMovement {
         return DB::transaction(function () use (
             $warehouse,
@@ -84,8 +94,12 @@ class InventoryMovementService
             $expiryDate,
             $movementType,
             $notes,
-            $reference
+            $reference,
+            $movementDate,
         ): StockMovement {
+            $date = $this->normalizeMovementDate($movementDate);
+            app(DailyClosingGuard::class)->ensureOpen($date, $warehouse->id);
+
             $appliedUnitCost = $this->decreaseBalance(
                 warehouse: $warehouse,
                 product: $product,
@@ -96,6 +110,7 @@ class InventoryMovementService
 
             return $this->createMovement([
                 'movement_type' => $movementType,
+                'movement_date' => $date,
                 'from_warehouse_id' => $warehouse->id,
                 'product_id' => $product->id,
                 'batch_number' => $batchNumber,
@@ -120,6 +135,7 @@ class InventoryMovementService
         string $movementType = 'warehouse_transfer',
         ?string $notes = null,
         ?object $reference = null,
+        CarbonInterface|string|null $movementDate = null,
     ): StockMovement {
         return DB::transaction(function () use (
             $fromWarehouse,
@@ -130,8 +146,18 @@ class InventoryMovementService
             $expiryDate,
             $movementType,
             $notes,
-            $reference
+            $reference,
+            $movementDate,
         ): StockMovement {
+            if ($fromWarehouse->is($toWarehouse)) {
+                throw new RuntimeException('لا يمكن تنفيذ تحويل مخزون داخل المستودع نفسه.');
+            }
+
+            $date = $this->normalizeMovementDate($movementDate);
+            $guard = app(DailyClosingGuard::class);
+            $guard->ensureOpen($date, $fromWarehouse->id);
+            $guard->ensureOpen($date, $toWarehouse->id);
+
             $appliedUnitCost = $this->decreaseBalance(
                 warehouse: $fromWarehouse,
                 product: $product,
@@ -151,6 +177,7 @@ class InventoryMovementService
 
             return $this->createMovement([
                 'movement_type' => $movementType,
+                'movement_date' => $date,
                 'from_warehouse_id' => $fromWarehouse->id,
                 'to_warehouse_id' => $toWarehouse->id,
                 'product_id' => $product->id,
@@ -313,6 +340,14 @@ class InventoryMovementService
             'movement_number' => $this->generateMovementNumber(),
             'created_by' => Auth::id(),
         ]);
+    }
+
+    private function normalizeMovementDate(
+        CarbonInterface|string|null $movementDate,
+    ): string {
+        return $movementDate instanceof CarbonInterface
+            ? $movementDate->toDateString()
+            : Carbon::parse($movementDate ?: now())->toDateString();
     }
 
     private function generateMovementNumber(): string

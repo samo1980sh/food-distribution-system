@@ -405,7 +405,8 @@ class OverdueCustomerReportService
                 $invoiceDate = $invoice->invoice_date?->copy()->startOfDay()
                     ?? $asOf->copy();
 
-                $dueDate = $invoiceDate->copy()->addDays($creditDays);
+                $dueDate = $invoice->due_date?->copy()->startOfDay()
+                    ?? $invoiceDate->copy()->addDays($creditDays);
 
                 $initialOutstanding = max(
                     (float) $invoice->total_amount
@@ -469,7 +470,7 @@ class OverdueCustomerReportService
             ->min('invoice_date');
 
         $oldestOverdueDate = $overdueRows
-            ->min('invoice_date');
+            ->min('due_date');
 
         $daysOverdue = (int) (
             $overdueRows->max('days_overdue') ?? 0

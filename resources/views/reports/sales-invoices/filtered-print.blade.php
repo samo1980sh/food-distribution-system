@@ -404,6 +404,7 @@
                         <tr>
                             <th>#</th>
                             <th>التاريخ</th>
+                            <th>الاستحقاق</th>
                             <th>رقم الفاتورة</th>
                             <th>العميل</th>
                             <th>المستودع</th>
@@ -425,6 +426,7 @@
                             <tr>
                                 <td class="number">{{ $loop->iteration }}</td>
                                 <td class="number">{{ $invoice->invoice_date?->format('Y-m-d') ?? '-' }}</td>
+                                <td class="number">{{ $invoice->due_date?->format('Y-m-d') ?? '-' }}</td>
                                 <td class="number">{{ $invoice->invoice_number }}</td>
                                 <td>{{ $invoice->customer?->name ?? '-' }}</td>
                                 <td>{{ $invoice->warehouse?->name ?? '-' }}</td>
@@ -447,7 +449,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="15" class="empty">
+                                <td colspan="16" class="empty">
                                     لا توجد فواتير مطابقة للفلاتر الحالية.
                                 </td>
                             </tr>
@@ -457,7 +459,7 @@
                     @if ($invoices->isNotEmpty())
                         <tfoot>
                             <tr>
-                                <td colspan="9">الإجمالي</td>
+                                <td colspan="10">الإجمالي</td>
                                 <td class="number">{{ $money($totals['subtotal']) }}</td>
                                 <td class="number">{{ $money($totals['discount_amount']) }}</td>
                                 <td class="number">{{ $money($totals['tax_amount']) }}</td>

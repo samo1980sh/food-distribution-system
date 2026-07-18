@@ -15,6 +15,13 @@ class StockMovementForm
         return $schema
             ->columns(2)
             ->components([
+                DatePicker::make('movement_date')
+                    ->label('تاريخ الحركة')
+                    ->default(now())
+                    ->required()
+                    ->native(false)
+                    ->helperText('يُستخدم هذا التاريخ في دفتر المخزون والإغلاق اليومي.'),
+
                 Select::make('movement_type')
                     ->label('نوع الحركة')
                     ->options([

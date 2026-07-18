@@ -150,6 +150,10 @@ class DailyClosingFilteredPrintController extends Controller
 
         $totals = [
             'count' => $closings->count(),
+            'total_opening_quantity' => (float) $closings->sum('total_opening_quantity'),
+            'total_movement_in_quantity' => (float) $closings->sum('total_movement_in_quantity'),
+            'total_movement_out_quantity' => (float) $closings->sum('total_movement_out_quantity'),
+            'total_expected_quantity' => (float) $closings->sum('total_expected_quantity'),
             'total_sales_amount' => (float) $closings->sum('total_sales_amount'),
             'total_returns_amount' => (float) $closings->sum('total_returns_amount'),
             'total_collections_amount' => (float) $closings->sum('total_collections_amount'),

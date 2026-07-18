@@ -46,6 +46,14 @@ class RbacFoundationTest extends TestCase
 
     public function test_role_matrix_grants_only_expected_foundation_permissions(): void
     {
+        $manager = User::factory()->create([
+            'role' => User::ROLE_MANAGER,
+        ]);
+
+        $supervisor = User::factory()->create([
+            'role' => User::ROLE_SUPERVISOR,
+        ]);
+
         $warehouseKeeper = User::factory()->create([
             'role' => User::ROLE_WAREHOUSE_KEEPER,
         ]);
@@ -61,6 +69,13 @@ class RbacFoundationTest extends TestCase
         $salesRepresentative = User::factory()->create([
             'role' => User::ROLE_SALES_REPRESENTATIVE,
         ]);
+
+        $this->assertTrue(
+            $manager->can(PermissionName::SALES_INVOICES_OVERRIDE_CREDIT_LIMIT->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::SALES_INVOICES_OVERRIDE_CREDIT_LIMIT->value),
+        );
 
         $this->assertTrue(
             $warehouseKeeper->can(PermissionName::STOCK_MOVEMENTS_CREATE->value),

@@ -42,6 +42,30 @@ class OverdueCustomerReportTest extends TestCase
         $this->assertSame(500.0, $summary['invoices'][1]['remaining_amount']);
     }
 
+    public function test_explicit_invoice_due_date_overrides_report_credit_days(): void
+    {
+        $this->insertReportData();
+
+        DB::table('sales_invoices')
+            ->where('id', 202)
+            ->update(['due_date' => today()->subDay()->toDateString()]);
+
+        OverdueCustomerReportService::forgetCache();
+
+        $summary = app(OverdueCustomerReportService::class)
+            ->summaryForCustomer(
+                customerId: 101,
+                creditDays: 365,
+                asOf: today()->toDateString(),
+            );
+
+        $recentInvoice = collect($summary['invoices'])
+            ->firstWhere('invoice_number', 'INV-RECENT');
+
+        $this->assertTrue($recentInvoice['is_overdue']);
+        $this->assertSame(today()->subDay()->toDateString(), $recentInvoice['due_date']);
+    }
+
     public function test_overdue_scope_excludes_settled_and_recent_only_customers(): void
     {
         $this->insertReportData();

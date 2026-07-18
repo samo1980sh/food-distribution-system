@@ -15,6 +15,7 @@ class SalesInvoiceResource extends OperationalResource
             'client_reference' => $this->client_reference,
             'invoice_number' => $this->invoice_number,
             'invoice_date' => $this->date($this->invoice_date),
+            'due_date' => $this->date($this->due_date),
             'status' => $this->status,
             'payment_type' => $this->payment_type,
             'subtotal' => $this->decimal($this->subtotal),
@@ -24,6 +25,15 @@ class SalesInvoiceResource extends OperationalResource
             'paid_amount' => $this->decimal($this->paid_amount),
             'invoice_cash_amount' => $this->decimal($this->invoice_cash_amount),
             'remaining_amount' => $this->decimal($this->remaining_amount),
+            'credit_control' => [
+                'limit_snapshot' => $this->decimal($this->credit_limit_snapshot),
+                'exposure_before' => $this->decimal($this->credit_exposure_before),
+                'exposure_after' => $this->decimal($this->credit_exposure_after),
+                'override_requested' => (bool) $this->credit_limit_override_requested,
+                'overridden' => (bool) $this->credit_limit_overridden,
+                'override_reason' => $this->credit_limit_override_reason,
+                'overridden_at' => $this->dateTime($this->credit_limit_overridden_at),
+            ],
             'notes' => $this->notes,
             'customer' => $this->whenLoaded('customer', fn () => $this->customer
                 ? CustomerResource::make($this->customer)->resolve($request)

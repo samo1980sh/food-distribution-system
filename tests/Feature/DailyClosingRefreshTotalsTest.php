@@ -15,6 +15,7 @@ use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
 use App\Services\Distribution\DailyClosingService;
+use App\Services\Inventory\InventoryMovementService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use RuntimeException;
 use Tests\TestCase;
@@ -62,6 +63,32 @@ class DailyClosingRefreshTotalsTest extends TestCase
             'sale_price' => 20,
             'status' => 'active',
         ]);
+
+        $inventory = app(InventoryMovementService::class);
+
+        $inventory->addStock(
+            warehouse: $warehouse,
+            product: $product,
+            quantity: 10,
+            movementType: 'vehicle_load_transfer',
+            movementDate: $date,
+        );
+
+        $inventory->removeStock(
+            warehouse: $warehouse,
+            product: $product,
+            quantity: 4,
+            movementType: 'sales_invoice',
+            movementDate: $date,
+        );
+
+        $inventory->addStock(
+            warehouse: $warehouse,
+            product: $product,
+            quantity: 1,
+            movementType: 'sales_return',
+            movementDate: $date,
+        );
 
         $vehicleLoad = VehicleLoad::query()->create([
             'load_number' => 'VLD-DCL-TOTAL-'.$suffix,
@@ -167,10 +194,17 @@ class DailyClosingRefreshTotalsTest extends TestCase
             ->where('product_id', $product->id)
             ->firstOrFail();
 
+        $this->assertSame('0.000', $closing->total_opening_quantity);
+        $this->assertSame('11.000', $closing->total_movement_in_quantity);
+        $this->assertSame('4.000', $closing->total_movement_out_quantity);
+        $this->assertSame('7.000', $closing->total_expected_quantity);
         $this->assertSame('10.000', $closing->total_loaded_quantity);
         $this->assertSame('4.000', $closing->total_sold_quantity);
         $this->assertSame('1.000', $closing->total_returned_quantity);
 
+        $this->assertSame('0.000', $item->opening_quantity);
+        $this->assertSame('11.000', $item->movement_in_quantity);
+        $this->assertSame('4.000', $item->movement_out_quantity);
         $this->assertSame('10.000', $item->loaded_quantity);
         $this->assertSame('4.000', $item->sold_quantity);
         $this->assertSame('1.000', $item->returned_quantity);

@@ -11,6 +11,7 @@ class StockMovement extends Model
     protected $fillable = [
         'movement_number',
         'movement_type',
+        'movement_date',
         'reference_type',
         'reference_id',
         'from_warehouse_id',
@@ -26,11 +27,21 @@ class StockMovement extends Model
     ];
 
     protected $casts = [
+        'movement_date' => 'date',
         'expiry_date' => 'date',
         'quantity' => 'decimal:3',
         'unit_cost' => 'decimal:6',
         'total_cost' => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (StockMovement $movement): void {
+            if (blank($movement->movement_date)) {
+                $movement->movement_date = now()->toDateString();
+            }
+        });
+    }
 
     public function reference(): MorphTo
     {

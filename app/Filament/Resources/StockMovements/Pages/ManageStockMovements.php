@@ -6,7 +6,6 @@ use App\Filament\Resources\StockMovements\StockMovementResource;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
-use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
@@ -30,26 +29,7 @@ class ManageStockMovements extends ManageRecords
                     $product = Product::query()->findOrFail($data['product_id']);
 
                     try {
-                        $guard = app(DailyClosingGuard::class);
-                        $movementDate = now()->toDateString();
-
-                        if (($data['movement_type'] ?? null) === 'opening_balance' && filled($data['to_warehouse_id'] ?? null)) {
-                            $guard->ensureOpen($movementDate, (int) $data['to_warehouse_id']);
-                        }
-
-                        if (($data['movement_type'] ?? null) === 'manual_out' && filled($data['from_warehouse_id'] ?? null)) {
-                            $guard->ensureOpen($movementDate, (int) $data['from_warehouse_id']);
-                        }
-
-                        if (($data['movement_type'] ?? null) === 'warehouse_transfer') {
-                            if (filled($data['from_warehouse_id'] ?? null)) {
-                                $guard->ensureOpen($movementDate, (int) $data['from_warehouse_id']);
-                            }
-
-                            if (filled($data['to_warehouse_id'] ?? null)) {
-                                $guard->ensureOpen($movementDate, (int) $data['to_warehouse_id']);
-                            }
-                        }
+                        $movementDate = (string) $data['movement_date'];
 
                         return match ($data['movement_type']) {
                             'opening_balance' => $service->addStock(
@@ -61,6 +41,7 @@ class ManageStockMovements extends ManageRecords
                                 unitCost: $data['unit_cost'] ?? 0,
                                 movementType: 'opening_balance',
                                 notes: $data['notes'] ?? null,
+                                movementDate: $movementDate,
                             ),
 
                             'manual_out' => $service->removeStock(
@@ -71,6 +52,7 @@ class ManageStockMovements extends ManageRecords
                                 expiryDate: $data['expiry_date'] ?? null,
                                 movementType: 'manual_out',
                                 notes: $data['notes'] ?? null,
+                                movementDate: $movementDate,
                             ),
 
                             'warehouse_transfer' => $service->transfer(
@@ -82,6 +64,7 @@ class ManageStockMovements extends ManageRecords
                                 expiryDate: $data['expiry_date'] ?? null,
                                 movementType: 'warehouse_transfer',
                                 notes: $data['notes'] ?? null,
+                                movementDate: $movementDate,
                             ),
 
                             default => throw ValidationException::withMessages([

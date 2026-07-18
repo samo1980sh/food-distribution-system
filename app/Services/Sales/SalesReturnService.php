@@ -65,6 +65,7 @@ class SalesReturnService
                     movementType: 'sales_return',
                     notes: 'مرتجع بيع رقم '.$salesReturn->return_number,
                     reference: $salesReturn,
+                    movementDate: $salesReturn->return_date,
                 );
 
                 $item->forceFill([
@@ -117,6 +118,7 @@ class SalesReturnService
                     movementType: 'sales_return_cancellation',
                     notes: 'إلغاء مرتجع بيع رقم '.$salesReturn->return_number,
                     reference: $salesReturn,
+                    movementDate: $salesReturn->return_date,
                 );
             }
 

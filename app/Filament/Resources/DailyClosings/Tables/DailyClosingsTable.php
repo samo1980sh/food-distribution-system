@@ -46,6 +46,30 @@ class DailyClosingsTable
                     ->placeholder('-')
                     ->toggleable(),
 
+                TextColumn::make('total_opening_quantity')
+                    ->label('رصيد البداية')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('total_movement_in_quantity')
+                    ->label('الوارد')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('total_movement_out_quantity')
+                    ->label('الصادر')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('total_expected_quantity')
+                    ->label('الرصيد المتوقع')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('total_sales_amount')
                     ->label('المبيعات')
                     ->money('SYP')
@@ -122,6 +146,12 @@ class DailyClosingsTable
                     ->money('SYP')
                     ->sortable()
                     ->color(fn ($state): string => ((float) $state) === 0.0 ? 'success' : 'warning'),
+
+                TextColumn::make('snapshot_at')
+                    ->label('تثبيت اللقطة')
+                    ->dateTime('Y-m-d H:i')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('status')
                     ->label('الحالة')

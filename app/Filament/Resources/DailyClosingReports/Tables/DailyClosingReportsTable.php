@@ -59,6 +59,34 @@ class DailyClosingReportsTable
                     ->placeholder('-')
                     ->toggleable(),
 
+                TextColumn::make('total_opening_quantity')
+                    ->label('رصيد البداية')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(Sum::make()->label('الإجمالي')->numeric(decimalPlaces: 3)),
+
+                TextColumn::make('total_movement_in_quantity')
+                    ->label('الوارد الدفتري')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(Sum::make()->label('الإجمالي')->numeric(decimalPlaces: 3)),
+
+                TextColumn::make('total_movement_out_quantity')
+                    ->label('الصادر الدفتري')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->summarize(Sum::make()->label('الإجمالي')->numeric(decimalPlaces: 3)),
+
+                TextColumn::make('total_expected_quantity')
+                    ->label('الرصيد المتوقع')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->toggleable()
+                    ->summarize(Sum::make()->label('الإجمالي')->numeric(decimalPlaces: 3)),
+
                 TextColumn::make('total_loaded_quantity')
                     ->label('الكمية المحمّلة')
                     ->numeric(decimalPlaces: 3)

@@ -21,6 +21,10 @@ class DailyClosing extends Model
         'warehouse_id',
         'sales_representative_id',
         'status',
+        'total_opening_quantity',
+        'total_movement_in_quantity',
+        'total_movement_out_quantity',
+        'total_expected_quantity',
         'total_loaded_quantity',
         'total_sold_quantity',
         'total_returned_quantity',
@@ -39,6 +43,7 @@ class DailyClosing extends Model
         'expected_cash_amount',
         'actual_cash_amount',
         'cash_difference',
+        'snapshot_at',
         'notes',
         'created_by',
         'client_reference',
@@ -49,6 +54,10 @@ class DailyClosing extends Model
 
     protected $casts = [
         'closing_date' => 'date',
+        'total_opening_quantity' => 'decimal:3',
+        'total_movement_in_quantity' => 'decimal:3',
+        'total_movement_out_quantity' => 'decimal:3',
+        'total_expected_quantity' => 'decimal:3',
         'total_loaded_quantity' => 'decimal:3',
         'total_sold_quantity' => 'decimal:3',
         'total_returned_quantity' => 'decimal:3',
@@ -67,6 +76,7 @@ class DailyClosing extends Model
         'expected_cash_amount' => 'decimal:2',
         'actual_cash_amount' => 'decimal:2',
         'cash_difference' => 'decimal:2',
+        'snapshot_at' => 'datetime',
         'confirmed_at' => 'datetime',
     ];
 

@@ -49,6 +49,7 @@ class VehicleLoadService
                     movementType: 'vehicle_load_transfer',
                     notes: 'تحميل سيارة - أمر رقم '.$vehicleLoad->load_number,
                     reference: $vehicleLoad,
+                    movementDate: $vehicleLoad->load_date,
                 );
 
                 $item->forceFill([
@@ -101,6 +102,7 @@ class VehicleLoadService
                     movementType: 'vehicle_load_cancellation',
                     notes: 'إلغاء تحميل سيارة - أمر رقم '.$vehicleLoad->load_number,
                     reference: $vehicleLoad,
+                    movementDate: $vehicleLoad->load_date,
                 );
             }
 

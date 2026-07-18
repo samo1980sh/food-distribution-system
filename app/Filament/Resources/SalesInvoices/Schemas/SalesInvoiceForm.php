@@ -2,17 +2,21 @@
 
 namespace App\Filament\Resources\SalesInvoices\Schemas;
 
+use App\Enums\PermissionName;
 use App\Enums\UserRole;
+use App\Services\Sales\CustomerFinancialService;
 use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 
 class SalesInvoiceForm
 {
@@ -28,16 +32,46 @@ class SalesInvoiceForm
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function (mixed $state, Set $set): void {
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
                         self::applyContext($set, OperationalFormContext::forCustomer($state));
+                        self::applyDueDate($get, $set, $state);
                     })
                     ->native(false)
-                    ->helperText('عند اختيار العميل يتم تعبئة الخط والسيارة والمستودع والمندوب من تكليف العميل.'),
+                    ->helperText('يُحتسب الاستحقاق وحد الائتمان من إعدادات العميل عند اعتماد الفاتورة.'),
 
                 DatePicker::make('invoice_date')
                     ->label('تاريخ الفاتورة')
                     ->default(now())
-                    ->required(),
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        self::applyDueDate($get, $set, invoiceDate: $state);
+                    })
+                    ->native(false),
+
+                DatePicker::make('due_date')
+                    ->label('تاريخ الاستحقاق')
+                    ->default(now())
+                    ->required()
+                    ->native(false)
+                    ->disabled(fn (Get $get): bool => $get('payment_type') === 'cash')
+                    ->dehydrated()
+                    ->helperText('للفاتورة النقدية يساوي تاريخ الفاتورة، وللآجلة يُقترح من مدة ائتمان العميل.'),
+
+                Select::make('payment_type')
+                    ->label('طريقة الدفع')
+                    ->options([
+                        'cash' => 'نقدي',
+                        'credit' => 'آجل',
+                        'partial' => 'دفعة جزئية',
+                    ])
+                    ->default('cash')
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                        self::applyDueDate($get, $set, paymentType: $state);
+                    })
+                    ->native(false),
 
                 Select::make('vehicle_id')
                     ->label('السيارة')
@@ -112,31 +146,39 @@ class SalesInvoiceForm
                     ->preload()
                     ->native(false),
 
-                Select::make('payment_type')
-                    ->label('طريقة الدفع')
-                    ->options([
-                        'cash' => 'نقدي',
-                        'credit' => 'آجل',
-                        'partial' => 'دفعة جزئية',
-                    ])
-                    ->default('cash')
-                    ->required()
-                    ->native(false),
-
                 TextInput::make('paid_amount')
-                    ->label('المبلغ المدفوع')
+                    ->label('المبلغ المدفوع مع الفاتورة')
                     ->numeric()
+                    ->minValue(0)
                     ->default(0),
 
                 TextInput::make('discount_amount')
                     ->label('حسم على الفاتورة')
                     ->numeric()
+                    ->minValue(0)
                     ->default(0),
 
                 TextInput::make('tax_amount')
                     ->label('ضريبة / إضافات')
                     ->numeric()
+                    ->minValue(0)
                     ->default(0),
+
+                Toggle::make('credit_limit_override_requested')
+                    ->label('طلب استثناء من حد الائتمان')
+                    ->helperText('يُراجع حد الائتمان عند الاعتماد، ويُسجل الاستثناء وسببه وهوية المعتمد.')
+                    ->live()
+                    ->visible(fn (): bool => auth()->user()?->can(
+                        PermissionName::SALES_INVOICES_OVERRIDE_CREDIT_LIMIT->value,
+                    ) === true),
+
+                Textarea::make('credit_limit_override_reason')
+                    ->label('سبب الاستثناء الائتماني')
+                    ->minLength(10)
+                    ->maxLength(2000)
+                    ->required(fn (Get $get): bool => $get('credit_limit_override_requested') === true)
+                    ->visible(fn (Get $get): bool => $get('credit_limit_override_requested') === true)
+                    ->columnSpanFull(),
 
                 Textarea::make('notes')
                     ->label('ملاحظات')
@@ -164,7 +206,8 @@ class SalesInvoiceForm
                             ->maxLength(255),
 
                         DatePicker::make('expiry_date')
-                            ->label('تاريخ الصلاحية'),
+                            ->label('تاريخ الصلاحية')
+                            ->native(false),
 
                         TextInput::make('quantity')
                             ->label('الكمية')
@@ -176,15 +219,53 @@ class SalesInvoiceForm
                         TextInput::make('unit_price')
                             ->label('سعر الوحدة')
                             ->numeric()
+                            ->minValue(0)
                             ->default(0)
                             ->required(),
 
                         TextInput::make('discount_amount')
                             ->label('حسم المادة')
                             ->numeric()
+                            ->minValue(0)
                             ->default(0),
                     ]),
             ]);
+    }
+
+    private static function applyDueDate(
+        Get $get,
+        Set $set,
+        mixed $customerId = null,
+        mixed $invoiceDate = null,
+        mixed $paymentType = null,
+    ): void {
+        $customerId ??= $get('customer_id');
+        $invoiceDate ??= $get('invoice_date');
+        $paymentType ??= $get('payment_type');
+
+        if (blank($invoiceDate)) {
+            return;
+        }
+
+        if ($paymentType === 'cash') {
+            $set('due_date', Carbon::parse($invoiceDate)->toDateString());
+
+            return;
+        }
+
+        if (! $customerId) {
+            return;
+        }
+
+        $creditDays = app(CustomerFinancialService::class)
+            ->creditDaysForCustomer((int) $customerId);
+
+        $set(
+            'due_date',
+            Carbon::parse($invoiceDate)
+                ->addDays($creditDays)
+                ->toDateString(),
+        );
     }
 
     /** @param array<string, ?int> $context */

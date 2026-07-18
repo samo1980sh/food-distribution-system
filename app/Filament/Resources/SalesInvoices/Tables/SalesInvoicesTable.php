@@ -30,6 +30,18 @@ class SalesInvoicesTable
                     ->date('Y-m-d')
                     ->sortable(),
 
+                TextColumn::make('due_date')
+                    ->label('الاستحقاق')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->color(fn ($state, SalesInvoice $record): string =>
+                        $record->status === 'confirmed'
+                        && (float) $record->remaining_amount > 0
+                        && $record->due_date?->isPast()
+                            ? 'danger'
+                            : 'gray'
+                    ),
+
                 TextColumn::make('customer.name')
                     ->label('العميل')
                     ->searchable()
@@ -89,6 +101,13 @@ class SalesInvoicesTable
                     ->money('SYP')
                     ->sortable()
                     ->color(fn ($state): string => ((float) $state) > 0 ? 'warning' : 'success'),
+
+                TextColumn::make('credit_limit_overridden')
+                    ->label('استثناء ائتماني')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'تم التجاوز' : 'لا')
+                    ->color(fn (bool $state): string => $state ? 'danger' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('status')
                     ->label('الحالة')

@@ -5,6 +5,7 @@ namespace App\Services\Distribution;
 use App\Models\DailyClosing;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -26,15 +27,15 @@ class DailyClosingService
             $this->validateClosingScope($closing);
 
             $date = $closing->closing_date->toDateString();
-            $warehouseId = $closing->warehouse_id;
-            $vehicleId = $closing->vehicle_id;
-            $routeId = $closing->route_id;
-            $salesRepresentativeId = $closing->sales_representative_id;
+            $warehouseId = (int) $closing->warehouse_id;
 
             $existingActuals = $closing->items()
                 ->get()
                 ->keyBy('product_id')
-                ->map(fn ($item) => $item->actual_quantity)
+                ->map(fn ($item) => [
+                    'actual_quantity' => $item->actual_quantity,
+                    'notes' => $item->notes,
+                ])
                 ->all();
 
             $loaded = DB::table('vehicle_load_items')
@@ -42,8 +43,6 @@ class DailyClosingService
                 ->where('vehicle_loads.status', 'approved')
                 ->whereDate('vehicle_loads.load_date', $date)
                 ->where('vehicle_loads.to_warehouse_id', $warehouseId)
-                ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_loads.vehicle_id', $vehicleId))
-                ->when($routeId, fn (Builder $query) => $query->where('vehicle_loads.route_id', $routeId))
                 ->selectRaw('vehicle_load_items.product_id, SUM(vehicle_load_items.quantity) as quantity')
                 ->groupBy('vehicle_load_items.product_id')
                 ->pluck('quantity', 'product_id');
@@ -53,9 +52,6 @@ class DailyClosingService
                 ->where('sales_invoices.status', 'confirmed')
                 ->whereDate('sales_invoices.invoice_date', $date)
                 ->where('sales_invoices.warehouse_id', $warehouseId)
-                ->when($vehicleId, fn (Builder $query) => $query->where('sales_invoices.vehicle_id', $vehicleId))
-                ->when($routeId, fn (Builder $query) => $query->where('sales_invoices.route_id', $routeId))
-                ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_invoices.sales_representative_id', $salesRepresentativeId))
                 ->selectRaw('sales_invoice_items.product_id, SUM(sales_invoice_items.quantity) as quantity')
                 ->groupBy('sales_invoice_items.product_id')
                 ->pluck('quantity', 'product_id');
@@ -65,16 +61,17 @@ class DailyClosingService
                 ->where('sales_returns.status', 'confirmed')
                 ->whereDate('sales_returns.return_date', $date)
                 ->where('sales_returns.warehouse_id', $warehouseId)
-                ->when($vehicleId, fn (Builder $query) => $query->where('sales_returns.vehicle_id', $vehicleId))
-                ->when($routeId, fn (Builder $query) => $query->where('sales_returns.route_id', $routeId))
-                ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_returns.sales_representative_id', $salesRepresentativeId))
                 ->selectRaw('sales_return_items.product_id, SUM(sales_return_items.quantity) as quantity')
                 ->groupBy('sales_return_items.product_id')
                 ->pluck('quantity', 'product_id');
 
+            $ledger = $this->ledgerSnapshot($date, $warehouseId);
+
             $productIds = collect($loaded->keys())
                 ->merge($sold->keys())
                 ->merge($returned->keys())
+                ->merge($ledger['product_ids'])
+                ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values();
 
@@ -84,36 +81,45 @@ class DailyClosingService
                 $loadedQuantity = (float) ($loaded[$productId] ?? 0);
                 $soldQuantity = (float) ($sold[$productId] ?? 0);
                 $returnedQuantity = (float) ($returned[$productId] ?? 0);
-                $expectedQuantity = $loadedQuantity - $soldQuantity + $returnedQuantity;
-                $actualQuantity = $existingActuals[$productId] ?? null;
+                $openingQuantity = $this->quantity($ledger['opening'][$productId] ?? 0);
+                $movementInQuantity = $this->quantity($ledger['day_in'][$productId] ?? 0);
+                $movementOutQuantity = $this->quantity($ledger['day_out'][$productId] ?? 0);
+                $expectedQuantity = $this->quantity(
+                    $openingQuantity + $movementInQuantity - $movementOutQuantity,
+                );
+                $actual = $existingActuals[$productId]['actual_quantity'] ?? null;
+                $notes = $existingActuals[$productId]['notes'] ?? null;
 
                 $closing->items()->create([
                     'product_id' => $productId,
+                    'opening_quantity' => $openingQuantity,
+                    'movement_in_quantity' => $movementInQuantity,
+                    'movement_out_quantity' => $movementOutQuantity,
                     'loaded_quantity' => $loadedQuantity,
                     'sold_quantity' => $soldQuantity,
                     'returned_quantity' => $returnedQuantity,
                     'expected_quantity' => $expectedQuantity,
-                    'actual_quantity' => $actualQuantity,
-                    'difference_quantity' => $actualQuantity === null ? 0 : ((float) $actualQuantity - $expectedQuantity),
+                    'actual_quantity' => $actual,
+                    'difference_quantity' => $actual === null
+                        ? 0
+                        : $this->quantity((float) $actual - $expectedQuantity),
+                    'notes' => $notes,
                 ]);
             }
 
-            $totalSales = (float) $this->scopedInvoicesQuery($date, $warehouseId, $vehicleId, $routeId, $salesRepresentativeId)
+            $totalSales = (float) $this->scopedInvoicesQuery($date, $warehouseId)
                 ->sum('total_amount');
 
-            $invoiceCash = (float) $this->scopedInvoicesQuery($date, $warehouseId, $vehicleId, $routeId, $salesRepresentativeId)
+            $invoiceCash = (float) $this->scopedInvoicesQuery($date, $warehouseId)
                 ->sum('invoice_cash_amount');
 
             $totalReturns = (float) DB::table('sales_returns')
                 ->where('status', 'confirmed')
                 ->whereDate('return_date', $date)
                 ->where('warehouse_id', $warehouseId)
-                ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_id', $vehicleId))
-                ->when($routeId, fn (Builder $query) => $query->where('route_id', $routeId))
-                ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_representative_id', $salesRepresentativeId))
                 ->sum('total_amount');
 
-            $collectionsByMethod = $this->scopedPaymentsQuery($date, $warehouseId, $vehicleId, $routeId, $salesRepresentativeId)
+            $collectionsByMethod = $this->scopedPaymentsQuery($date, $warehouseId)
                 ->selectRaw('payment_method, SUM(amount) as amount')
                 ->groupBy('payment_method')
                 ->pluck('amount', 'payment_method')
@@ -123,10 +129,15 @@ class DailyClosingService
             $bankTransferCollections = (float) ($collectionsByMethod['bank_transfer'] ?? 0);
             $chequeCollections = (float) ($collectionsByMethod['cheque'] ?? 0);
             $otherCollections = (float) ($collectionsByMethod['other'] ?? 0);
-            $totalCollections = $cashCollections + $bankTransferCollections + $chequeCollections + $otherCollections;
-            $nonCashCollections = $bankTransferCollections + $chequeCollections + $otherCollections;
+            $totalCollections = $cashCollections
+                + $bankTransferCollections
+                + $chequeCollections
+                + $otherCollections;
+            $nonCashCollections = $bankTransferCollections
+                + $chequeCollections
+                + $otherCollections;
 
-            $vehicleExpensesByMethod = $this->scopedVehicleExpensesQuery($date, $warehouseId, $vehicleId, $routeId, $salesRepresentativeId)
+            $vehicleExpensesByMethod = $this->scopedVehicleExpensesQuery($date, $warehouseId)
                 ->selectRaw('payment_method, SUM(amount) as amount')
                 ->groupBy('payment_method')
                 ->pluck('amount', 'payment_method')
@@ -136,13 +147,22 @@ class DailyClosingService
             $bankTransferVehicleExpenses = (float) ($vehicleExpensesByMethod['bank_transfer'] ?? 0);
             $chequeVehicleExpenses = (float) ($vehicleExpensesByMethod['cheque'] ?? 0);
             $otherVehicleExpenses = (float) ($vehicleExpensesByMethod['other'] ?? 0);
-            $totalVehicleExpenses = $cashVehicleExpenses + $bankTransferVehicleExpenses + $chequeVehicleExpenses + $otherVehicleExpenses;
-            $nonCashVehicleExpenses = $bankTransferVehicleExpenses + $chequeVehicleExpenses + $otherVehicleExpenses;
+            $totalVehicleExpenses = $cashVehicleExpenses
+                + $bankTransferVehicleExpenses
+                + $chequeVehicleExpenses
+                + $otherVehicleExpenses;
+            $nonCashVehicleExpenses = $bankTransferVehicleExpenses
+                + $chequeVehicleExpenses
+                + $otherVehicleExpenses;
 
             $expectedCash = $invoiceCash + $cashCollections - $cashVehicleExpenses;
             $actualCash = (float) $closing->actual_cash_amount;
 
             $closing->forceFill([
+                'total_opening_quantity' => $ledger['opening']->sum(),
+                'total_movement_in_quantity' => $ledger['day_in']->sum(),
+                'total_movement_out_quantity' => $ledger['day_out']->sum(),
+                'total_expected_quantity' => $closing->items()->sum('expected_quantity'),
                 'total_loaded_quantity' => $loaded->sum(),
                 'total_sold_quantity' => $sold->sum(),
                 'total_returned_quantity' => $returned->sum(),
@@ -160,6 +180,7 @@ class DailyClosingService
                 'non_cash_vehicle_expenses_amount' => $nonCashVehicleExpenses,
                 'expected_cash_amount' => $expectedCash,
                 'cash_difference' => $actualCash - $expectedCash,
+                'snapshot_at' => null,
             ])->save();
 
             return $closing->refresh();
@@ -179,13 +200,22 @@ class DailyClosingService
 
             $closing = $this->refreshTotals($closing);
 
+            $missingActuals = $closing->items()
+                ->whereNull('actual_quantity')
+                ->exists();
+
+            if ($missingActuals) {
+                throw new RuntimeException('يجب إدخال الجرد الفعلي لجميع مواد الإغلاق قبل الاعتماد.');
+            }
+
             $closing->forceFill([
                 'status' => 'confirmed',
+                'snapshot_at' => now(),
                 'confirmed_by' => Auth::id(),
                 'confirmed_at' => now(),
             ])->save();
 
-            return $closing;
+            return $closing->refresh();
         });
     }
 
@@ -204,13 +234,116 @@ class DailyClosingService
                 'status' => 'cancelled',
             ])->save();
 
-            return $closing;
+            return $closing->refresh();
         });
     }
 
     public function generateClosingNumber(): string
     {
         return app(DocumentNumberService::class)->next('daily_closing', 'DCL');
+    }
+
+    /**
+     * @return array{
+     *   product_ids: Collection<int, int>,
+     *   opening: Collection<int, float>,
+     *   day_in: Collection<int, float>,
+     *   day_out: Collection<int, float>
+     * }
+     */
+    private function ledgerSnapshot(string $date, int $warehouseId): array
+    {
+        $current = DB::table('stock_balances')
+            ->where('warehouse_id', $warehouseId)
+            ->selectRaw('product_id, SUM(quantity) as quantity')
+            ->groupBy('product_id')
+            ->pluck('quantity', 'product_id')
+            ->map(fn ($quantity): float => (float) $quantity);
+
+        $inFromDate = $this->movementQuantityQuery(
+            date: $date,
+            warehouseColumn: 'to_warehouse_id',
+            warehouseId: $warehouseId,
+            comparator: '>=',
+        );
+
+        $outFromDate = $this->movementQuantityQuery(
+            date: $date,
+            warehouseColumn: 'from_warehouse_id',
+            warehouseId: $warehouseId,
+            comparator: '>=',
+        );
+
+        $dayIn = $this->movementQuantityQuery(
+            date: $date,
+            warehouseColumn: 'to_warehouse_id',
+            warehouseId: $warehouseId,
+            comparator: '=',
+        );
+
+        $dayOut = $this->movementQuantityQuery(
+            date: $date,
+            warehouseColumn: 'from_warehouse_id',
+            warehouseId: $warehouseId,
+            comparator: '=',
+        );
+
+        $productIds = collect($current->keys())
+            ->merge($inFromDate->keys())
+            ->merge($outFromDate->keys())
+            ->merge($dayIn->keys())
+            ->merge($dayOut->keys())
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        $opening = $productIds->mapWithKeys(function (int $productId) use (
+            $current,
+            $inFromDate,
+            $outFromDate,
+        ): array {
+            $quantity = (float) ($current[$productId] ?? 0)
+                - (float) ($inFromDate[$productId] ?? 0)
+                + (float) ($outFromDate[$productId] ?? 0);
+
+            return [$productId => $this->quantity($quantity)];
+        });
+
+        return [
+            'product_ids' => $productIds,
+            'opening' => $opening,
+            'day_in' => $dayIn,
+            'day_out' => $dayOut,
+        ];
+    }
+
+    private function movementQuantityQuery(
+        string $date,
+        string $warehouseColumn,
+        int $warehouseId,
+        string $comparator,
+    ): Collection {
+        $query = DB::table('stock_movements')
+            ->where($warehouseColumn, $warehouseId);
+
+        if ($comparator === '=') {
+            $query->whereDate('movement_date', $date);
+        } else {
+            $query->whereDate('movement_date', $comparator, $date);
+        }
+
+        return $query
+            ->selectRaw('product_id, SUM(quantity) as quantity')
+            ->groupBy('product_id')
+            ->pluck('quantity', 'product_id')
+            ->map(fn ($quantity): float => $this->quantity((float) $quantity));
+    }
+
+    private function quantity(float $quantity): float
+    {
+        $rounded = round($quantity, 3);
+
+        return abs($rounded) < 0.0005 ? 0.0 : $rounded;
     }
 
     private function validateClosingScope(DailyClosing $closing): void
@@ -231,48 +364,30 @@ class DailyClosingService
     private function scopedVehicleExpensesQuery(
         string $date,
         int $warehouseId,
-        ?int $vehicleId,
-        ?int $routeId,
-        ?int $salesRepresentativeId,
     ): Builder {
         return DB::table('vehicle_expenses')
             ->where('status', 'approved')
             ->whereDate('expense_date', $date)
-            ->where('warehouse_id', $warehouseId)
-            ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_id', $vehicleId))
-            ->when($routeId, fn (Builder $query) => $query->where('route_id', $routeId))
-            ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_representative_id', $salesRepresentativeId));
+            ->where('warehouse_id', $warehouseId);
     }
 
     private function scopedInvoicesQuery(
         string $date,
         int $warehouseId,
-        ?int $vehicleId,
-        ?int $routeId,
-        ?int $salesRepresentativeId,
     ): Builder {
         return DB::table('sales_invoices')
             ->where('status', 'confirmed')
             ->whereDate('invoice_date', $date)
-            ->where('warehouse_id', $warehouseId)
-            ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_id', $vehicleId))
-            ->when($routeId, fn (Builder $query) => $query->where('route_id', $routeId))
-            ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_representative_id', $salesRepresentativeId));
+            ->where('warehouse_id', $warehouseId);
     }
 
     private function scopedPaymentsQuery(
         string $date,
         int $warehouseId,
-        ?int $vehicleId,
-        ?int $routeId,
-        ?int $salesRepresentativeId,
     ): Builder {
         return DB::table('customer_payments')
             ->where('status', 'confirmed')
             ->whereDate('payment_date', $date)
-            ->where('warehouse_id', $warehouseId)
-            ->when($vehicleId, fn (Builder $query) => $query->where('vehicle_id', $vehicleId))
-            ->when($routeId, fn (Builder $query) => $query->where('route_id', $routeId))
-            ->when($salesRepresentativeId, fn (Builder $query) => $query->where('sales_representative_id', $salesRepresentativeId));
+            ->where('warehouse_id', $warehouseId);
     }
 }

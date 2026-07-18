@@ -25,6 +25,7 @@ class SalesInvoiceService
                 'items.product',
                 'warehouse',
                 'vehicle',
+                'customer',
             ]);
 
             if (! $invoice->isDraft()) {
@@ -37,15 +38,24 @@ class SalesInvoiceService
 
             $this->recalculateTotals($invoice);
             $invoice->refresh();
-            $invoice->loadMissing(['warehouse']);
+            $invoice->loadMissing(['warehouse', 'customer']);
 
             $this->normalizePaymentAmounts($invoice);
             $invoice->refresh();
-            $invoice->loadMissing(['warehouse']);
+            $invoice->loadMissing(['warehouse', 'customer']);
 
+            app(CustomerFinancialService::class)->normalizeInvoiceTerms($invoice);
             $this->validateInvoiceScope($invoice);
             $this->validatePaymentAmounts($invoice);
-            app(DailyClosingGuard::class)->ensureOpen($invoice->invoice_date, $invoice->warehouse_id);
+            app(CustomerFinancialService::class)->enforceCreditLimit(
+                $invoice,
+                Auth::user(),
+            );
+
+            app(DailyClosingGuard::class)->ensureOpen(
+                $invoice->invoice_date,
+                $invoice->warehouse_id,
+            );
 
             $inventory = app(InventoryMovementService::class);
 
@@ -59,6 +69,7 @@ class SalesInvoiceService
                     movementType: 'sales_invoice',
                     notes: 'فاتورة بيع رقم '.$invoice->invoice_number,
                     reference: $invoice,
+                    movementDate: $invoice->invoice_date,
                 );
 
                 $item->forceFill([
@@ -74,7 +85,7 @@ class SalesInvoiceService
                 'confirmed_at' => now(),
             ])->save();
 
-            return $invoice;
+            return $invoice->refresh();
         });
     }
 
@@ -112,7 +123,10 @@ class SalesInvoiceService
                 throw new RuntimeException('لا يمكن إلغاء الفاتورة قبل إلغاء المرتجعات المعتمدة المرتبطة بها.');
             }
 
-            app(DailyClosingGuard::class)->ensureOpen($invoice->invoice_date, $invoice->warehouse_id);
+            app(DailyClosingGuard::class)->ensureOpen(
+                $invoice->invoice_date,
+                $invoice->warehouse_id,
+            );
 
             $inventory = app(InventoryMovementService::class);
 
@@ -129,6 +143,7 @@ class SalesInvoiceService
                     movementType: 'sales_invoice_cancellation',
                     notes: 'إلغاء فاتورة بيع رقم '.$invoice->invoice_number,
                     reference: $invoice,
+                    movementDate: $invoice->invoice_date,
                 );
             }
 
@@ -139,7 +154,7 @@ class SalesInvoiceService
                 'remaining_amount' => 0,
             ])->save();
 
-            return $invoice;
+            return $invoice->refresh();
         });
     }
 

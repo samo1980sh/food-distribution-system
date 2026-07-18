@@ -84,7 +84,22 @@ class CustomerForm
                 TextInput::make('address')->label('العنوان')->maxLength(255)->columnSpanFull(),
                 TextInput::make('latitude')->label('خط العرض')->numeric()->step('0.0000001'),
                 TextInput::make('longitude')->label('خط الطول')->numeric()->step('0.0000001'),
-                TextInput::make('credit_limit')->label('حد الائتمان')->numeric()->default(0),
+                TextInput::make('credit_limit')
+                    ->label('حد الائتمان')
+                    ->numeric()
+                    ->minValue(0)
+                    ->default(0)
+                    ->helperText('القيمة صفر تعني عدم وجود حد ائتماني مفروض آليًا.'),
+
+                TextInput::make('credit_days')
+                    ->label('مدة الائتمان بالأيام')
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->maxValue(365)
+                    ->default(30)
+                    ->required()
+                    ->helperText('تُستخدم لتحديد تاريخ الاستحقاق الافتراضي للفواتير الآجلة والجزئية.'),
 
                 Select::make('payment_type')
                     ->label('طريقة الدفع المعتادة')

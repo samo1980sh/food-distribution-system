@@ -126,10 +126,13 @@ class DailyClosingForm
                             ->native(false)
                             ->columnSpanFull(),
 
-                        TextInput::make('loaded_quantity')->label('المحمّل')->numeric()->disabled()->dehydrated(),
+                        TextInput::make('opening_quantity')->label('رصيد البداية')->numeric()->disabled()->dehydrated(),
+                        TextInput::make('movement_in_quantity')->label('إجمالي الوارد')->numeric()->disabled()->dehydrated(),
+                        TextInput::make('movement_out_quantity')->label('إجمالي الصادر')->numeric()->disabled()->dehydrated(),
+                        TextInput::make('loaded_quantity')->label('المحمّل (تحليلي)')->numeric()->disabled()->dehydrated(),
                         TextInput::make('sold_quantity')->label('المباع')->numeric()->disabled()->dehydrated(),
                         TextInput::make('returned_quantity')->label('المرتجع')->numeric()->disabled()->dehydrated(),
-                        TextInput::make('expected_quantity')->label('المتوقع')->numeric()->disabled()->dehydrated(),
+                        TextInput::make('expected_quantity')->label('الرصيد الدفتري المتوقع')->numeric()->disabled()->dehydrated(),
                         TextInput::make('actual_quantity')->label('الجرد الفعلي')->numeric()->step('0.001'),
                         TextInput::make('difference_quantity')->label('الفرق')->numeric()->disabled()->dehydrated(),
                         Textarea::make('notes')->label('ملاحظات المادة')->columnSpanFull(),

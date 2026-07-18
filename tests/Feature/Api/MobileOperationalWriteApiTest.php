@@ -128,6 +128,31 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
+    public function test_field_api_rejects_credit_limit_override_request(): void
+    {
+        $context = $this->context('A');
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $payload = $this->invoicePayload(
+            $context,
+            'field-credit-override-0001',
+        );
+        $payload['credit_limit_override_requested'] = true;
+        $payload['credit_limit_override_reason'] = 'محاولة تجاوز من مستخدم ميداني';
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-invoices', $payload)
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'validation_failed')
+            ->assertJsonValidationErrors(['credit_limit_override_requested']);
+
+        $this->assertDatabaseMissing('sales_invoices', [
+            'client_reference' => 'field-credit-override-0001',
+        ]);
+    }
+
     public function test_sales_representative_can_update_but_cannot_delete_a_draft_invoice(): void
     {
         $context = $this->context('A');

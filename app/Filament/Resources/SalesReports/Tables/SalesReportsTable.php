@@ -35,6 +35,12 @@ class SalesReportsTable
                             ->label('عدد الفواتير')
                     ),
 
+                TextColumn::make('due_date')
+                    ->label('الاستحقاق')
+                    ->date('Y-m-d')
+                    ->sortable()
+                    ->toggleable(),
+
                 TextColumn::make('customer.name')
                     ->label('العميل')
                     ->searchable()
@@ -157,6 +163,13 @@ class SalesReportsTable
                             ->label('الإجمالي')
                             ->money('SYP')
                     ),
+
+                TextColumn::make('credit_limit_overridden')
+                    ->label('استثناء ائتماني')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'معتمد' : 'لا')
+                    ->color(fn (bool $state): string => $state ? 'danger' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('status')
                     ->label('الحالة')

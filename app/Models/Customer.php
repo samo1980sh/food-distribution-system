@@ -22,6 +22,7 @@ class Customer extends Model
         'latitude',
         'longitude',
         'credit_limit',
+        'credit_days',
         'payment_type',
         'status',
         'notes',
@@ -31,6 +32,7 @@ class Customer extends Model
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'credit_limit' => 'decimal:2',
+        'credit_days' => 'integer',
     ];
 
     protected static function booted(): void

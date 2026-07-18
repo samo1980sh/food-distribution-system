@@ -395,6 +395,11 @@
                     <span>تاريخ الاعتماد</span>
                     <strong>{{ $dailyClosing->confirmed_at?->format('Y-m-d H:i') ?? '-' }}</strong>
                 </div>
+
+                <div class="meta-item">
+                    <span>تاريخ تثبيت لقطة الإغلاق</span>
+                    <strong>{{ $dailyClosing->snapshot_at?->format('Y-m-d H:i') ?? '-' }}</strong>
+                </div>
             </div>
         </section>
 
@@ -402,6 +407,26 @@
             <h3 class="section-title">الملخص التشغيلي</h3>
 
             <div class="summary-grid">
+                <div class="summary-card">
+                    <span>رصيد بداية اليوم</span>
+                    <strong>{{ $quantity($dailyClosing->total_opening_quantity) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي الوارد الدفتري</span>
+                    <strong>{{ $quantity($dailyClosing->total_movement_in_quantity) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>إجمالي الصادر الدفتري</span>
+                    <strong>{{ $quantity($dailyClosing->total_movement_out_quantity) }}</strong>
+                </div>
+
+                <div class="summary-card">
+                    <span>الرصيد الدفتري المتوقع</span>
+                    <strong>{{ $quantity($dailyClosing->total_expected_quantity) }}</strong>
+                </div>
+
                 <div class="summary-card">
                     <span>إجمالي الكمية المحمّلة</span>
                     <strong>{{ $quantity($dailyClosing->total_loaded_quantity) }}</strong>
@@ -532,10 +557,13 @@
                         <th>#</th>
                         <th>SKU</th>
                         <th>المنتج</th>
+                        <th class="number">بداية اليوم</th>
+                        <th class="number">الوارد</th>
+                        <th class="number">الصادر</th>
                         <th class="number">المحمّل</th>
                         <th class="number">المباع</th>
                         <th class="number">المرتجع</th>
-                        <th class="number">المتوقع</th>
+                        <th class="number">المتوقع الدفتري</th>
                         <th class="number">الفعلي</th>
                         <th class="number">الفرق</th>
                     </tr>
@@ -547,6 +575,9 @@
                             <td class="number">{{ $loop->iteration }}</td>
                             <td class="number">{{ $item->product?->sku ?? '-' }}</td>
                             <td>{{ $item->product?->name_ar ?? '-' }}</td>
+                            <td class="number">{{ $quantity($item->opening_quantity) }}</td>
+                            <td class="number">{{ $quantity($item->movement_in_quantity) }}</td>
+                            <td class="number">{{ $quantity($item->movement_out_quantity) }}</td>
                             <td class="number">{{ $quantity($item->loaded_quantity) }}</td>
                             <td class="number">{{ $quantity($item->sold_quantity) }}</td>
                             <td class="number">{{ $quantity($item->returned_quantity) }}</td>
@@ -558,7 +589,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" style="text-align: center;">
+                            <td colspan="12" style="text-align: center;">
                                 لا توجد مواد ضمن هذا الإغلاق.
                             </td>
                         </tr>

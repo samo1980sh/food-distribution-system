@@ -10,6 +10,9 @@ class DailyClosingItem extends Model
     protected $fillable = [
         'daily_closing_id',
         'product_id',
+        'opening_quantity',
+        'movement_in_quantity',
+        'movement_out_quantity',
         'loaded_quantity',
         'sold_quantity',
         'returned_quantity',
@@ -20,6 +23,9 @@ class DailyClosingItem extends Model
     ];
 
     protected $casts = [
+        'opening_quantity' => 'decimal:3',
+        'movement_in_quantity' => 'decimal:3',
+        'movement_out_quantity' => 'decimal:3',
         'loaded_quantity' => 'decimal:3',
         'sold_quantity' => 'decimal:3',
         'returned_quantity' => 'decimal:3',

@@ -831,7 +831,19 @@ components:
         warehouse_id: { type: integer }
         sales_representative_id: { $ref: '#/components/schemas/NullableId' }
         invoice_date: { type: string, format: date }
+        due_date:
+          type: [string, 'null']
+          format: date
+          description: Required business due date; defaults from the customer's credit days when omitted.
         payment_type: { type: string, enum: [cash, credit, partial] }
+        credit_limit_override_requested:
+          type: boolean
+          description: Administrative request to exceed a configured positive customer credit limit.
+        credit_limit_override_reason:
+          type: [string, 'null']
+          minLength: 10
+          maxLength: 2000
+          description: Required when a permitted user requests a credit-limit override.
         paid_amount: { $ref: '#/components/schemas/Money' }
         discount_amount: { $ref: '#/components/schemas/Money' }
         tax_amount: { $ref: '#/components/schemas/Money' }

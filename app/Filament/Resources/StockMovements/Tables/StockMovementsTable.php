@@ -27,6 +27,9 @@ class StockMovementsTable
                         'vehicle_load_transfer' => 'تحميل سيارة',
                         'sales_invoice' => 'فاتورة بيع',
                         'sales_return' => 'مرتجع بيع',
+                        'vehicle_load_cancellation' => 'إلغاء تحميل سيارة',
+                        'sales_invoice_cancellation' => 'إلغاء فاتورة بيع',
+                        'sales_return_cancellation' => 'إلغاء مرتجع بيع',
                         default => $state ?? '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
@@ -36,6 +39,9 @@ class StockMovementsTable
                         'vehicle_load_transfer' => 'primary',
                         'sales_invoice' => 'warning',
                         'sales_return' => 'success',
+                        'vehicle_load_cancellation',
+                        'sales_invoice_cancellation',
+                        'sales_return_cancellation' => 'danger',
                         default => 'gray',
                     }),
 
@@ -89,10 +95,16 @@ class StockMovementsTable
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('created_at')
+                TextColumn::make('movement_date')
                     ->label('تاريخ الحركة')
-                    ->dateTime('Y-m-d H:i')
+                    ->date('Y-m-d')
                     ->sortable(),
+
+                TextColumn::make('created_at')
+                    ->label('وقت التسجيل')
+                    ->dateTime('Y-m-d H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('movement_type')
@@ -104,6 +116,9 @@ class StockMovementsTable
                         'vehicle_load_transfer' => 'تحميل سيارة',
                         'sales_invoice' => 'فاتورة بيع',
                         'sales_return' => 'مرتجع بيع',
+                        'vehicle_load_cancellation' => 'إلغاء تحميل سيارة',
+                        'sales_invoice_cancellation' => 'إلغاء فاتورة بيع',
+                        'sales_return_cancellation' => 'إلغاء مرتجع بيع',
                     ]),
 
                 SelectFilter::make('product_id')
@@ -126,6 +141,6 @@ class StockMovementsTable
             ])
             ->recordActions([])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('movement_date', 'desc');
     }
 }

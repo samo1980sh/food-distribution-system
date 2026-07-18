@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Operations\OperationalContextValidator;
+use App\Services\Sales\CustomerFinancialService;
 use App\Services\Sales\SalesInvoiceService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,6 +20,7 @@ class SalesInvoice extends Model
         'warehouse_id',
         'sales_representative_id',
         'invoice_date',
+        'due_date',
         'status',
         'payment_type',
         'subtotal',
@@ -28,6 +30,14 @@ class SalesInvoice extends Model
         'paid_amount',
         'invoice_cash_amount',
         'remaining_amount',
+        'credit_limit_snapshot',
+        'credit_exposure_before',
+        'credit_exposure_after',
+        'credit_limit_override_requested',
+        'credit_limit_overridden',
+        'credit_limit_override_reason',
+        'credit_limit_overridden_by',
+        'credit_limit_overridden_at',
         'notes',
         'created_by',
         'client_reference',
@@ -38,6 +48,7 @@ class SalesInvoice extends Model
 
     protected $casts = [
         'invoice_date' => 'date',
+        'due_date' => 'date',
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
@@ -45,6 +56,12 @@ class SalesInvoice extends Model
         'paid_amount' => 'decimal:2',
         'invoice_cash_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
+        'credit_limit_snapshot' => 'decimal:2',
+        'credit_exposure_before' => 'decimal:2',
+        'credit_exposure_after' => 'decimal:2',
+        'credit_limit_override_requested' => 'boolean',
+        'credit_limit_overridden' => 'boolean',
+        'credit_limit_overridden_at' => 'datetime',
         'confirmed_at' => 'datetime',
     ];
 
@@ -52,6 +69,7 @@ class SalesInvoice extends Model
     {
         static::saving(function (SalesInvoice $record): void {
             app(OperationalContextValidator::class)->validateOperationalRecord($record);
+            app(CustomerFinancialService::class)->normalizeInvoiceTerms($record);
         });
 
         static::creating(function (SalesInvoice $invoice): void {
@@ -70,6 +88,8 @@ class SalesInvoice extends Model
             if (blank($invoice->created_by)) {
                 $invoice->created_by = Auth::id();
             }
+
+            app(CustomerFinancialService::class)->normalizeInvoiceTerms($invoice);
         });
     }
 
@@ -116,6 +136,11 @@ class SalesInvoice extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function creditLimitOverrider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'credit_limit_overridden_by');
     }
 
     public function isDraft(): bool
