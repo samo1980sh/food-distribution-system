@@ -2,28 +2,36 @@
 
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
+use App\Filament\Resources\SalesInvoices\Actions\SalesInvoiceActions;
+use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\SalesInvoice;
-use App\Services\Sales\SalesInvoiceService;
-use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Gate;
-use RuntimeException;
 
 class SalesInvoicesTable
 {
     public static function configure(Table $table): Table
     {
         return $table
+            ->recordUrl(fn (SalesInvoice $record): string => SalesInvoiceResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('invoice_number')
                     ->label('رقم الفاتورة')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable(),
+
+                TextColumn::make('customer.name')
+                    ->label('العميل')
+                    ->searchable()
+                    ->sortable()
+                    ->description(fn (SalesInvoice $record): ?string => $record->route?->name),
 
                 TextColumn::make('invoice_date')
                     ->label('تاريخ الفاتورة')
@@ -42,26 +50,17 @@ class SalesInvoicesTable
                             : 'gray'
                     ),
 
-                TextColumn::make('customer.name')
-                    ->label('العميل')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('total_amount')
+                    ->label('الإجمالي')
+                    ->money('SYP')
+                    ->sortable()
+                    ->weight('bold'),
 
-                TextColumn::make('vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('مستودع البيع')
-                    ->searchable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('المندوب')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
+                TextColumn::make('remaining_amount')
+                    ->label('المتبقي')
+                    ->money('SYP')
+                    ->sortable()
+                    ->color(fn ($state): string => ((float) $state) > 0 ? 'warning' : 'success'),
 
                 TextColumn::make('payment_type')
                     ->label('الدفع')
@@ -79,36 +78,6 @@ class SalesInvoicesTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('subtotal')
-                    ->label('المجموع')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
-                TextColumn::make('total_amount')
-                    ->label('الإجمالي')
-                    ->money('SYP')
-                    ->sortable(),
-
-                TextColumn::make('paid_amount')
-                    ->label('المدفوع')
-                    ->money('SYP')
-                    ->sortable()
-                    ->toggleable(),
-
-                TextColumn::make('remaining_amount')
-                    ->label('المتبقي')
-                    ->money('SYP')
-                    ->sortable()
-                    ->color(fn ($state): string => ((float) $state) > 0 ? 'warning' : 'success'),
-
-                TextColumn::make('credit_limit_overridden')
-                    ->label('استثناء ائتماني')
-                    ->badge()
-                    ->formatStateUsing(fn (bool $state): string => $state ? 'تم التجاوز' : 'لا')
-                    ->color(fn (bool $state): string => $state ? 'danger' : 'gray')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
@@ -124,6 +93,36 @@ class SalesInvoicesTable
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('warehouse.name')
+                    ->label('مستودع البيع')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('المندوب')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('paid_amount')
+                    ->label('المدفوع')
+                    ->money('SYP')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('credit_limit_overridden')
+                    ->label('استثناء ائتماني')
+                    ->badge()
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'تم التجاوز' : 'لا')
+                    ->color(fn (bool $state): string => $state ? 'danger' : 'gray')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -132,6 +131,14 @@ class SalesInvoicesTable
                         'draft' => 'مسودة',
                         'confirmed' => 'معتمدة',
                         'cancelled' => 'ملغاة',
+                    ]),
+
+                SelectFilter::make('payment_type')
+                    ->label('طريقة الدفع')
+                    ->options([
+                        'cash' => 'نقدي',
+                        'credit' => 'آجل',
+                        'partial' => 'دفعة جزئية',
                     ]),
 
                 SelectFilter::make('customer_id')
@@ -153,69 +160,32 @@ class SalesInvoicesTable
                     ->preload(),
             ])
             ->recordActions([
-                Action::make('confirm')
-                    ->label('اعتماد الفاتورة')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('اعتماد فاتورة البيع')
-                    ->modalDescription('سيتم خصم الكميات من مستودع البيع، ولا يمكن تعديل الفاتورة بعد الاعتماد.')
-                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('confirm', $record) === true)
-                    ->action(function (SalesInvoice $record): void {
-                        try {
-                            Gate::authorize('confirm', $record);
-                            app(SalesInvoiceService::class)->confirm($record);
-
-                            Notification::make()
-                                ->title('تم اعتماد الفاتورة بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر اعتماد الفاتورة')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('cancel')
-                    ->label('إلغاء')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading('إلغاء فاتورة البيع')
-                    ->modalDescription('سيتم عكس حركة المخزون. إذا كانت هناك تحصيلات مرتبطة يجب إلغاؤها أولاً.')
-                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('cancel', $record) === true)
-                    ->action(function (SalesInvoice $record): void {
-                        try {
-                            Gate::authorize('cancel', $record);
-                            app(SalesInvoiceService::class)->cancel($record);
-
-                            Notification::make()
-                                ->title('تم إلغاء الفاتورة بنجاح')
-                                ->success()
-                                ->send();
-                        } catch (RuntimeException $exception) {
-                            Notification::make()
-                                ->title('تعذر إلغاء الفاتورة')
-                                ->body($exception->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                EditAction::make()
-                    ->label('تعديل')
-                    ->modalHeading('تعديل فاتورة بيع')
-                    ->slideOver()
-                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('update', $record) === true),
-
-                DeleteAction::make()
-                    ->label('حذف')
-                    ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('delete', $record) === true),
+                ActionGroup::make([
+                    ViewAction::make()->label('عرض التفاصيل'),
+                    EditAction::make()
+                        ->label('تعديل')
+                        ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('update', $record) === true),
+                    SalesInvoiceActions::confirm(),
+                    SalesInvoiceActions::cancel(),
+                    SalesInvoiceActions::print(),
+                    DeleteAction::make()
+                        ->label('حذف المسودة')
+                        ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('delete', $record) === true),
+                ])
+                    ->label('الإجراءات')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button(),
             ])
             ->toolbarActions([])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->emptyStateIcon('heroicon-o-receipt-percent')
+            ->emptyStateHeading('لا توجد فواتير بيع بعد')
+            ->emptyStateDescription('أنشئ أول فاتورة، أو غيّر عوامل التصفية إذا كنت تبحث عن فاتورة موجودة.');
     }
 }

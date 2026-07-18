@@ -2,8 +2,12 @@
 
 namespace App\Filament\Resources\SalesInvoices;
 
-use App\Filament\Resources\SalesInvoices\Pages\ManageSalesInvoices;
+use App\Filament\Resources\SalesInvoices\Pages\CreateSalesInvoice;
+use App\Filament\Resources\SalesInvoices\Pages\EditSalesInvoice;
+use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
+use App\Filament\Resources\SalesInvoices\Pages\ViewSalesInvoice;
 use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceForm;
+use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceInfolist;
 use App\Filament\Resources\SalesInvoices\Tables\SalesInvoicesTable;
 use App\Models\SalesInvoice;
 use BackedEnum;
@@ -54,6 +58,11 @@ class SalesInvoiceResource extends Resource
         return SalesInvoiceForm::configure($schema);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return SalesInvoiceInfolist::configure($schema);
+    }
+
     public static function table(Table $table): Table
     {
         return SalesInvoicesTable::configure($table);
@@ -62,7 +71,10 @@ class SalesInvoiceResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageSalesInvoices::route('/'),
+            'index' => ListSalesInvoices::route('/'),
+            'create' => CreateSalesInvoice::route('/create'),
+            'view' => ViewSalesInvoice::route('/{record}'),
+            'edit' => EditSalesInvoice::route('/{record}/edit'),
         ];
     }
 }

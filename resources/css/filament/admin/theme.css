@@ -643,3 +643,48 @@ input[type="search"]::placeholder {
         grid-column: 2;
     }
 }
+
+
+/* Phase 4A: operational workspace polish */
+.fi-header-heading {
+    letter-spacing: -0.025em;
+}
+
+.fi-header-subheading {
+    max-width: 68rem;
+    line-height: 1.8;
+}
+
+.fi-sc-component.fi-section {
+    overflow: hidden;
+}
+
+.fi-ta-empty-state {
+    padding-block: 4rem;
+}
+
+.fi-ta-record {
+    transition: background-color 140ms ease;
+}
+
+.fi-ta-record:hover {
+    background: rgba(15, 118, 110, 0.035);
+}
+
+.fi-in-repeatable-item {
+    border-radius: 1rem;
+}
+
+@media (max-width: 768px) {
+    .fi-header-actions {
+        width: 100%;
+    }
+
+    .fi-header-actions .fi-btn {
+        flex: 1 1 auto;
+    }
+
+    .fi-section-content {
+        padding-inline: 1rem;
+    }
+}
