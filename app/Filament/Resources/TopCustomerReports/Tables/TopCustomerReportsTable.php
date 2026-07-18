@@ -11,9 +11,15 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -35,6 +41,8 @@ class TopCustomerReportsTable
                             )['rank']
                     )
                     ->badge()
+                    ->weight('bold')
+                    ->alignCenter()
                     ->color(
                         fn (int $state): string => match ($state) {
                             1 => 'warning',
@@ -44,36 +52,19 @@ class TopCustomerReportsTable
                         }
                     ),
 
-                TextColumn::make('code')
-                    ->label('رمز العميل')
+                TextColumn::make('name')
+                    ->label('العميل')
                     ->sortable()
+                    ->weight('medium')
+                    ->description(
+                        fn (Customer $record): ?string =>
+                            self::customerDescription($record)
+                    )
+                    ->wrap()
                     ->summarize(
                         Count::make()
                             ->label('عدد العملاء')
                     ),
-
-                TextColumn::make('name')
-                    ->label('العميل')
-                    ->sortable(),
-
-                TextColumn::make('area.name_ar')
-                    ->label('المنطقة')
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('customer_type')
-                    ->label('نوع العميل')
-                    ->formatStateUsing(
-                        fn (?string $state): string =>
-                            TopCustomerReportService::customerTypeLabel($state)
-                    )
-                    ->badge()
-                    ->toggleable(),
 
                 TextColumn::make('invoice_count_report')
                     ->label('عدد الفواتير')
@@ -85,6 +76,12 @@ class TopCustomerReportsTable
                             )['invoice_count']
                     )
                     ->numeric()
+                    ->alignEnd()
+                    ->weight('medium')
+                    ->description(
+                        fn (Customer $record, $livewire): string =>
+                            self::returnsCountDescription($record, $livewire)
+                    )
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي')
@@ -108,6 +105,7 @@ class TopCustomerReportsTable
                             )['gross_sales']
                     )
                     ->money('SYP')
+                    ->alignEnd()
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي')
@@ -122,18 +120,6 @@ class TopCustomerReportsTable
                             ->money('SYP')
                     ),
 
-                TextColumn::make('return_count_report')
-                    ->label('عدد المرتجعات')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): int =>
-                            (int) self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['return_count']
-                    )
-                    ->numeric()
-                    ->toggleable(),
-
                 TextColumn::make('returns_amount_report')
                     ->label('قيمة المرتجعات')
                     ->getStateUsing(
@@ -144,6 +130,8 @@ class TopCustomerReportsTable
                             )['returns_amount']
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->color('danger')
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي')
@@ -168,6 +156,9 @@ class TopCustomerReportsTable
                             )['net_sales']
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->weight('bold')
+                    ->color('primary')
                     ->summarize(
                         Summarizer::make()
                             ->label('الإجمالي')
@@ -182,42 +173,6 @@ class TopCustomerReportsTable
                             ->money('SYP')
                     ),
 
-                TextColumn::make('net_quantity_report')
-                    ->label('صافي الكمية')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): float =>
-                            (float) self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['net_quantity']
-                    )
-                    ->numeric(decimalPlaces: 3)
-                    ->summarize(
-                        Summarizer::make()
-                            ->label('الإجمالي')
-                            ->using(
-                                fn (QueryBuilder $query, $livewire): float =>
-                                    self::summarizeQuery(
-                                        $query,
-                                        $livewire,
-                                        'net_quantity',
-                                    )
-                            )
-                            ->numeric(decimalPlaces: 3)
-                    ),
-
-                TextColumn::make('average_invoice_report')
-                    ->label('متوسط الفاتورة')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): float =>
-                            (float) self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['average_invoice']
-                    )
-                    ->money('SYP')
-                    ->toggleable(),
-
                 TextColumn::make('approximate_profit_report')
                     ->label('الربح التقريبي')
                     ->getStateUsing(
@@ -228,6 +183,12 @@ class TopCustomerReportsTable
                             )['approximate_profit']
                     )
                     ->money('SYP')
+                    ->alignEnd()
+                    ->weight('bold')
+                    ->description(
+                        fn (Customer $record, $livewire): string =>
+                            self::profitMarginDescription($record, $livewire)
+                    )
                     ->color(
                         fn (float $state): string =>
                             $state >= 0 ? 'success' : 'danger'
@@ -246,6 +207,98 @@ class TopCustomerReportsTable
                             ->money('SYP')
                     ),
 
+                TextColumn::make('net_sales_share_report')
+                    ->label('الحصة من الصافي')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): float =>
+                            (float) self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['net_sales_share_percent']
+                    )
+                    ->formatStateUsing(
+                        fn (float $state): string =>
+                            number_format($state, 1).'%'
+                    )
+                    ->alignEnd()
+                    ->weight('medium'),
+
+                TextColumn::make('code')
+                    ->label('رمز العميل')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('area.name_ar')
+                    ->label('المنطقة')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('customer_type')
+                    ->label('نوع العميل')
+                    ->formatStateUsing(
+                        fn (?string $state): string =>
+                            TopCustomerReportService::customerTypeLabel($state)
+                    )
+                    ->badge()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('return_count_report')
+                    ->label('عدد المرتجعات')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): int =>
+                            (int) self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['return_count']
+                    )
+                    ->numeric()
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('net_quantity_report')
+                    ->label('صافي الكمية')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): float =>
+                            (float) self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['net_quantity']
+                    )
+                    ->numeric(decimalPlaces: 3)
+                    ->alignEnd()
+                    ->summarize(
+                        Summarizer::make()
+                            ->label('الإجمالي')
+                            ->using(
+                                fn (QueryBuilder $query, $livewire): float =>
+                                    self::summarizeQuery(
+                                        $query,
+                                        $livewire,
+                                        'net_quantity',
+                                    )
+                            )
+                            ->numeric(decimalPlaces: 3)
+                    )
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('average_invoice_report')
+                    ->label('متوسط الفاتورة')
+                    ->getStateUsing(
+                        fn (Customer $record, $livewire): float =>
+                            (float) self::summaryForRecord(
+                                $record,
+                                $livewire,
+                            )['average_invoice']
+                    )
+                    ->money('SYP')
+                    ->alignEnd()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('profit_margin_report')
                     ->label('هامش الربح')
                     ->getStateUsing(
@@ -261,26 +314,12 @@ class TopCustomerReportsTable
                                 ? '-'
                                 : number_format($state, 1).'%'
                     )
+                    ->alignEnd()
                     ->color(
                         fn (?float $state): string =>
                             ($state ?? 0) >= 0 ? 'success' : 'danger'
                     )
-                    ->toggleable(),
-
-                TextColumn::make('net_sales_share_report')
-                    ->label('الحصة من الصافي')
-                    ->getStateUsing(
-                        fn (Customer $record, $livewire): float =>
-                            (float) self::summaryForRecord(
-                                $record,
-                                $livewire,
-                            )['net_sales_share_percent']
-                    )
-                    ->formatStateUsing(
-                        fn (float $state): string =>
-                            number_format($state, 1).'%'
-                    )
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('last_purchase_date_report')
                     ->label('آخر شراء')
@@ -292,102 +331,120 @@ class TopCustomerReportsTable
                             )['last_purchase_date']
                     )
                     ->placeholder('-')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Filter::make('ranking_settings')
                     ->label('إعدادات التقرير')
                     ->schema([
-                        DatePicker::make('from')
-                            ->label('من تاريخ')
-                            ->default(today()->startOfMonth())
-                            ->native(false)
-                            ->displayFormat('Y-m-d'),
+                        Section::make('الفترة والترتيب')
+                            ->description('حدد الفترة، معيار الترتيب، عدد النتائج والحد الأدنى لصافي المبيعات.')
+                            ->schema([
+                                DatePicker::make('from')
+                                    ->label('من تاريخ')
+                                    ->default(today()->startOfMonth())
+                                    ->native(false)
+                                    ->displayFormat('Y-m-d'),
 
-                        DatePicker::make('until')
-                            ->label('إلى تاريخ')
-                            ->default(today())
-                            ->native(false)
-                            ->displayFormat('Y-m-d'),
+                                DatePicker::make('until')
+                                    ->label('إلى تاريخ')
+                                    ->default(today())
+                                    ->native(false)
+                                    ->displayFormat('Y-m-d'),
 
-                        Select::make('ranking_metric')
-                            ->label('معيار الترتيب')
-                            ->options(
-                                TopCustomerReportService::rankingMetricOptions()
-                            )
-                            ->default('net_sales')
-                            ->native(false),
+                                Select::make('ranking_metric')
+                                    ->label('معيار الترتيب')
+                                    ->options(
+                                        TopCustomerReportService::rankingMetricOptions()
+                                    )
+                                    ->default('net_sales')
+                                    ->native(false),
 
-                        Select::make('limit')
-                            ->label('عدد النتائج')
-                            ->options(
-                                TopCustomerReportService::limitOptions()
-                            )
-                            ->default('10')
-                            ->native(false),
+                                Select::make('limit')
+                                    ->label('عدد النتائج')
+                                    ->options(
+                                        TopCustomerReportService::limitOptions()
+                                    )
+                                    ->default('10')
+                                    ->native(false),
 
-                        Select::make('customer_id')
-                            ->label('العميل')
-                            ->options(
-                                fn (): array => Customer::query()
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id')
-                                    ->all()
-                            )
-                            ->searchable()
-                            ->preload(),
+                                TextInput::make('minimum_net_sales')
+                                    ->label('الحد الأدنى لصافي المبيعات')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->default(0),
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
 
-                        Select::make('area_id')
-                            ->label('المنطقة')
-                            ->options(
-                                fn (): array => Area::query()
-                                    ->orderBy('name_ar')
-                                    ->pluck('name_ar', 'id')
-                                    ->all()
-                            )
-                            ->searchable()
-                            ->preload(),
+                        Section::make('العميل ونطاق التوزيع')
+                            ->description('ضيّق الترتيب حسب عميل محدد أو منطقة أو خط توزيع.')
+                            ->schema([
+                                Select::make('customer_id')
+                                    ->label('العميل')
+                                    ->options(
+                                        fn (): array => Customer::query()
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id')
+                                            ->all()
+                                    )
+                                    ->searchable()
+                                    ->preload(),
 
-                        Select::make('route_id')
-                            ->label('خط التوزيع')
-                            ->options(
-                                fn (): array => DistributionRoute::query()
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id')
-                                    ->all()
-                            )
-                            ->searchable()
-                            ->preload(),
+                                Select::make('area_id')
+                                    ->label('المنطقة')
+                                    ->options(
+                                        fn (): array => Area::query()
+                                            ->orderBy('name_ar')
+                                            ->pluck('name_ar', 'id')
+                                            ->all()
+                                    )
+                                    ->searchable()
+                                    ->preload(),
 
-                        Select::make('customer_type')
-                            ->label('نوع العميل')
-                            ->options(
-                                TopCustomerReportService::customerTypeOptions()
-                            )
-                            ->native(false),
+                                Select::make('route_id')
+                                    ->label('خط التوزيع')
+                                    ->options(
+                                        fn (): array => DistributionRoute::query()
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id')
+                                            ->all()
+                                    )
+                                    ->searchable()
+                                    ->preload(),
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
 
-                        Select::make('payment_type')
-                            ->label('نمط دفع العميل')
-                            ->options(
-                                TopCustomerReportService::paymentTypeOptions()
-                            )
-                            ->native(false),
+                        Section::make('خصائص العميل والبحث')
+                            ->description('صفِّ العملاء حسب النوع ونمط الدفع والحالة أو استخدم البحث التفصيلي.')
+                            ->schema([
+                                Select::make('customer_type')
+                                    ->label('نوع العميل')
+                                    ->options(
+                                        TopCustomerReportService::customerTypeOptions()
+                                    )
+                                    ->native(false),
 
-                        Select::make('status')
-                            ->label('حالة العميل')
-                            ->options(
-                                TopCustomerReportService::statusOptions()
-                            )
-                            ->native(false),
+                                Select::make('payment_type')
+                                    ->label('نمط دفع العميل')
+                                    ->options(
+                                        TopCustomerReportService::paymentTypeOptions()
+                                    )
+                                    ->native(false),
 
-                        TextInput::make('minimum_net_sales')
-                            ->label('الحد الأدنى لصافي المبيعات')
-                            ->numeric()
-                            ->minValue(0)
-                            ->default(0),
+                                Select::make('status')
+                                    ->label('حالة العميل')
+                                    ->options(
+                                        TopCustomerReportService::statusOptions()
+                                    )
+                                    ->native(false),
 
-                        TextInput::make('search')
-                            ->label('بحث بالعميل أو الهاتف أو المنطقة أو الخط'),
+                                TextInput::make('search')
+                                    ->label('بحث بالعميل أو الهاتف أو المنطقة أو الخط'),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         $settings = app(TopCustomerReportService::class)
@@ -412,12 +469,42 @@ class TopCustomerReportsTable
                             );
                     })
                     ->default(),
-            ])
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(1)
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير العملاء الأكثر شراءً')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير العملاء الأكثر شراءً')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة تفاصيل المشتريات')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة تفاصيل مشتريات العميل')
                     ->url(
                         fn (Customer $record, $livewire): string =>
                             self::printUrlFor(
@@ -435,7 +522,62 @@ class TopCustomerReportsTable
             ->summaries(
                 pageCondition: false,
                 allTableCondition: true,
-            );
+            )
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-trophy')
+            ->emptyStateHeading('لا يوجد عملاء ضمن معايير الترتيب المحددة')
+            ->emptyStateDescription('غيّر الفترة أو معيار الترتيب أو عوامل التصفية لعرض نتائج أخرى.');
+    }
+
+    private static function customerDescription(Customer $record): ?string
+    {
+        $parts = [];
+
+        if (filled($record->code)) {
+            $parts[] = 'الرمز: '.$record->code;
+        }
+
+        if (filled($record->area?->name_ar)) {
+            $parts[] = 'المنطقة: '.$record->area->name_ar;
+        }
+
+        if (filled($record->route?->name)) {
+            $parts[] = 'الخط: '.$record->route->name;
+        }
+
+        return $parts === [] ? null : implode(' • ', $parts);
+    }
+
+    private static function returnsCountDescription(
+        Customer $record,
+        mixed $livewire,
+    ): string {
+        $returnCount = (int) self::summaryForRecord(
+            $record,
+            $livewire,
+        )['return_count'];
+
+        return 'المرتجعات: '.number_format($returnCount);
+    }
+
+    private static function profitMarginDescription(
+        Customer $record,
+        mixed $livewire,
+    ): string {
+        $margin = self::summaryForRecord(
+            $record,
+            $livewire,
+        )['profit_margin_percent'];
+
+        return $margin === null
+            ? 'الهامش: -'
+            : 'الهامش: '.number_format((float) $margin, 1).'%';
     }
 
     public static function printUrlFor(
