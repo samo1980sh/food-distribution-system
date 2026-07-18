@@ -6,10 +6,16 @@ use App\Enums\PermissionName;
 use App\Models\ProfitReportEntry;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\Summarizers\Count;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
+use Filament\Tables\Enums\ColumnManagerResetActionPosition;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\FiltersResetActionPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -39,7 +45,10 @@ class ProfitReportsTable
                 TextColumn::make('document_number')
                     ->label('رقم المستند')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold')
+                    ->copyable()
+                    ->copyMessage('تم نسخ رقم المستند'),
 
                 TextColumn::make('entry_date')
                     ->label('التاريخ')
@@ -53,45 +62,16 @@ class ProfitReportsTable
                 TextColumn::make('customer.name')
                     ->label('العميل')
                     ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('warehouse.name')
-                    ->label('المستودع')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('vehicle.plate_number')
-                    ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('route.name')
-                    ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('salesRepresentative.name')
-                    ->label('المندوب')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(),
-
-                TextColumn::make('quantity')
-                    ->label('صافي الكمية')
-                    ->numeric(decimalPlaces: 3)
                     ->sortable()
-                    ->summarize(
-                        Sum::make()
-                            ->label('صافي الكمية')
-                            ->numeric(decimalPlaces: 3)
-                    ),
+                    ->weight('medium')
+                    ->wrap(),
 
                 TextColumn::make('sales_amount')
                     ->label('صافي المبيعات')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->summarize(
                         Sum::make()
                             ->label('صافي المبيعات')
@@ -102,6 +82,7 @@ class ProfitReportsTable
                     ->label('تكلفة البضاعة')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
                     ->summarize(
                         Sum::make()
                             ->label('صافي التكلفة')
@@ -112,6 +93,8 @@ class ProfitReportsTable
                     ->label('مجمل الربح')
                     ->money('SYP')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
                     ->color(fn ($state): string => match (true) {
                         (float) $state > 0 => 'success',
                         (float) $state < 0 => 'danger',
@@ -128,6 +111,13 @@ class ProfitReportsTable
                     ->numeric(decimalPlaces: 2)
                     ->suffix('%')
                     ->sortable()
+                    ->alignEnd()
+                    ->weight('bold')
+                    ->color(fn ($state): string => match (true) {
+                        (float) $state > 0 => 'success',
+                        (float) $state < 0 => 'danger',
+                        default => 'gray',
+                    })
                     ->summarize(
                         Summarizer::make()
                             ->label('هامش الربح الإجمالي')
@@ -144,6 +134,42 @@ class ProfitReportsTable
                             ->numeric(decimalPlaces: 2)
                             ->suffix('%')
                     ),
+
+                TextColumn::make('quantity')
+                    ->label('صافي الكمية')
+                    ->numeric(decimalPlaces: 3)
+                    ->sortable()
+                    ->alignEnd()
+                    ->summarize(
+                        Sum::make()
+                            ->label('صافي الكمية')
+                            ->numeric(decimalPlaces: 3)
+                    )
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('warehouse.name')
+                    ->label('المستودع')
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('vehicle.plate_number')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('route.name')
+                    ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('salesRepresentative.name')
+                    ->label('المندوب')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Filter::make('entry_date')
@@ -209,12 +235,71 @@ class ProfitReportsTable
                     ->relationship('salesRepresentative', 'name')
                     ->searchable()
                     ->preload(),
+            ], layout: FiltersLayout::Modal)
+            ->filtersFormColumns(2)
+            ->filtersFormSchema(fn (array $filters): array => [
+                Section::make('الفترة ونوع الحركة')
+                    ->description('حدد الفترة المالية ونوع الحركة الداخلة في قراءة الربحية.')
+                    ->schema([
+                        $filters['entry_date'],
+                        $filters['entry_type'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('العميل والمستودع')
+                    ->description('ضيّق النتائج حسب العميل أو المستودع المرتبط بالحركة.')
+                    ->schema([
+                        $filters['customer_id'],
+                        $filters['warehouse_id'],
+                    ])
+                    ->columns(2)
+                    ->columnSpanFull(),
+
+                Section::make('نطاق التوزيع')
+                    ->description('حلّل الربحية حسب السيارة أو خط التوزيع أو مندوب المبيعات.')
+                    ->schema([
+                        $filters['vehicle_id'],
+                        $filters['route_id'],
+                        $filters['sales_representative_id'],
+                    ])
+                    ->columns(3)
+                    ->columnSpanFull(),
             ])
+            ->filtersTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('خيارات التقرير')
+                    ->icon('heroicon-o-funnel')
+                    ->color('gray')
+                    ->modalHeading('خيارات تصفية تقرير الأرباح التقريبية')
+                    ->modalWidth(Width::FiveExtraLarge),
+            )
+            ->filtersApplyAction(
+                fn (Action $action): Action => $action
+                    ->label('عرض النتائج')
+                    ->icon('heroicon-o-magnifying-glass'),
+            )
+            ->filtersResetActionPosition(FiltersResetActionPosition::Footer)
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(2)
+            ->columnManagerTriggerAction(
+                fn (Action $action): Action => $action
+                    ->button()
+                    ->label('الأعمدة')
+                    ->icon('heroicon-o-view-columns')
+                    ->color('gray')
+                    ->modalHeading('إدارة أعمدة تقرير الأرباح التقريبية')
+                    ->modalWidth(Width::ThreeExtraLarge),
+            )
+            ->columnManagerResetActionPosition(ColumnManagerResetActionPosition::Footer)
             ->recordActions([
                 Action::make('print')
-                    ->label('طباعة')
+                    ->label('طباعة المستند')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
+                    ->iconButton()
+                    ->tooltip('طباعة المستند')
                     ->url(
                         fn (ProfitReportEntry $record): ?string => self::printUrlFor($record),
                         shouldOpenInNewTab: true,
@@ -230,7 +315,17 @@ class ProfitReportsTable
                 pageCondition: false,
                 allTableCondition: true,
             )
-            ->defaultSort('entry_date', 'desc');
+            ->defaultSort('entry_date', 'desc')
+            ->persistSearchInSession()
+            ->persistColumnSearchesInSession()
+            ->persistFiltersInSession()
+            ->persistSortInSession()
+            ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->stackedOnMobile()
+            ->emptyStateIcon('heroicon-o-chart-bar-square')
+            ->emptyStateHeading('لا توجد نتائج في تقرير الأرباح التقريبية')
+            ->emptyStateDescription('غيّر خيارات التقرير أو أزل عوامل التصفية الحالية لعرض حركات ربحية أخرى.');
     }
 
     public static function printUrlFor(ProfitReportEntry $record): ?string
@@ -245,5 +340,4 @@ class ProfitReportsTable
             default => null,
         };
     }
-
 }
