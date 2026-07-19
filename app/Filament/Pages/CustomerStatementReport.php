@@ -44,7 +44,7 @@ class CustomerStatementReport extends Page
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المبيعات والعملاء';
     }
 
     public static function canAccess(): bool

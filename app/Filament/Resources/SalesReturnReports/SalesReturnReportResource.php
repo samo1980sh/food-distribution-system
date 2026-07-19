@@ -21,7 +21,7 @@ class SalesReturnReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المبيعات والعملاء';
     }
 
     public static function getNavigationLabel(): string
@@ -41,7 +41,7 @@ class SalesReturnReportResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 50;
+        return 30;
     }
 
     public static function shouldRegisterNavigation(): bool

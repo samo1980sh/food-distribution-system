@@ -22,7 +22,7 @@ class ExpiryRiskReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المخزون والربحية';
     }
 
     public static function getNavigationLabel(): string
@@ -42,7 +42,7 @@ class ExpiryRiskReportResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 73;
+        return 10;
     }
 
     public static function shouldRegisterNavigation(): bool

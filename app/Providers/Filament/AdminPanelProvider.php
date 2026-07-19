@@ -14,6 +14,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
@@ -55,7 +56,18 @@ class AdminPanelProvider extends PanelProvider
                 'التوزيع والأسطول',
                 'المبيعات والتحصيل',
                 'الإغلاق والمطابقة',
-                'التقارير',
+                NavigationGroup::make()
+                    ->label('تقارير المبيعات والعملاء')
+                    ->collapsed(),
+                NavigationGroup::make()
+                    ->label('تقارير المركبات والتوزيع')
+                    ->collapsed(),
+                NavigationGroup::make()
+                    ->label('تقارير المخزون والربحية')
+                    ->collapsed(),
+                NavigationGroup::make()
+                    ->label('تقارير الرقابة اليومية')
+                    ->collapsed(),
             ])
             ->spa()
             ->unsavedChangesAlerts()

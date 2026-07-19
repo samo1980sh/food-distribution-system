@@ -23,7 +23,7 @@ class ProfitReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المخزون والربحية';
     }
 
     public static function getNavigationLabel(): string
@@ -43,7 +43,7 @@ class ProfitReportResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 71;
+        return 20;
     }
 
     public static function shouldRegisterNavigation(): bool

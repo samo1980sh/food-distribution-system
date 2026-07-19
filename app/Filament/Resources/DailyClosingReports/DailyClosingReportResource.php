@@ -21,7 +21,7 @@ class DailyClosingReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير الرقابة اليومية';
     }
 
     public static function getNavigationLabel(): string

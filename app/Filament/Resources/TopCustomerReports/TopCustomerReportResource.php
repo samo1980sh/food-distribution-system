@@ -22,7 +22,7 @@ class TopCustomerReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المبيعات والعملاء';
     }
 
     public static function getNavigationLabel(): string
@@ -42,7 +42,7 @@ class TopCustomerReportResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 75;
+        return 60;
     }
 
     public static function shouldRegisterNavigation(): bool

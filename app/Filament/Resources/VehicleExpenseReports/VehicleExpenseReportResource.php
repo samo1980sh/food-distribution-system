@@ -22,7 +22,7 @@ class VehicleExpenseReportResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التقارير';
+        return 'تقارير المركبات والتوزيع';
     }
 
     public static function getNavigationLabel(): string
@@ -42,7 +42,7 @@ class VehicleExpenseReportResource extends Resource
 
     public static function getNavigationSort(): ?int
     {
-        return 72;
+        return 30;
     }
 
     public static function shouldRegisterNavigation(): bool
