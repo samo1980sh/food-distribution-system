@@ -13,6 +13,11 @@ class ManageRoutePerformanceReports extends ManageRecords
     protected static string $resource =
         RoutePerformanceReportResource::class;
 
+    protected string $view =
+        'filament.resources.route-performance-reports.pages.manage-route-performance-reports';
+
+    public string $analysisView = 'executive';
+
     public function getHeading(): string|Htmlable
     {
         return 'تقرير أداء خطوط التوزيع';
@@ -21,6 +26,47 @@ class ManageRoutePerformanceReports extends ManageRecords
     public function getSubheading(): string|Htmlable|null
     {
         return 'يقيس صافي المبيعات والربح والمصاريف والمقبوضات وخدمة العملاء، مع إبقاء الخطوط دون نشاط في نهاية الترتيب.';
+    }
+
+    public function setAnalysisView(string $view): void
+    {
+        if (! array_key_exists($view, $this->getAnalysisViews())) {
+            return;
+        }
+
+        $this->analysisView = $view;
+    }
+
+    public function getAnalysisViews(): array
+    {
+        return [
+            'executive' => [
+                'label' => 'النظرة التنفيذية',
+                'icon' => 'heroicon-o-presentation-chart-line',
+                'description' => 'خلاصة متوازنة للترتيب والنشاط والتغطية والمبيعات والمساهمة والمقبوضات وفرق الصندوق.',
+            ],
+            'sales' => [
+                'label' => 'المبيعات والربحية',
+                'icon' => 'heroicon-o-banknotes',
+                'description' => 'قراءة مالية للمبيعات والمرتجعات والربح والمصاريف وصافي المساهمة وهامشها.',
+            ],
+            'collections' => [
+                'label' => 'التحصيل والتسوية',
+                'icon' => 'heroicon-o-scale',
+                'description' => 'مقارنة صافي المبيعات بالمقبوضات وتغطيتها، مع فرق الصندوق وكمية التحميل.',
+            ],
+            'operations' => [
+                'label' => 'التغطية والتشغيل',
+                'icon' => 'heroicon-o-map',
+                'description' => 'فريق الخط والسيارة والمنطقة وتغطية العملاء وحجم التحميل التشغيلي.',
+            ],
+        ];
+    }
+
+    public function getAnalysisViewDescription(): string
+    {
+        return $this->getAnalysisViews()[$this->analysisView]['description']
+            ?? $this->getAnalysisViews()['executive']['description'];
     }
 
     protected function getHeaderActions(): array
