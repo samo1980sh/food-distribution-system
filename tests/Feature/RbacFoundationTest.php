@@ -87,6 +87,30 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $accountant->can(PermissionName::CUSTOMER_PAYMENTS_CONFIRM->value),
         );
+        $this->assertTrue(
+            $accountant->can(PermissionName::CUSTOMER_PAYMENTS_CREATE_OFFICE->value),
+        );
+        $this->assertFalse(
+            $accountant->can(PermissionName::CUSTOMER_PAYMENTS_CREATE->value),
+        );
+        $this->assertTrue(
+            $accountant->can(PermissionName::DAILY_CLOSINGS_CREATE_OFFICE->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::SALES_INVOICES_CREATE->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::SALES_RETURNS_CREATE->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::CUSTOMER_PAYMENTS_CREATE->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
+        );
+        $this->assertFalse(
+            $supervisor->can(PermissionName::DAILY_CLOSINGS_CREATE->value),
+        );
         $this->assertFalse(
             $accountant->can(PermissionName::VEHICLE_LOADS_APPROVE->value),
         );

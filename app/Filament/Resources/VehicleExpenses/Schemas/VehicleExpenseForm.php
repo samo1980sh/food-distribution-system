@@ -23,6 +23,21 @@ class VehicleExpenseForm
         return $schema
             ->columns(2)
             ->components([
+                Section::make('إدخال إداري استثنائي')
+                    ->description('المصروف الميداني يُسجل من تطبيق السائق. استخدم الإدخال الإداري فقط عند وجود حالة طارئة موثقة.')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->columnSpanFull()
+                    ->schema([
+                        Textarea::make('administrative_reason')
+                            ->label('سبب إنشاء المصروف من لوحة الإدارة')
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->minLength(10)
+                            ->maxLength(2000)
+                            ->rows(3)
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                    ]),
+
                 Section::make('بيانات المصروف')
                     ->description('أدخل تاريخ المصروف ونوعه وقيمته وطريقة الدفع.')
                     ->icon('heroicon-o-banknotes')

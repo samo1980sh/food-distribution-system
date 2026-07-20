@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Operational;
 
+use App\Enums\OperationSource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,9 +12,14 @@ class VehicleExpenseResource extends OperationalResource
     {
         $user = $request->user();
 
+        $source = OperationSource::fromState($this->operation_source);
+
         return [
             'id' => (int) $this->id,
             'client_reference' => $this->client_reference,
+            'operation_source' => $source->value,
+            'operation_source_label' => $source->label(),
+            'administrative_reason' => $this->administrative_reason,
             'expense_number' => $this->expense_number,
             'expense_date' => $this->date($this->expense_date),
             'expense_type' => $this->expense_type,

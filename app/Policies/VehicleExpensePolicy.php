@@ -14,6 +14,17 @@ class VehicleExpensePolicy extends PermissionPolicy
     protected const UPDATE = PermissionName::VEHICLE_EXPENSES_UPDATE;
     protected const DELETE = PermissionName::VEHICLE_EXPENSES_DELETE;
 
+    public function create(User $user): bool
+    {
+        return parent::create($user)
+            || $this->createAdminException($user);
+    }
+
+    public function createAdminException(User $user): bool
+    {
+        return $this->allows($user, PermissionName::VEHICLE_EXPENSES_CREATE_ADMIN_EXCEPTION);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof VehicleExpense

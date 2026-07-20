@@ -2,6 +2,7 @@
 
 namespace App\Services\Api;
 
+use App\Enums\OperationSource;
 use App\Exceptions\Api\OperationalApiException;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
@@ -43,6 +44,7 @@ class MobileOperationalWriteService
                     ...$data,
                     'created_by' => Auth::id(),
                     'client_payload_hash' => $payloadHash,
+                    'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
 
                 $invoice->items()->createMany($items);
@@ -81,6 +83,7 @@ class MobileOperationalWriteService
                 ...$data,
                 'created_by' => Auth::id(),
                 'client_payload_hash' => $payloadHash,
+                'operation_source' => OperationSource::MOBILE_SALES,
             ]),
         );
     }
@@ -106,6 +109,7 @@ class MobileOperationalWriteService
                     ...$data,
                     'created_by' => Auth::id(),
                     'client_payload_hash' => $payloadHash,
+                    'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
 
                 $salesReturn->items()->createMany($items);
@@ -153,6 +157,7 @@ class MobileOperationalWriteService
                         'receipt_path' => $receiptPath,
                         'created_by' => Auth::id(),
                         'client_payload_hash' => $payloadHash,
+                        'operation_source' => OperationSource::MOBILE_DRIVER,
                     ]);
                 } catch (Throwable $exception) {
                     if ($receiptPath) {
@@ -222,6 +227,7 @@ class MobileOperationalWriteService
                     ...$data,
                     'created_by' => Auth::id(),
                     'client_payload_hash' => $payloadHash,
+                    'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
 
                 return $this->dailyClosingService->refreshTotals($closing);

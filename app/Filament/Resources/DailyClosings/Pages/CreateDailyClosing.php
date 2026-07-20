@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosings\Pages;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\DailyClosings\DailyClosingResource;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -11,12 +12,20 @@ class CreateDailyClosing extends CreateRecord
 
     public function getHeading(): string
     {
-        return 'إنشاء مسودة إغلاق يومي';
+        return 'إنشاء إغلاق إداري مؤقت';
     }
 
     public function getSubheading(): ?string
     {
-        return 'حدد نطاق الإغلاق وأدخل النقد الفعلي، ثم احفظ المسودة لتحديث الملخص الدفتري وإجراء جرد المواد.';
+        return 'يبقى إنشاء الإغلاق من لوحة الإدارة مؤقتًا إلى أن تكتمل مساحة الإغلاق الميداني في التطبيق.';
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['operation_source'] = OperationSource::OFFICE;
+        $data['administrative_reason'] = trim((string) ($data['administrative_reason'] ?? ''));
+
+        return $data;
     }
 
     protected function getRedirectUrl(): string

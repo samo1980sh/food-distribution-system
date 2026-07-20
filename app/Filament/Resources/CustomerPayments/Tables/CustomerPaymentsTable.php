@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPayments\Tables;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\CustomerPayments\Actions\CustomerPaymentActions;
 use App\Filament\Resources\CustomerPayments\CustomerPaymentResource;
 use App\Models\CustomerPayment;
@@ -26,6 +27,14 @@ class CustomerPaymentsTable
                     ->sortable()
                     ->weight('bold')
                     ->copyable(),
+
+                TextColumn::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                    ->color(fn (mixed $state): string => OperationSource::colorFor($state))
+                    ->description(fn (CustomerPayment $record): ?string => $record->creator?->name)
+                    ->sortable(),
 
                 TextColumn::make('customer.name')
                     ->label('العميل')
@@ -70,7 +79,7 @@ class CustomerPaymentsTable
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                         default => $state ?? '-',
@@ -113,10 +122,14 @@ class CustomerPaymentsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->options(OperationSource::options()),
+
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                     ]),

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Distribution\VehicleExpenseService;
 use App\Services\Operations\OperationalContextValidator;
@@ -29,6 +30,8 @@ class VehicleExpense extends Model
         'created_by',
         'client_reference',
         'client_payload_hash',
+        'operation_source',
+        'administrative_reason',
         'approved_by',
         'approved_at',
         'rejected_by',
@@ -36,6 +39,7 @@ class VehicleExpense extends Model
     ];
 
     protected $casts = [
+        'operation_source' => OperationSource::class,
         'expense_date' => 'date',
         'amount' => 'decimal:2',
         'approved_at' => 'datetime',
@@ -45,6 +49,10 @@ class VehicleExpense extends Model
     protected static function booted(): void
     {
         static::creating(function (VehicleExpense $expense): void {
+            if (blank($expense->operation_source)) {
+                $expense->operation_source = OperationSource::LEGACY;
+            }
+
             if (blank($expense->expense_number)) {
                 $expense->expense_number = app(VehicleExpenseService::class)->generateExpenseNumber();
             }

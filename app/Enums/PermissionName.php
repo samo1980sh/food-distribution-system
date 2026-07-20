@@ -77,6 +77,7 @@ enum PermissionName: string
 
     case SALES_INVOICES_VIEW = 'sales_invoices.view';
     case SALES_INVOICES_CREATE = 'sales_invoices.create';
+    case SALES_INVOICES_CREATE_ADMIN_EXCEPTION = 'sales_invoices.create_admin_exception';
     case SALES_INVOICES_UPDATE = 'sales_invoices.update';
     case SALES_INVOICES_DELETE = 'sales_invoices.delete';
     case SALES_INVOICES_CONFIRM = 'sales_invoices.confirm';
@@ -86,6 +87,7 @@ enum PermissionName: string
 
     case SALES_RETURNS_VIEW = 'sales_returns.view';
     case SALES_RETURNS_CREATE = 'sales_returns.create';
+    case SALES_RETURNS_CREATE_ADMIN_EXCEPTION = 'sales_returns.create_admin_exception';
     case SALES_RETURNS_UPDATE = 'sales_returns.update';
     case SALES_RETURNS_DELETE = 'sales_returns.delete';
     case SALES_RETURNS_CONFIRM = 'sales_returns.confirm';
@@ -94,6 +96,7 @@ enum PermissionName: string
 
     case CUSTOMER_PAYMENTS_VIEW = 'customer_payments.view';
     case CUSTOMER_PAYMENTS_CREATE = 'customer_payments.create';
+    case CUSTOMER_PAYMENTS_CREATE_OFFICE = 'customer_payments.create_office';
     case CUSTOMER_PAYMENTS_UPDATE = 'customer_payments.update';
     case CUSTOMER_PAYMENTS_DELETE = 'customer_payments.delete';
     case CUSTOMER_PAYMENTS_CONFIRM = 'customer_payments.confirm';
@@ -102,6 +105,7 @@ enum PermissionName: string
 
     case VEHICLE_EXPENSES_VIEW = 'vehicle_expenses.view';
     case VEHICLE_EXPENSES_CREATE = 'vehicle_expenses.create';
+    case VEHICLE_EXPENSES_CREATE_ADMIN_EXCEPTION = 'vehicle_expenses.create_admin_exception';
     case VEHICLE_EXPENSES_UPDATE = 'vehicle_expenses.update';
     case VEHICLE_EXPENSES_DELETE = 'vehicle_expenses.delete';
     case VEHICLE_EXPENSES_APPROVE = 'vehicle_expenses.approve';
@@ -110,6 +114,7 @@ enum PermissionName: string
 
     case DAILY_CLOSINGS_VIEW = 'daily_closings.view';
     case DAILY_CLOSINGS_CREATE = 'daily_closings.create';
+    case DAILY_CLOSINGS_CREATE_OFFICE = 'daily_closings.create_office';
     case DAILY_CLOSINGS_UPDATE = 'daily_closings.update';
     case DAILY_CLOSINGS_DELETE = 'daily_closings.delete';
     case DAILY_CLOSINGS_REFRESH_TOTALS = 'daily_closings.refresh_totals';

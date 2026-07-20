@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Operational;
 
+use App\Enums\OperationSource;
 use Illuminate\Http\Request;
 
 class CustomerPaymentResource extends OperationalResource
@@ -10,9 +11,14 @@ class CustomerPaymentResource extends OperationalResource
     {
         $user = $request->user();
 
+        $source = OperationSource::fromState($this->operation_source);
+
         return [
             'id' => (int) $this->id,
             'client_reference' => $this->client_reference,
+            'operation_source' => $source->value,
+            'operation_source_label' => $source->label(),
+            'administrative_reason' => $this->administrative_reason,
             'payment_number' => $this->payment_number,
             'payment_date' => $this->date($this->payment_date),
             'payment_method' => $this->payment_method,

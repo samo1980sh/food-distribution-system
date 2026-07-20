@@ -17,14 +17,14 @@ class ListSalesReturns extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'إدارة المرتجعات من المسودة حتى الاعتماد أو الإلغاء، مع ربطها بالفاتورة الأصلية ومتابعة أثرها على المخزون والرصيد.';
+        return 'مراجعة طلبات المرتجع الواردة من التطبيق والتحقق من جاهزيتها للاعتماد، مع إبقاء الإدخال الإداري للحالات الاستثنائية فقط.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('مرتجع بيع جديد')
+                ->label('مرتجع إداري استثنائي')
                 ->icon('heroicon-o-plus')
                 ->visible(fn (): bool => SalesReturnResource::canCreate()),
         ];

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\SalesReturnService;
 use Illuminate\Database\Eloquent\Model;
@@ -29,11 +30,14 @@ class SalesReturn extends Model
         'created_by',
         'client_reference',
         'client_payload_hash',
+        'operation_source',
+        'administrative_reason',
         'confirmed_by',
         'confirmed_at',
     ];
 
     protected $casts = [
+        'operation_source' => OperationSource::class,
         'return_date' => 'date',
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
@@ -48,6 +52,10 @@ class SalesReturn extends Model
         });
 
         static::creating(function (SalesReturn $salesReturn): void {
+            if (blank($salesReturn->operation_source)) {
+                $salesReturn->operation_source = OperationSource::LEGACY;
+            }
+
             if (blank($salesReturn->return_number)) {
                 $salesReturn->return_number = app(SalesReturnService::class)->generateReturnNumber();
             }

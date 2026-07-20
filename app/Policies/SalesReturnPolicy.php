@@ -14,6 +14,17 @@ class SalesReturnPolicy extends PermissionPolicy
     protected const UPDATE = PermissionName::SALES_RETURNS_UPDATE;
     protected const DELETE = PermissionName::SALES_RETURNS_DELETE;
 
+    public function create(User $user): bool
+    {
+        return parent::create($user)
+            || $this->createAdminException($user);
+    }
+
+    public function createAdminException(User $user): bool
+    {
+        return $this->allows($user, PermissionName::SALES_RETURNS_CREATE_ADMIN_EXCEPTION);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof SalesReturn

@@ -10,6 +10,7 @@ use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceForm;
 use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceInfolist;
 use App\Filament\Resources\SalesInvoices\Tables\SalesInvoicesTable;
 use App\Models\SalesInvoice;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -25,7 +26,7 @@ class SalesInvoiceResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'المبيعات والتحصيل';
+        return 'المراجعة والاعتماد';
     }
 
     public static function getNavigationLabel(): string
@@ -46,6 +47,25 @@ class SalesInvoiceResource extends Resource
     public static function getNavigationSort(): ?int
     {
         return 10;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('createAdminException', SalesInvoice::class) === true;
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = app(AccessScopeService::class)->apply(SalesInvoice::query())
+            ->where('status', 'draft')
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
     }
 
     public static function shouldRegisterNavigation(): bool

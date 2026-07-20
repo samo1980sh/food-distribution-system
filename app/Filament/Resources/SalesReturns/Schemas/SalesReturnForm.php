@@ -22,6 +22,21 @@ class SalesReturnForm
         return $schema
             ->columns(2)
             ->components([
+                Section::make('إدخال إداري استثنائي')
+                    ->description('طلبات المرتجع الميدانية تُسجل من تطبيق المندوب. استخدم هذا المسار فقط للحالات الإدارية الاستثنائية، مع توثيق السبب.')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->columnSpanFull()
+                    ->schema([
+                        Textarea::make('administrative_reason')
+                            ->label('سبب إنشاء المرتجع من لوحة الإدارة')
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->minLength(10)
+                            ->maxLength(2000)
+                            ->rows(3)
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                    ]),
+
                 Section::make('المرجع وسبب المرتجع')
                     ->description('اربط المرتجع بالفاتورة الأصلية كلما أمكن لضمان مطابقة العميل والمواد والأثر المالي.')
                     ->icon('heroicon-o-arrow-uturn-left')

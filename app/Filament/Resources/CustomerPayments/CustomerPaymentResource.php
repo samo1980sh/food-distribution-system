@@ -8,6 +8,7 @@ use App\Filament\Resources\CustomerPayments\Schemas\CustomerPaymentForm;
 use App\Filament\Resources\CustomerPayments\Schemas\CustomerPaymentInfolist;
 use App\Filament\Resources\CustomerPayments\Tables\CustomerPaymentsTable;
 use App\Models\CustomerPayment;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -23,7 +24,7 @@ class CustomerPaymentResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'المبيعات والتحصيل';
+        return 'المراجعة والاعتماد';
     }
 
     public static function getNavigationLabel(): string
@@ -44,6 +45,25 @@ class CustomerPaymentResource extends Resource
     public static function getNavigationSort(): ?int
     {
         return 20;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('createOffice', CustomerPayment::class) === true;
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = app(AccessScopeService::class)->apply(CustomerPayment::query())
+            ->where('status', 'draft')
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
     }
 
     public static function shouldRegisterNavigation(): bool

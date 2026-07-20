@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\CustomerFinancialService;
 use App\Services\Sales\SalesInvoiceService;
@@ -42,11 +43,14 @@ class SalesInvoice extends Model
         'created_by',
         'client_reference',
         'client_payload_hash',
+        'operation_source',
+        'administrative_reason',
         'confirmed_by',
         'confirmed_at',
     ];
 
     protected $casts = [
+        'operation_source' => OperationSource::class,
         'invoice_date' => 'date',
         'due_date' => 'date',
         'subtotal' => 'decimal:2',
@@ -73,6 +77,10 @@ class SalesInvoice extends Model
         });
 
         static::creating(function (SalesInvoice $invoice): void {
+            if (blank($invoice->operation_source)) {
+                $invoice->operation_source = OperationSource::LEGACY;
+            }
+
             if (blank($invoice->invoice_number)) {
                 $invoice->invoice_number = app(SalesInvoiceService::class)->generateInvoiceNumber();
             }

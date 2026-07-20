@@ -14,6 +14,17 @@ class DailyClosingPolicy extends PermissionPolicy
     protected const UPDATE = PermissionName::DAILY_CLOSINGS_UPDATE;
     protected const DELETE = PermissionName::DAILY_CLOSINGS_DELETE;
 
+    public function create(User $user): bool
+    {
+        return parent::create($user)
+            || $this->createOffice($user);
+    }
+
+    public function createOffice(User $user): bool
+    {
+        return $this->allows($user, PermissionName::DAILY_CLOSINGS_CREATE_OFFICE);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof DailyClosing

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
@@ -48,11 +49,14 @@ class DailyClosing extends Model
         'created_by',
         'client_reference',
         'client_payload_hash',
+        'operation_source',
+        'administrative_reason',
         'confirmed_by',
         'confirmed_at',
     ];
 
     protected $casts = [
+        'operation_source' => OperationSource::class,
         'closing_date' => 'date',
         'total_opening_quantity' => 'decimal:3',
         'total_movement_in_quantity' => 'decimal:3',
@@ -83,6 +87,10 @@ class DailyClosing extends Model
     protected static function booted(): void
     {
         static::creating(function (DailyClosing $closing): void {
+            if (blank($closing->operation_source)) {
+                $closing->operation_source = OperationSource::LEGACY;
+            }
+
             if (blank($closing->closing_number)) {
                 $closing->closing_number = app(DailyClosingService::class)->generateClosingNumber();
             }

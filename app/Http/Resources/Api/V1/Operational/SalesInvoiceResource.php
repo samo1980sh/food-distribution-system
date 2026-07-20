@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Operational;
 
+use App\Enums\OperationSource;
 use Illuminate\Http\Request;
 
 class SalesInvoiceResource extends OperationalResource
@@ -10,9 +11,14 @@ class SalesInvoiceResource extends OperationalResource
     {
         $user = $request->user();
 
+        $source = OperationSource::fromState($this->operation_source);
+
         return [
             'id' => (int) $this->id,
             'client_reference' => $this->client_reference,
+            'operation_source' => $source->value,
+            'operation_source_label' => $source->label(),
+            'administrative_reason' => $this->administrative_reason,
             'invoice_number' => $this->invoice_number,
             'invoice_date' => $this->date($this->invoice_date),
             'due_date' => $this->date($this->due_date),

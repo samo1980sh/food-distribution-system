@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleExpenses\Tables;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\VehicleExpenses\Actions\VehicleExpenseActions;
 use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
 use App\Models\VehicleExpense;
@@ -26,6 +27,14 @@ class VehicleExpensesTable
                     ->sortable()
                     ->weight('bold')
                     ->copyable(),
+
+                TextColumn::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                    ->color(fn (mixed $state): string => OperationSource::colorFor($state))
+                    ->description(fn (VehicleExpense $record): ?string => $record->createdBy?->name)
+                    ->sortable(),
 
                 TextColumn::make('expense_date')
                     ->label('التاريخ')
@@ -79,7 +88,7 @@ class VehicleExpensesTable
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'pending' => 'قيد المراجعة',
+                        'pending' => 'بانتظار المراجعة',
                         'approved' => 'معتمد',
                         'rejected' => 'مرفوض',
                         default => $state ?? '-',
@@ -121,10 +130,14 @@ class VehicleExpensesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->options(OperationSource::options()),
+
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'pending' => 'قيد المراجعة',
+                        'pending' => 'بانتظار المراجعة',
                         'approved' => 'معتمد',
                         'rejected' => 'مرفوض',
                     ]),
@@ -182,6 +195,6 @@ class VehicleExpensesTable
             ->defaultPaginationPageOption(25)
             ->emptyStateIcon('heroicon-o-banknotes')
             ->emptyStateHeading('لا توجد مصاريف سيارات بعد')
-            ->emptyStateDescription('أضف أول مصروف من المودال الجانبي، أو غيّر عوامل التصفية إذا كنت تبحث عن عملية موجودة.');
+            ->emptyStateDescription('لم تصل مصاريف للمراجعة بعد. استخدم الإدخال الإداري فقط للحالات الاستثنائية.');
     }
 }

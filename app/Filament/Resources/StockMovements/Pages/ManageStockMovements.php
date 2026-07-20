@@ -16,13 +16,24 @@ class ManageStockMovements extends ManageRecords
 {
     protected static string $resource = StockMovementResource::class;
 
+    public function getHeading(): string
+    {
+        return 'سجل حركات وتسويات المخزون';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'الحركات الناتجة عن الاعتماد تُنشأ تلقائيًا. استخدم الإضافة اليدوية فقط للرصيد الافتتاحي أو التسوية أو التحويل الإداري الموثق.';
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('إضافة حركة مخزون')
+                ->label('تسوية مخزون إدارية')
                 ->visible(fn (): bool => StockMovementResource::canCreate())
-                ->modalHeading('إضافة حركة مخزون')
+                ->modalHeading('تسوية أو تحويل مخزون إداري')
+                ->modalDescription('الحركات التشغيلية تنشأ تلقائيًا من الفواتير والمرتجعات وأوامر التحميل. أدخل سبب التسوية أو التحويل بوضوح.')
                 ->slideOver()
                 ->using(function (array $data): StockMovement {
                     $service = app(InventoryMovementService::class);

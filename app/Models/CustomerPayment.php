@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Operations\OperationalContextValidator;
 use App\Services\Sales\CustomerPaymentService;
 use Illuminate\Database\Eloquent\Model;
@@ -27,11 +28,14 @@ class CustomerPayment extends Model
         'created_by',
         'client_reference',
         'client_payload_hash',
+        'operation_source',
+        'administrative_reason',
         'confirmed_by',
         'confirmed_at',
     ];
 
     protected $casts = [
+        'operation_source' => OperationSource::class,
         'payment_date' => 'date',
         'amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
@@ -44,6 +48,10 @@ class CustomerPayment extends Model
         });
 
         static::creating(function (CustomerPayment $payment): void {
+            if (blank($payment->operation_source)) {
+                $payment->operation_source = OperationSource::LEGACY;
+            }
+
             if (blank($payment->payment_number)) {
                 $payment->payment_number = app(CustomerPaymentService::class)->generatePaymentNumber();
             }

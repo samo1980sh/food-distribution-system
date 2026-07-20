@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\CustomerPayments\Schemas;
 
+use App\Enums\OperationSource;
 use App\Models\CustomerPayment;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -20,6 +21,11 @@ class CustomerPaymentInfolist
                     ->columnSpanFull()
                     ->schema([
                         TextEntry::make('payment_number')->label('رقم التحصيل')->copyable(),
+                        TextEntry::make('operation_source')
+                            ->label('مصدر العملية')
+                            ->badge()
+                            ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                            ->color(fn (mixed $state): string => OperationSource::colorFor($state)),
                         TextEntry::make('status')
                             ->label('الحالة')
                             ->badge()
@@ -72,6 +78,10 @@ class CustomerPaymentInfolist
                         TextEntry::make('notes')->label('الملاحظات')->placeholder('لا توجد ملاحظات')->columnSpanFull(),
                         TextEntry::make('creator.name')->label('أنشأه')->placeholder('-'),
                         TextEntry::make('confirmer.name')->label('اعتمده')->placeholder('-'),
+                        TextEntry::make('administrative_reason')
+                            ->label('بيان / سبب الإدخال الإداري')
+                            ->placeholder('لا يوجد - العملية واردة من التطبيق أو من بيانات سابقة')
+                            ->columnSpanFull(),
                         TextEntry::make('created_at')->label('تاريخ الإنشاء')->dateTime('Y-m-d H:i'),
                         TextEntry::make('confirmed_at')->label('تاريخ الاعتماد')->dateTime('Y-m-d H:i')->placeholder('-'),
                     ]),
@@ -81,7 +91,7 @@ class CustomerPaymentInfolist
     private static function statusLabel(?string $status): string
     {
         return match ($status) {
-            'draft' => 'مسودة',
+            'draft' => 'بانتظار الاعتماد',
             'confirmed' => 'معتمد',
             'cancelled' => 'ملغي',
             default => $status ?? '-',

@@ -17,14 +17,14 @@ class ListDailyClosings extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'مراجعة العهدة الدفترية والجرد الفعلي والصندوق، ثم تثبيت الإغلاق ومنع العمليات اللاحقة على التاريخ والمستودع.';
+        return 'إنشاء الإغلاق إداريًا بصورة مؤقتة، ثم مراجعة العهدة والجرد والصندوق واعتماد المطابقة.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('إغلاق يوم جديد')
+                ->label('إغلاق إداري مؤقت')
                 ->icon('heroicon-o-plus')
                 ->visible(fn (): bool => DailyClosingResource::canCreate()),
         ];

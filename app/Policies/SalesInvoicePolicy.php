@@ -14,6 +14,17 @@ class SalesInvoicePolicy extends PermissionPolicy
     protected const UPDATE = PermissionName::SALES_INVOICES_UPDATE;
     protected const DELETE = PermissionName::SALES_INVOICES_DELETE;
 
+    public function create(User $user): bool
+    {
+        return parent::create($user)
+            || $this->createAdminException($user);
+    }
+
+    public function createAdminException(User $user): bool
+    {
+        return $this->allows($user, PermissionName::SALES_INVOICES_CREATE_ADMIN_EXCEPTION);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof SalesInvoice

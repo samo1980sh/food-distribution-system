@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosings\Tables;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\DailyClosings\Actions\DailyClosingActions;
 use App\Filament\Resources\DailyClosings\DailyClosingResource;
 use App\Models\DailyClosing;
@@ -29,6 +30,14 @@ class DailyClosingsTable
                     ->sortable()
                     ->weight('bold')
                     ->copyable(),
+
+                TextColumn::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                    ->color(fn (mixed $state): string => OperationSource::colorFor($state))
+                    ->description(fn (DailyClosing $record): ?string => $record->creator?->name)
+                    ->sortable(),
 
                 TextColumn::make('closing_date')
                     ->label('تاريخ الإغلاق')
@@ -63,7 +72,7 @@ class DailyClosingsTable
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'مسودة',
+                        'draft' => 'قيد المطابقة',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                         default => $state ?? '-',
@@ -158,10 +167,14 @@ class DailyClosingsTable
                             fn (Builder $query, $date): Builder => $query->whereDate('closing_date', '<=', $date),
                         )),
 
+                SelectFilter::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->options(OperationSource::options()),
+
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'draft' => 'مسودة',
+                        'draft' => 'قيد المطابقة',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                     ]),

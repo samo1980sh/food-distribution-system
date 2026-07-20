@@ -26,17 +26,17 @@ class StockMovementResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'حركات المخزون';
+        return 'سجل وتسويات المخزون';
     }
 
     public static function getModelLabel(): string
     {
-        return 'حركة مخزون';
+        return 'تسوية أو حركة مخزون';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'حركات المخزون';
+        return 'سجل وتسويات المخزون';
     }
 
     public static function getNavigationSort(): ?int

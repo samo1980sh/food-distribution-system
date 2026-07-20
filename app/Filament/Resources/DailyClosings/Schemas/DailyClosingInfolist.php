@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DailyClosings\Schemas;
 
+use App\Enums\OperationSource;
 use App\Models\DailyClosing;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
@@ -24,6 +25,11 @@ class DailyClosingInfolist
                             ->label('رقم الإغلاق')
                             ->copyable()
                             ->weight('bold'),
+                        TextEntry::make('operation_source')
+                            ->label('مصدر العملية')
+                            ->badge()
+                            ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                            ->color(fn (mixed $state): string => OperationSource::colorFor($state)),
                         TextEntry::make('status')
                             ->label('الحالة')
                             ->badge()
@@ -170,6 +176,10 @@ class DailyClosingInfolist
                     ->collapsible()
                     ->schema([
                         TextEntry::make('notes')->label('ملاحظات الإغلاق')->placeholder('لا توجد ملاحظات'),
+                        TextEntry::make('administrative_reason')
+                            ->label('بيان / سبب الإدخال الإداري')
+                            ->placeholder('لا يوجد - العملية واردة من التطبيق أو من بيانات سابقة')
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

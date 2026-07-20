@@ -21,6 +21,22 @@ class CustomerPaymentForm
         return $schema
             ->columns(2)
             ->components([
+                Section::make('تحصيل مكتبي')
+                    ->description('استخدم هذه الشاشة للتحصيل الذي تم في المكتب أو عبر البنك. التحصيل الميداني يسجله المندوب من التطبيق ويصل إلى هنا للمراجعة والاعتماد.')
+                    ->icon('heroicon-o-building-office-2')
+                    ->columnSpanFull()
+                    ->schema([
+                        Textarea::make('administrative_reason')
+                            ->label('بيان التحصيل المكتبي')
+                            ->default('تحصيل مكتبي من لوحة الإدارة')
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->minLength(5)
+                            ->maxLength(2000)
+                            ->rows(2)
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                    ]),
+
                 Section::make('العميل والفاتورة')
                     ->description('اربط التحصيل بفاتورة محددة كلما أمكن لتحديث المدفوع والمتبقي عليها تلقائيًا.')
                     ->icon('heroicon-o-user-circle')

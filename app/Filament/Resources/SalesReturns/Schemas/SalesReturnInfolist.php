@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesReturns\Schemas;
 
+use App\Enums\OperationSource;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
@@ -20,6 +21,11 @@ class SalesReturnInfolist
                     ->columnSpanFull()
                     ->schema([
                         TextEntry::make('return_number')->label('رقم المرتجع')->copyable(),
+                        TextEntry::make('operation_source')
+                            ->label('مصدر العملية')
+                            ->badge()
+                            ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                            ->color(fn (mixed $state): string => OperationSource::colorFor($state)),
                         TextEntry::make('status')
                             ->label('الحالة')
                             ->badge()
@@ -75,6 +81,10 @@ class SalesReturnInfolist
                     ->collapsible()
                     ->schema([
                         TextEntry::make('notes')->label('الملاحظات')->placeholder('لا توجد ملاحظات')->columnSpanFull(),
+                        TextEntry::make('administrative_reason')
+                            ->label('بيان / سبب الإدخال الإداري')
+                            ->placeholder('لا يوجد - العملية واردة من التطبيق أو من بيانات سابقة')
+                            ->columnSpanFull(),
                         TextEntry::make('created_at')->label('تاريخ الإنشاء')->dateTime('Y-m-d H:i'),
                         TextEntry::make('confirmed_at')->label('تاريخ الاعتماد')->dateTime('Y-m-d H:i')->placeholder('-'),
                     ]),
@@ -84,7 +94,7 @@ class SalesReturnInfolist
     private static function statusLabel(?string $status): string
     {
         return match ($status) {
-            'draft' => 'مسودة',
+            'draft' => 'بانتظار الاعتماد',
             'confirmed' => 'معتمد',
             'cancelled' => 'ملغي',
             default => $status ?? '-',

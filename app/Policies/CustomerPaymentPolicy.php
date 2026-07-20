@@ -14,6 +14,17 @@ class CustomerPaymentPolicy extends PermissionPolicy
     protected const UPDATE = PermissionName::CUSTOMER_PAYMENTS_UPDATE;
     protected const DELETE = PermissionName::CUSTOMER_PAYMENTS_DELETE;
 
+    public function create(User $user): bool
+    {
+        return parent::create($user)
+            || $this->createOffice($user);
+    }
+
+    public function createOffice(User $user): bool
+    {
+        return $this->allows($user, PermissionName::CUSTOMER_PAYMENTS_CREATE_OFFICE);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof CustomerPayment

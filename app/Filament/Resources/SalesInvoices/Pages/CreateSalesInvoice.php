@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use Filament\Resources\Pages\CreateRecord;
 
@@ -11,12 +12,20 @@ class CreateSalesInvoice extends CreateRecord
 
     public function getHeading(): string
     {
-        return 'إنشاء فاتورة بيع';
+        return 'إنشاء فاتورة إدارية استثنائية';
     }
 
     public function getSubheading(): ?string
     {
-        return 'أدخل العميل والسياق التشغيلي والمواد، ثم احفظ الفاتورة كمسودة لمراجعتها قبل الاعتماد.';
+        return 'هذا المسار مخصص لتعطل التطبيق أو البيع المكتبي الاستثنائي. سجّل السبب بدقة، ثم احفظ الفاتورة بانتظار المراجعة والاعتماد.';
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $data['operation_source'] = OperationSource::ADMIN_EXCEPTION;
+        $data['administrative_reason'] = trim((string) ($data['administrative_reason'] ?? ''));
+
+        return $data;
     }
 
     protected function getRedirectUrl(): string

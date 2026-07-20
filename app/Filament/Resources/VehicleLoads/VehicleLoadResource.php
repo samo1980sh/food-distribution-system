@@ -25,7 +25,7 @@ class VehicleLoadResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التوزيع والأسطول';
+        return 'التخطيط والتجهيز';
     }
 
     public static function getNavigationLabel(): string

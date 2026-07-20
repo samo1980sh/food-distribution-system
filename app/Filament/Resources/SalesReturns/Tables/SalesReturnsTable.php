@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesReturns\Tables;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\SalesReturns\Actions\SalesReturnActions;
 use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Models\SalesReturn;
@@ -26,6 +27,14 @@ class SalesReturnsTable
                     ->sortable()
                     ->weight('bold')
                     ->copyable(),
+
+                TextColumn::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                    ->color(fn (mixed $state): string => OperationSource::colorFor($state))
+                    ->description(fn (SalesReturn $record): ?string => $record->creator?->name)
+                    ->sortable(),
 
                 TextColumn::make('customer.name')
                     ->label('العميل')
@@ -71,7 +80,7 @@ class SalesReturnsTable
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                         default => $state ?? '-',
@@ -119,10 +128,14 @@ class SalesReturnsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->options(OperationSource::options()),
+
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
                     ]),

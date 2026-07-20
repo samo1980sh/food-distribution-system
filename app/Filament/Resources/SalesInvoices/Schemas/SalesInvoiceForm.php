@@ -26,6 +26,21 @@ class SalesInvoiceForm
         return $schema
             ->columns(2)
             ->components([
+                Section::make('إدخال إداري استثنائي')
+                    ->description('فواتير البيع الميدانية تُنشأ من تطبيق المندوب. استخدم هذا المسار فقط عند تعطل التطبيق أو وجود بيع مكتبي استثنائي، مع تسجيل السبب للتدقيق.')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->columnSpanFull()
+                    ->schema([
+                        Textarea::make('administrative_reason')
+                            ->label('سبب إنشاء الفاتورة من لوحة الإدارة')
+                            ->required(fn (string $operation): bool => $operation === 'create')
+                            ->minLength(10)
+                            ->maxLength(2000)
+                            ->rows(3)
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create'),
+                    ]),
+
                 Section::make('بيانات العميل والاستحقاق')
                     ->description('ابدأ بالعميل وطريقة الدفع؛ سيقترح النظام السياق التشغيلي وتاريخ الاستحقاق تلقائيًا.')
                     ->icon('heroicon-o-user-circle')

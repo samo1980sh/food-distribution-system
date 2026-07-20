@@ -8,6 +8,7 @@ use App\Filament\Resources\VehicleExpenses\Schemas\VehicleExpenseForm;
 use App\Filament\Resources\VehicleExpenses\Schemas\VehicleExpenseInfolist;
 use App\Filament\Resources\VehicleExpenses\Tables\VehicleExpensesTable;
 use App\Models\VehicleExpense;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -23,7 +24,7 @@ class VehicleExpenseResource extends Resource
 
     public static function getNavigationGroup(): string|\UnitEnum|null
     {
-        return 'التوزيع والأسطول';
+        return 'المراجعة والاعتماد';
     }
 
     public static function getNavigationLabel(): string
@@ -44,6 +45,25 @@ class VehicleExpenseResource extends Resource
     public static function getNavigationSort(): ?int
     {
         return 40;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->can('createAdminException', VehicleExpense::class) === true;
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = app(AccessScopeService::class)->apply(VehicleExpense::query())
+            ->where('status', 'pending')
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'warning';
     }
 
     public static function shouldRegisterNavigation(): bool

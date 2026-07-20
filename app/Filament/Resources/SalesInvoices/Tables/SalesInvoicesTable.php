@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SalesInvoices\Tables;
 
+use App\Enums\OperationSource;
 use App\Filament\Resources\SalesInvoices\Actions\SalesInvoiceActions;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Models\SalesInvoice;
@@ -26,6 +27,14 @@ class SalesInvoicesTable
                     ->sortable()
                     ->weight('bold')
                     ->copyable(),
+
+                TextColumn::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->badge()
+                    ->formatStateUsing(fn (mixed $state): string => OperationSource::labelFor($state))
+                    ->color(fn (mixed $state): string => OperationSource::colorFor($state))
+                    ->description(fn (SalesInvoice $record): ?string => $record->creator?->name)
+                    ->sortable(),
 
                 TextColumn::make('customer.name')
                     ->label('العميل')
@@ -82,7 +91,7 @@ class SalesInvoicesTable
                     ->label('الحالة')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمدة',
                         'cancelled' => 'ملغاة',
                         default => $state ?? '-',
@@ -125,10 +134,14 @@ class SalesInvoicesTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('operation_source')
+                    ->label('مصدر العملية')
+                    ->options(OperationSource::options()),
+
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'draft' => 'مسودة',
+                        'draft' => 'بانتظار الاعتماد',
                         'confirmed' => 'معتمدة',
                         'cancelled' => 'ملغاة',
                     ]),
@@ -186,6 +199,6 @@ class SalesInvoicesTable
             ->defaultPaginationPageOption(25)
             ->emptyStateIcon('heroicon-o-receipt-percent')
             ->emptyStateHeading('لا توجد فواتير بيع بعد')
-            ->emptyStateDescription('أنشئ أول فاتورة، أو غيّر عوامل التصفية إذا كنت تبحث عن فاتورة موجودة.');
+            ->emptyStateDescription('لم تصل فواتير للمراجعة بعد. استخدم الإدخال الإداري فقط للحالات الاستثنائية.');
     }
 }

@@ -17,14 +17,14 @@ class ListSalesInvoices extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'إدارة دورة الفاتورة من المسودة حتى الاعتماد أو الإلغاء، مع متابعة الاستحقاق والرصيد المتبقي.';
+        return 'مراجعة الفواتير الواردة من تطبيق المندوب والتحقق من جاهزيتها للاعتماد، مع إبقاء الإدخال الإداري للحالات الاستثنائية فقط.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
-                ->label('فاتورة بيع جديدة')
+                ->label('فاتورة إدارية استثنائية')
                 ->icon('heroicon-o-plus')
                 ->visible(fn (): bool => SalesInvoiceResource::canCreate()),
         ];
