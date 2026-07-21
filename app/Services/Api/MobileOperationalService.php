@@ -173,6 +173,7 @@ class MobileOperationalService
                 'customer_payments' => $user->can(PermissionName::CUSTOMER_PAYMENTS_CREATE->value),
                 'sales_returns' => $user->can(PermissionName::SALES_RETURNS_CREATE->value),
                 'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
+                'vehicle_load_handover' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
             ],
             'financial_fields' => $user->can(PermissionName::DASHBOARD_FINANCIAL->value),
             'cost_fields' => $user->can(PermissionName::REPORT_PROFIT->value),

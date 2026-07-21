@@ -7,18 +7,20 @@ use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
 use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseWriteRequest;
+use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VehicleExpense;
+use App\Models\VehicleLoad;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 use InvalidArgumentException;
 
 final class MobileSyncPushRegistry
 {
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     /**
      * @return array<string, array{
@@ -48,6 +50,12 @@ final class MobileSyncPushRegistry
                 'request' => SalesReturnWriteRequest::class,
                 'route_parameter' => 'salesReturn',
                 'actions' => ['create', 'update', 'delete', 'confirm', 'cancel'],
+            ],
+            'vehicle_loads' => [
+                'model' => VehicleLoad::class,
+                'request' => VehicleLoadHandoverRequest::class,
+                'route_parameter' => 'vehicleLoad',
+                'actions' => ['acknowledge'],
             ],
             'vehicle_expenses' => [
                 'model' => VehicleExpense::class,

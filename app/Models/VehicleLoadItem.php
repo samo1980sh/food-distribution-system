@@ -14,6 +14,8 @@ class VehicleLoadItem extends Model
         'batch_number',
         'expiry_date',
         'quantity',
+        'received_quantity',
+        'handover_note',
         'unit_cost',
         'total_cost',
     ];
@@ -21,6 +23,7 @@ class VehicleLoadItem extends Model
     protected $casts = [
         'expiry_date' => 'date',
         'quantity' => 'decimal:3',
+        'received_quantity' => 'decimal:3',
         'unit_cost' => 'decimal:6',
         'total_cost' => 'decimal:2',
     ];

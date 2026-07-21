@@ -17,6 +17,16 @@ class VehicleLoadExpenseFilamentWorkflowTest extends TestCase
         $this->assertStringContainsString('VehicleLoadInfolist::configure', $resource);
     }
 
+    public function test_vehicle_load_actions_refresh_the_record_after_approval_and_cancellation(): void
+    {
+        $actions = file_get_contents(app_path('Filament/Resources/VehicleLoads/Actions/VehicleLoadActions.php'));
+
+        $this->assertSame(2, substr_count($actions, 'self::refreshRecord($record);'));
+        $this->assertStringContainsString('$record->refresh();', $actions);
+        $this->assertStringContainsString("'items.product'", $actions);
+        $this->assertStringContainsString("'approver'", $actions);
+    }
+
     public function test_vehicle_expense_resource_uses_hybrid_slide_over_workflow(): void
     {
         $resource = file_get_contents(app_path('Filament/Resources/VehicleExpenses/VehicleExpenseResource.php'));

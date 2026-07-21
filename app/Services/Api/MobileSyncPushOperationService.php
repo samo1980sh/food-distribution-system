@@ -4,10 +4,12 @@ namespace App\Services\Api;
 
 use App\Exceptions\Api\OperationalApiException;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseRejectRequest;
+use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\MobileSyncPushOperation;
 use App\Models\User;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\VehicleExpenseService;
+use App\Services\Distribution\VehicleLoadHandoverService;
 use App\Services\Sales\CustomerPaymentService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
@@ -33,6 +35,7 @@ class MobileSyncPushOperationService
         private readonly CustomerPaymentService $customerPaymentService,
         private readonly SalesReturnService $salesReturnService,
         private readonly VehicleExpenseService $vehicleExpenseService,
+        private readonly VehicleLoadHandoverService $vehicleLoadHandoverService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly MobileSyncVersionService $versionService,
     ) {
@@ -301,6 +304,18 @@ class MobileSyncPushOperationService
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
             $this->requestValidator->authorize($formRequest);
             $payload = $this->requestValidator->validate($formRequest);
+        } elseif ($entity === 'vehicle_loads' && $action === 'acknowledge') {
+            $formRequest = $this->requestValidator->make(
+                VehicleLoadHandoverRequest::class,
+                'POST',
+                $payload,
+                $user,
+                ['vehicleLoad' => $record],
+            );
+            Gate::forUser($user)->authorize('view', $record);
+            $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
+            $this->requestValidator->authorize($formRequest);
+            $payload = $this->requestValidator->validate($formRequest);
         } else {
             Gate::forUser($user)->authorize('view', $record);
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
@@ -314,6 +329,7 @@ class MobileSyncPushOperationService
             ['customer_payments', 'cancel'] => $this->customerPaymentService->cancel($record),
             ['sales_returns', 'confirm'] => $this->salesReturnService->confirm($record),
             ['sales_returns', 'cancel'] => $this->salesReturnService->cancel($record),
+            ['vehicle_loads', 'acknowledge'] => $this->vehicleLoadHandoverService->acknowledge($record, $payload),
             ['vehicle_expenses', 'approve'] => $this->vehicleExpenseService->approve($record),
             ['vehicle_expenses', 'reject'] => $this->vehicleExpenseService->reject($record, $payload['reason']),
             ['daily_closings', 'refresh_totals'] => $this->dailyClosingService->refreshTotals($record),

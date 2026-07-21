@@ -26,6 +26,7 @@ final class VehicleLoadActions
                 try {
                     Gate::authorize('approve', $record);
                     app(VehicleLoadService::class)->approve($record);
+                    self::refreshRecord($record);
 
                     Notification::make()
                         ->title('تم اعتماد أمر التحميل بنجاح')
@@ -58,6 +59,7 @@ final class VehicleLoadActions
                 try {
                     Gate::authorize('cancel', $record);
                     app(VehicleLoadService::class)->cancel($record);
+                    self::refreshRecord($record);
 
                     Notification::make()
                         ->title('تم إلغاء أمر التحميل')
@@ -86,6 +88,22 @@ final class VehicleLoadActions
                 'vehicleLoad' => $record,
             ]))
             ->openUrlInNewTab();
+    }
+
+    private static function refreshRecord(VehicleLoad $record): void
+    {
+        $record->refresh();
+        $record->load([
+            'items.product',
+            'fromWarehouse',
+            'toWarehouse',
+            'vehicle',
+            'route',
+            'driver',
+            'salesRepresentative',
+            'creator',
+            'approver',
+        ]);
     }
 
     private function __construct()

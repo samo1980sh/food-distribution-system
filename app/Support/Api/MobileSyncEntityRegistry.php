@@ -41,7 +41,7 @@ use InvalidArgumentException;
 
 final class MobileSyncEntityRegistry
 {
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     /**
      * @return array<string, array{
@@ -140,6 +140,7 @@ final class MobileSyncEntityRegistry
                     'salesRepresentative',
                     'fromWarehouse.vehicle',
                     'toWarehouse.vehicle',
+                    'handoverUser',
                     'items.product.category',
                     'items.product.unit',
                 ],

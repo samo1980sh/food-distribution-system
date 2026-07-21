@@ -21,12 +21,16 @@ class VehicleLoad extends Model
         'to_warehouse_id',
         'load_date',
         'status',
+        'handover_status',
         'total_quantity',
         'total_cost',
         'notes',
+        'handover_notes',
         'created_by',
         'approved_by',
         'approved_at',
+        'handover_by',
+        'handover_at',
     ];
 
     protected $casts = [
@@ -34,6 +38,7 @@ class VehicleLoad extends Model
         'total_quantity' => 'decimal:3',
         'total_cost' => 'decimal:2',
         'approved_at' => 'datetime',
+        'handover_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -49,6 +54,10 @@ class VehicleLoad extends Model
 
             if (blank($vehicleLoad->status)) {
                 $vehicleLoad->status = 'draft';
+            }
+
+            if (blank($vehicleLoad->handover_status)) {
+                $vehicleLoad->handover_status = 'pending';
             }
 
             if (blank($vehicleLoad->load_date)) {
@@ -106,6 +115,11 @@ class VehicleLoad extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function handoverUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_by');
+    }
+
     public function isDraft(): bool
     {
         return $this->status === 'draft';
@@ -114,5 +128,10 @@ class VehicleLoad extends Model
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function isHandoverPending(): bool
+    {
+        return $this->handover_status === 'pending';
     }
 }

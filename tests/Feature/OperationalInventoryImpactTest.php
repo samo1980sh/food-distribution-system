@@ -103,6 +103,143 @@ class OperationalInventoryImpactTest extends TestCase
         $this->assertEqualsWithDelta(12, $this->balanceAverageCost($sourceWarehouse, $product), 0.000001);
     }
 
+
+    public function test_vehicle_load_approval_allocates_batches_automatically_using_fefo(): void
+    {
+        $suffix = uniqid();
+
+        $vehicle = Vehicle::query()->create([
+            'code' => 'V-FEFO-'.$suffix,
+            'plate_number' => 'FEFO-'.$suffix,
+            'status' => 'active',
+        ]);
+
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'W-FEFO-SRC-'.$suffix,
+            'name' => 'FEFO Source '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
+        $vehicleWarehouse = Warehouse::query()->create([
+            'code' => 'W-FEFO-VEH-'.$suffix,
+            'name' => 'FEFO Vehicle '.$suffix,
+            'type' => 'vehicle',
+            'vehicle_id' => $vehicle->id,
+            'status' => 'active',
+        ]);
+
+        $product = $this->createProduct('FEFO-'.$suffix);
+        $earlyExpiry = now()->addDays(30)->toDateString();
+        $lateExpiry = now()->addDays(90)->toDateString();
+        $earlyBatch = 'FEFO-EARLY-'.$suffix;
+        $lateBatch = 'FEFO-LATE-'.$suffix;
+
+        app(InventoryMovementService::class)->addStock(
+            warehouse: $sourceWarehouse,
+            product: $product,
+            quantity: 2,
+            batchNumber: $lateBatch,
+            expiryDate: $lateExpiry,
+            movementType: 'opening_balance',
+        );
+
+        app(InventoryMovementService::class)->addStock(
+            warehouse: $sourceWarehouse,
+            product: $product,
+            quantity: 3,
+            batchNumber: $earlyBatch,
+            expiryDate: $earlyExpiry,
+            movementType: 'opening_balance',
+        );
+
+        $vehicleLoad = VehicleLoad::query()->create([
+            'load_number' => 'VLD-FEFO-'.$suffix,
+            'vehicle_id' => $vehicle->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $vehicleWarehouse->id,
+            'load_date' => now()->toDateString(),
+            'status' => 'draft',
+            'total_quantity' => 4,
+            'total_cost' => 0,
+        ]);
+
+        $draftItem = VehicleLoadItem::query()->create([
+            'vehicle_load_id' => $vehicleLoad->id,
+            'product_id' => $product->id,
+            'quantity' => 4,
+            'unit_cost' => 0,
+            'total_cost' => 0,
+        ]);
+
+        $this->assertNull($draftItem->batch_number);
+        $this->assertNull($draftItem->expiry_date);
+
+        app(VehicleLoadService::class)->approve($vehicleLoad);
+
+        $approvedItems = $vehicleLoad->refresh()
+            ->items()
+            ->orderBy('expiry_date')
+            ->get();
+
+        $this->assertCount(2, $approvedItems);
+        $this->assertSame($earlyBatch, $approvedItems[0]->batch_number);
+        $this->assertSame($earlyExpiry, $approvedItems[0]->expiry_date?->toDateString());
+        $this->assertEqualsWithDelta(3, (float) $approvedItems[0]->quantity, 0.0001);
+        $this->assertSame($lateBatch, $approvedItems[1]->batch_number);
+        $this->assertSame($lateExpiry, $approvedItems[1]->expiry_date?->toDateString());
+        $this->assertEqualsWithDelta(1, (float) $approvedItems[1]->quantity, 0.0001);
+        $this->assertEqualsWithDelta(12, (float) $approvedItems[0]->unit_cost, 0.000001);
+        $this->assertEqualsWithDelta(36, (float) $approvedItems[0]->total_cost, 0.001);
+        $this->assertEqualsWithDelta(12, (float) $approvedItems[1]->unit_cost, 0.000001);
+        $this->assertEqualsWithDelta(12, (float) $approvedItems[1]->total_cost, 0.001);
+        $this->assertEqualsWithDelta(48, (float) $vehicleLoad->total_cost, 0.001);
+
+        $this->assertEqualsWithDelta(
+            0,
+            $this->balanceQuantityForBatch($sourceWarehouse, $product, $earlyBatch, $earlyExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            1,
+            $this->balanceQuantityForBatch($sourceWarehouse, $product, $lateBatch, $lateExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            3,
+            $this->balanceQuantityForBatch($vehicleWarehouse, $product, $earlyBatch, $earlyExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            1,
+            $this->balanceQuantityForBatch($vehicleWarehouse, $product, $lateBatch, $lateExpiry),
+            0.0001,
+        );
+
+        app(VehicleLoadService::class)->cancel($vehicleLoad->refresh());
+
+        $this->assertEqualsWithDelta(
+            3,
+            $this->balanceQuantityForBatch($sourceWarehouse, $product, $earlyBatch, $earlyExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            2,
+            $this->balanceQuantityForBatch($sourceWarehouse, $product, $lateBatch, $lateExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            0,
+            $this->balanceQuantityForBatch($vehicleWarehouse, $product, $earlyBatch, $earlyExpiry),
+            0.0001,
+        );
+        $this->assertEqualsWithDelta(
+            0,
+            $this->balanceQuantityForBatch($vehicleWarehouse, $product, $lateBatch, $lateExpiry),
+            0.0001,
+        );
+    }
+
     public function test_sales_invoice_confirmation_and_cancellation_updates_stock_balance(): void
     {
         $suffix = uniqid();
@@ -355,6 +492,23 @@ class OperationalInventoryImpactTest extends TestCase
             'sale_price' => 20,
             'status' => 'active',
         ]);
+    }
+
+
+    private function balanceQuantityForBatch(
+        Warehouse $warehouse,
+        Product $product,
+        string $batchNumber,
+        string $expiryDate,
+    ): float {
+        $balance = StockBalance::query()
+            ->where('warehouse_id', $warehouse->id)
+            ->where('product_id', $product->id)
+            ->where('batch_key', $batchNumber)
+            ->where('expiry_key', $expiryDate)
+            ->first();
+
+        return (float) ($balance?->quantity ?? 0);
     }
 
     private function balanceQuantity(Warehouse $warehouse, Product $product): float

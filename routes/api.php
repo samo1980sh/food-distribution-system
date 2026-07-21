@@ -142,6 +142,9 @@ Route::prefix('v1')
                     Route::post('/sales-returns/{salesReturn}/cancel', [SalesReturnController::class, 'cancel'])
                         ->name('sales-returns.cancel');
 
+                    Route::post('/vehicle-loads/{vehicleLoad}/acknowledge', [VehicleLoadController::class, 'acknowledge'])
+                        ->name('vehicle-loads.acknowledge');
+
                     Route::post('/vehicle-expenses', [VehicleExpenseController::class, 'store'])
                         ->name('vehicle-expenses.store');
                     Route::patch('/vehicle-expenses/{vehicleExpense}', [VehicleExpenseController::class, 'update'])

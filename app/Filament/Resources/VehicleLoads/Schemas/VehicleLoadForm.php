@@ -151,14 +151,14 @@ class VehicleLoadForm
                     ]),
 
                 Section::make('مواد التحميل')
-                    ->description('تُثبت تكلفة الوحدة تلقائيًا من متوسط تكلفة رصيد المستودع المصدر عند الاعتماد.')
+                    ->description('اختر المنتج والكمية فقط. عند الاعتماد يختار النظام تلقائيًا الدفعة الأقرب انتهاءً ويقسم الكمية على أكثر من دفعة عند الحاجة.')
                     ->icon('heroicon-o-cube')
                     ->columnSpanFull()
                     ->schema([
                         Repeater::make('items')
                             ->label('')
                             ->relationship('items')
-                            ->columns(6)
+                            ->columns(4)
                             ->columnSpanFull()
                             ->defaultItems(1)
                             ->minItems(1)
@@ -171,15 +171,8 @@ class VehicleLoadForm
                                     ->preload()
                                     ->required()
                                     ->native(false)
+                                    ->helperText('لا حاجة لإدخال رقم التشغيلة أو تاريخ الصلاحية؛ تتم إدارتهما تلقائيًا.')
                                     ->columnSpan(2),
-
-                                TextInput::make('batch_number')
-                                    ->label('رقم التشغيلة')
-                                    ->maxLength(255),
-
-                                DatePicker::make('expiry_date')
-                                    ->label('تاريخ الصلاحية')
-                                    ->native(false),
 
                                 TextInput::make('quantity')
                                     ->label('الكمية')
@@ -194,7 +187,7 @@ class VehicleLoadForm
                                     ->default(0)
                                     ->disabled()
                                     ->dehydrated(false)
-                                    ->helperText('تُحتسب عند الاعتماد.'),
+                                    ->helperText('تُحتسب تلقائيًا عند الاعتماد.'),
                             ]),
                     ]),
 

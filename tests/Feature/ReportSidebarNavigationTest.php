@@ -50,8 +50,8 @@ class ReportSidebarNavigationTest extends TestCase
             "'التهيئة الأساسية'",
             "'المخزون'",
             "'التوزيع والأسطول'",
-            "'المبيعات والتحصيل'",
-            "'الإغلاق والمطابقة'",
+            "'التخطيط والتجهيز'",
+            "'المراجعة والاعتماد'",
         ] as $existingGroup) {
             $this->assertStringContainsString($existingGroup, $provider);
         }

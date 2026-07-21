@@ -1,0 +1,17 @@
+Phase 10 backend scope
+- vehicle load handover migration
+- per-item received quantities and notes
+- REST acknowledge endpoint
+- offline push acknowledge action
+- policy and resource exposure
+- inventory transfer responsibility unchanged
+- offline sync registry contract test aligned with registry version 4
+- sidebar preservation test aligned with current planning and review groups
+- vehicle load form simplified to product and quantity only
+- automatic FEFO batch allocation during approval
+- requested quantities split across multiple valid batches when necessary
+- expired batches excluded from automatic allocation
+- approval and cancellation preserve exact batch and expiry traceability
+- approve and cancel actions refresh the current Filament record immediately
+- totals, allocated batches, status and approver render without a manual browser reload
+- FEFO integration test verifies per-line costs and the 48 SYP aggregate fixture total

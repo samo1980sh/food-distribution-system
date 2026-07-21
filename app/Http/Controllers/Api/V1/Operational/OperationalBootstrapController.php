@@ -81,6 +81,9 @@ class OperationalBootstrapController extends Controller
                 'enabled' => true,
                 'idempotent_create' => true,
                 'client_reference_required' => true,
+                'vehicle_loads' => [
+                    'acknowledge' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+                ],
                 'sales_invoices' => $this->writeCapabilities($user, SalesInvoice::class, [
                     'confirm' => PermissionName::SALES_INVOICES_CONFIRM,
                     'cancel' => PermissionName::SALES_INVOICES_CANCEL,
