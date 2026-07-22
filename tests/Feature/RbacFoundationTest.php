@@ -142,6 +142,24 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::PRODUCTS_VIEW->value),
         );
+        $this->assertTrue(
+            $driver->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
+        );
+        $this->assertTrue(
+            $driver->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
+        );
+        $this->assertFalse(
+            $driver->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
+        );
+        $this->assertTrue(
+            $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
+        );
+        $this->assertTrue(
+            $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
+        );
+        $this->assertFalse(
+            $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
+        );
     }
 
     public function test_inactive_super_admin_is_denied_by_the_global_gate(): void

@@ -25,14 +25,25 @@ class DailyClosingController extends Controller
         'vehicle.warehouse',
         'route',
         'warehouse.vehicle',
+        'driver',
         'salesRepresentative',
+        'inventorySubmitter',
+        'cashSubmitter',
         'items.product.category',
         'items.product.unit',
     ];
 
     public function index(OperationalIndexRequest $request): JsonResponse
     {
-        $query = DailyClosing::query()->with(array_slice(self::RELATIONS, 0, 4));
+        $query = DailyClosing::query()->with([
+            'vehicle.warehouse',
+            'route',
+            'warehouse.vehicle',
+            'driver',
+            'salesRepresentative',
+            'inventorySubmitter',
+            'cashSubmitter',
+        ]);
         $this->applySearch($query, $request, ['closing_number', 'client_reference', 'notes']);
         $query->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status));
         $this->applyDateRange($query, $request, 'closing_date');

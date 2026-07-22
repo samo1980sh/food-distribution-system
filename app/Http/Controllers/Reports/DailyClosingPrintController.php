@@ -23,7 +23,10 @@ class DailyClosingPrintController extends Controller
             'warehouse',
             'vehicle',
             'route',
+            'driver',
             'salesRepresentative',
+            'inventorySubmitter',
+            'cashSubmitter',
             'items.product',
         ]);
 

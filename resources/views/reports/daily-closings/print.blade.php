@@ -387,8 +387,18 @@
                 </div>
 
                 <div class="meta-item">
+                    <span>السائق</span>
+                    <strong>{{ $dailyClosing->driver?->name ?? '-' }}</strong>
+                </div>
+
+                <div class="meta-item">
                     <span>مندوب المبيعات</span>
                     <strong>{{ $dailyClosing->salesRepresentative?->name ?? '-' }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>مسار الإغلاق</span>
+                    <strong>{{ $dailyClosing->field_workflow ? 'تسليم ميداني' : 'إغلاق إداري' }}</strong>
                 </div>
 
                 <div class="meta-item">
@@ -518,6 +528,31 @@
                     <strong>{{ $money($dailyClosing->cash_difference) }}</strong>
                 </div>
             </div>
+
+            @if ($dailyClosing->field_workflow)
+                <div class="meta-grid" style="margin-top: 14px;">
+                    <div class="meta-item">
+                        <span>تسليم جرد السيارة</span>
+                        <strong>{{ $dailyClosing->inventory_submitted_at?->format('Y-m-d H:i') ?? 'بانتظار السائق' }}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>سلّم الجرد</span>
+                        <strong>{{ $dailyClosing->inventorySubmitter?->name ?? '-' }}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>تسليم النقد</span>
+                        <strong>{{ $dailyClosing->cash_submitted_at?->format('Y-m-d H:i') ?? 'بانتظار المندوب' }}</strong>
+                    </div>
+                    <div class="meta-item">
+                        <span>سلّم النقد</span>
+                        <strong>{{ $dailyClosing->cashSubmitter?->name ?? '-' }}</strong>
+                    </div>
+                    <div class="meta-item" style="grid-column: 1 / -1;">
+                        <span>تفسير فرق الصندوق</span>
+                        <strong>{{ $dailyClosing->cash_notes ?: '-' }}</strong>
+                    </div>
+                </div>
+            @endif
         </section>
 
         <section class="section">

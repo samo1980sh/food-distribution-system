@@ -68,6 +68,18 @@ class DailyClosingsTable
                     ->weight('bold')
                     ->color(fn (mixed $state): string => abs((float) $state) < 0.005 ? 'success' : 'warning'),
 
+                TextColumn::make('field_handover_status')
+                    ->label('التسليم الميداني')
+                    ->state(fn (DailyClosing $record): string => ! $record->isFieldWorkflow()
+                        ? 'غير مطلوب'
+                        : ($record->fieldHandoverComplete() ? 'مكتمل' : 'غير مكتمل'))
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'مكتمل' => 'success',
+                        'غير مكتمل' => 'warning',
+                        default => 'gray',
+                    }),
+
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
@@ -86,6 +98,12 @@ class DailyClosingsTable
 
                 TextColumn::make('route.name')
                     ->label('خط التوزيع')
+                    ->searchable()
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('driver.name')
+                    ->label('السائق')
                     ->searchable()
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -170,6 +188,13 @@ class DailyClosingsTable
                 SelectFilter::make('operation_source')
                     ->label('مصدر العملية')
                     ->options(OperationSource::options()),
+
+                SelectFilter::make('field_workflow')
+                    ->label('مسار الإغلاق')
+                    ->options([
+                        '1' => 'تسليم ميداني',
+                        '0' => 'إغلاق إداري',
+                    ]),
 
                 SelectFilter::make('status')
                     ->label('الحالة')

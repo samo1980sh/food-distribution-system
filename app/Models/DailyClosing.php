@@ -21,6 +21,8 @@ class DailyClosing extends Model
         'route_id',
         'warehouse_id',
         'sales_representative_id',
+        'field_workflow',
+        'driver_id',
         'status',
         'total_opening_quantity',
         'total_movement_in_quantity',
@@ -46,6 +48,11 @@ class DailyClosing extends Model
         'cash_difference',
         'snapshot_at',
         'notes',
+        'inventory_submitted_by',
+        'inventory_submitted_at',
+        'cash_notes',
+        'cash_submitted_by',
+        'cash_submitted_at',
         'created_by',
         'client_reference',
         'client_payload_hash',
@@ -58,6 +65,7 @@ class DailyClosing extends Model
     protected $casts = [
         'operation_source' => OperationSource::class,
         'closing_date' => 'date',
+        'field_workflow' => 'boolean',
         'total_opening_quantity' => 'decimal:3',
         'total_movement_in_quantity' => 'decimal:3',
         'total_movement_out_quantity' => 'decimal:3',
@@ -81,6 +89,8 @@ class DailyClosing extends Model
         'actual_cash_amount' => 'decimal:2',
         'cash_difference' => 'decimal:2',
         'snapshot_at' => 'datetime',
+        'inventory_submitted_at' => 'datetime',
+        'cash_submitted_at' => 'datetime',
         'confirmed_at' => 'datetime',
     ];
 
@@ -162,6 +172,21 @@ class DailyClosing extends Model
         return $this->belongsTo(Employee::class, 'sales_representative_id');
     }
 
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'driver_id');
+    }
+
+    public function inventorySubmitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'inventory_submitted_by');
+    }
+
+    public function cashSubmitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cash_submitted_by');
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -180,5 +205,25 @@ class DailyClosing extends Model
     public function isConfirmed(): bool
     {
         return $this->status === 'confirmed';
+    }
+
+    public function isFieldWorkflow(): bool
+    {
+        return (bool) $this->field_workflow;
+    }
+
+    public function inventorySubmitted(): bool
+    {
+        return $this->inventory_submitted_at !== null;
+    }
+
+    public function cashSubmitted(): bool
+    {
+        return $this->cash_submitted_at !== null;
+    }
+
+    public function fieldHandoverComplete(): bool
+    {
+        return $this->inventorySubmitted() && $this->cashSubmitted();
     }
 }

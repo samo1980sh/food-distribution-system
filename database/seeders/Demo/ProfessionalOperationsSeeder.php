@@ -573,8 +573,8 @@ class ProfessionalOperationsSeeder extends Seeder
             ['route' => 'RT-DAM-C', 'days' => -10, 'variance' => 5000, 'stock_variance' => 0],
             ['route' => 'RT-DAM-S', 'days' => -4, 'variance' => 0, 'stock_variance' => 1],
             ['route' => 'RT-RIF-E', 'days' => -3, 'variance' => -3000, 'stock_variance' => 0],
-            ['route' => 'RT-DAM-C', 'days' => 0, 'variance' => 0, 'stock_variance' => 0],
-            ['route' => 'RT-RIF-E', 'days' => 0, 'variance' => 2000, 'stock_variance' => 0],
+            ['route' => 'RT-DAM-C', 'days' => -1, 'variance' => 0, 'stock_variance' => 0],
+            ['route' => 'RT-RIF-E', 'days' => -2, 'variance' => 2000, 'stock_variance' => 0],
         ];
 
         foreach ($plans as $plan) {
@@ -594,6 +594,7 @@ class ProfessionalOperationsSeeder extends Seeder
             'vehicle_id' => $route->vehicle_id,
             'route_id' => $route->id,
             'warehouse_id' => $warehouse->id,
+            'driver_id' => $route->driver_id,
             'sales_representative_id' => $route->sales_representative_id,
             'status' => 'draft',
             'actual_cash_amount' => 0,
@@ -617,6 +618,7 @@ class ProfessionalOperationsSeeder extends Seeder
             'vehicle_id' => $route->vehicle_id,
             'route_id' => $route->id,
             'warehouse_id' => $warehouse->id,
+            'driver_id' => $route->driver_id,
             'sales_representative_id' => $route->sales_representative_id,
             'status' => 'draft',
             'actual_cash_amount' => 0,

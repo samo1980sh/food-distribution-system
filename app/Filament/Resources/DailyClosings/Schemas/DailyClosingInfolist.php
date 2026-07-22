@@ -36,15 +36,47 @@ class DailyClosingInfolist
                             ->formatStateUsing(fn (?string $state): string => self::statusLabel($state))
                             ->color(fn (?string $state): string => self::statusColor($state)),
                         TextEntry::make('closing_date')->label('تاريخ الإغلاق')->date('Y-m-d'),
+                        TextEntry::make('field_workflow')
+                            ->label('مسار الإغلاق')
+                            ->badge()
+                            ->formatStateUsing(fn (bool $state): string => $state ? 'تسليم ميداني' : 'إغلاق إداري')
+                            ->color(fn (bool $state): string => $state ? 'info' : 'gray'),
                         TextEntry::make('snapshot_at')->label('تثبيت اللقطة')->dateTime('Y-m-d H:i')->placeholder('-'),
                         TextEntry::make('warehouse.name')->label('المستودع'),
                         TextEntry::make('vehicle.plate_number')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
+                        TextEntry::make('driver.name')->label('السائق')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),
                         TextEntry::make('creator.name')->label('أنشأه')->placeholder('-'),
                         TextEntry::make('confirmer.name')->label('اعتمده')->placeholder('-'),
                         TextEntry::make('confirmed_at')->label('تاريخ الاعتماد')->dateTime('Y-m-d H:i')->placeholder('-'),
                         TextEntry::make('updated_at')->label('آخر تحديث')->dateTime('Y-m-d H:i'),
+                    ]),
+
+
+                Section::make('حالة التسليم الميداني')
+                    ->description('يعتمد الإغلاق الميداني بعد أن يسلّم السائق الجرد ويسلّم مندوب المبيعات النقد.')
+                    ->icon('heroicon-o-device-phone-mobile')
+                    ->columns(4)
+                    ->columnSpanFull()
+                    ->visible(fn (DailyClosing $record): bool => $record->isFieldWorkflow())
+                    ->schema([
+                        TextEntry::make('inventory_submitted_at')
+                            ->label('تسليم جرد السيارة')
+                            ->badge()
+                            ->formatStateUsing(fn (mixed $state): string => $state ? 'تم التسليم' : 'بانتظار السائق')
+                            ->color(fn (mixed $state): string => $state ? 'success' : 'warning'),
+                        TextEntry::make('inventorySubmitter.name')
+                            ->label('سلّمه')
+                            ->placeholder('-'),
+                        TextEntry::make('cash_submitted_at')
+                            ->label('تسليم النقد')
+                            ->badge()
+                            ->formatStateUsing(fn (mixed $state): string => $state ? 'تم التسليم' : 'بانتظار المندوب')
+                            ->color(fn (mixed $state): string => $state ? 'success' : 'warning'),
+                        TextEntry::make('cashSubmitter.name')
+                            ->label('سلّمه')
+                            ->placeholder('-'),
                     ]),
 
                 Section::make('مطابقة المخزون الدفتري')
@@ -141,6 +173,10 @@ class DailyClosingInfolist
                             ->money('SYP')
                             ->weight('bold')
                             ->color(fn (mixed $state): string => self::differenceColor($state)),
+                        TextEntry::make('cash_notes')
+                            ->label('تفسير فرق الصندوق')
+                            ->placeholder('لا توجد ملاحظة')
+                            ->columnSpanFull(),
                     ]),
 
                 Section::make('تفاصيل جرد المواد')

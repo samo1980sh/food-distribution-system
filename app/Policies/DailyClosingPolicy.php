@@ -25,10 +25,16 @@ class DailyClosingPolicy extends PermissionPolicy
         return $this->allows($user, PermissionName::DAILY_CLOSINGS_CREATE_OFFICE);
     }
 
+    public function openField(User $user): bool
+    {
+        return $this->allows($user, PermissionName::DAILY_CLOSINGS_OPEN_FIELD);
+    }
+
     public function update(User $user, Model $record): bool
     {
         return $record instanceof DailyClosing
             && $record->isDraft()
+            && ! $record->isFieldWorkflow()
             && parent::update($user, $record);
     }
 
@@ -37,6 +43,36 @@ class DailyClosingPolicy extends PermissionPolicy
         return $record instanceof DailyClosing
             && $record->isDraft()
             && parent::delete($user, $record);
+    }
+
+    public function submitInventory(User $user, DailyClosing $record): bool
+    {
+        $employeeId = $user->employee()->value('id');
+
+        return $employeeId !== null
+            && $record->isFieldWorkflow()
+            && $record->isDraft()
+            && (int) $record->driver_id === (int) $employeeId
+            && $this->allowsMutation(
+                $user,
+                $record,
+                PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY,
+            );
+    }
+
+    public function submitCash(User $user, DailyClosing $record): bool
+    {
+        $employeeId = $user->employee()->value('id');
+
+        return $employeeId !== null
+            && $record->isFieldWorkflow()
+            && $record->isDraft()
+            && (int) $record->sales_representative_id === (int) $employeeId
+            && $this->allowsMutation(
+                $user,
+                $record,
+                PermissionName::DAILY_CLOSINGS_SUBMIT_CASH,
+            );
     }
 
     public function refreshTotals(User $user, DailyClosing $record): bool
@@ -48,6 +84,7 @@ class DailyClosingPolicy extends PermissionPolicy
     public function confirm(User $user, DailyClosing $record): bool
     {
         return $record->isDraft()
+            && (! $record->isFieldWorkflow() || $record->fieldHandoverComplete())
             && $this->allowsMutation($user, $record, PermissionName::DAILY_CLOSINGS_CONFIRM);
     }
 

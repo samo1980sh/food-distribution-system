@@ -461,6 +461,54 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/ValidationError' }
 
+  /operational/daily-closings/open-today:
+    post:
+      summary: Open or load the shared field daily closing for today
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenDailyClosingField' }
+      responses:
+        '201': { description: Field closing draft created }
+        '200': { description: Existing field closing loaded }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/daily-closings/{dailyClosing}/submit-inventory:
+    post:
+      summary: Submit vehicle inventory by the responsible driver
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitDailyClosingInventory' }
+      responses:
+        '200': { description: Inventory handover submitted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /operational/daily-closings/{dailyClosing}/submit-cash:
+    post:
+      summary: Submit actual cash by the responsible sales representative
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitDailyClosingCash' }
+      responses:
+        '200': { description: Cash handover submitted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
   /operational/daily-closings:
     get:
       summary: List scoped daily closings
@@ -966,6 +1014,31 @@ components:
       required: [reason]
       properties:
         reason: { type: string, maxLength: 2000 }
+    OpenDailyClosingField:
+      type: object
+      properties:
+        route_id: { $ref: '#/components/schemas/NullableId' }
+    SubmitDailyClosingInventoryItem:
+      type: object
+      required: [product_id, actual_quantity]
+      properties:
+        product_id: { type: integer }
+        actual_quantity: { type: number, minimum: 0 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+    SubmitDailyClosingInventory:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/SubmitDailyClosingInventoryItem' }
+    SubmitDailyClosingCash:
+      type: object
+      required: [actual_cash_amount]
+      properties:
+        actual_cash_amount: { $ref: '#/components/schemas/Money' }
+        cash_notes: { type: [string, 'null'], maxLength: 2000 }
     DailyClosingItemInput:
       type: object
       required: [product_id]

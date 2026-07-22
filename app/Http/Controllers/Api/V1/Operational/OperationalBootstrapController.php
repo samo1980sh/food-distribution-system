@@ -100,11 +100,16 @@ class OperationalBootstrapController extends Controller
                     'approve' => PermissionName::VEHICLE_EXPENSES_APPROVE,
                     'reject' => PermissionName::VEHICLE_EXPENSES_REJECT,
                 ]),
-                'daily_closings' => $this->writeCapabilities($user, DailyClosing::class, [
-                    'refresh_totals' => PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS,
-                    'confirm' => PermissionName::DAILY_CLOSINGS_CONFIRM,
-                    'cancel' => PermissionName::DAILY_CLOSINGS_CANCEL,
-                ]),
+                'daily_closings' => [
+                    ...$this->writeCapabilities($user, DailyClosing::class, [
+                        'refresh_totals' => PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS,
+                        'confirm' => PermissionName::DAILY_CLOSINGS_CONFIRM,
+                        'cancel' => PermissionName::DAILY_CLOSINGS_CANCEL,
+                    ]),
+                    'open_today' => $user->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
+                    'submit_inventory' => $user->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
+                    'submit_cash' => $user->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
+                ],
             ],
             'sync' => [
                 'server_time' => now()->toIso8601String(),

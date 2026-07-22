@@ -574,11 +574,16 @@ class AccessScopeService
         }
 
         return match ($table) {
-            'sales_invoices', 'sales_returns', 'customer_payments',
+            'sales_invoices', 'sales_returns', 'customer_payments' => [
+                'route_id' => $scope->routeIds,
+                'vehicle_id' => $scope->vehicleIds,
+                'sales_representative_id' => $scope->employeeIds,
+            ],
             'daily_closings' => [
                 'route_id' => $scope->routeIds,
                 'vehicle_id' => $scope->vehicleIds,
                 'sales_representative_id' => $scope->employeeIds,
+                'driver_id' => $scope->employeeIds,
             ],
             'vehicle_expenses', 'vehicle_loads' => [
                 'route_id' => $scope->routeIds,

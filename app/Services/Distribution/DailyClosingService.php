@@ -198,6 +198,10 @@ class DailyClosingService
                 throw new RuntimeException('لا يمكن اعتماد إغلاق يوم ليس بحالة مسودة.');
             }
 
+            if ($closing->isFieldWorkflow() && ! $closing->fieldHandoverComplete()) {
+                throw new RuntimeException('لا يمكن اعتماد الإغلاق الميداني قبل تسليم جرد السيارة والنقد من المسؤولين عنهما.');
+            }
+
             $closing = $this->refreshTotals($closing);
 
             $missingActuals = $closing->items()
@@ -206,6 +210,23 @@ class DailyClosingService
 
             if ($missingActuals) {
                 throw new RuntimeException('يجب إدخال الجرد الفعلي لجميع مواد الإغلاق قبل الاعتماد.');
+            }
+
+            if ($closing->isFieldWorkflow()) {
+                $unexplainedInventoryDifference = $closing->items()
+                    ->whereRaw('ABS(difference_quantity) >= 0.0005')
+                    ->where(function ($query): void {
+                        $query->whereNull('notes')->orWhere('notes', '');
+                    })
+                    ->exists();
+
+                if ($unexplainedInventoryDifference) {
+                    throw new RuntimeException('يوجد فرق جرد غير مفسر. يجب أن يعيد السائق تسليم الجرد مع توضيح الفروقات.');
+                }
+
+                if (abs((float) $closing->cash_difference) >= 0.005 && blank($closing->cash_notes)) {
+                    throw new RuntimeException('يوجد فرق صندوق غير مفسر. يجب أن يعيد مندوب المبيعات تسليم النقد مع توضيح الفرق.');
+                }
             }
 
             $closing->forceFill([

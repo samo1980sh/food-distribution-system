@@ -23,14 +23,14 @@ class DailyClosingForm
         return $schema
             ->columns(2)
             ->components([
-                Section::make('إغلاق إداري مؤقت')
-                    ->description('يبقى إنشاء الإغلاق من لوحة الإدارة مؤقتًا إلى أن تكتمل مساحة الإغلاق الميداني في التطبيق. تتم المراجعة والاعتماد من هنا.')
+                Section::make('إغلاق إداري مكتبي')
+                    ->description('يُستخدم هذا المسار للحالات المكتبية الاستثنائية فقط. أما الإغلاق الميداني فينشأ من التطبيق ويُراجع ويُعتمد من لوحة الإدارة.')
                     ->icon('heroicon-o-building-office-2')
                     ->columnSpanFull()
                     ->schema([
                         Textarea::make('administrative_reason')
                             ->label('بيان إنشاء الإغلاق')
-                            ->default('إغلاق إداري مؤقت من لوحة الإدارة')
+                            ->default('إغلاق إداري مكتبي استثنائي من لوحة الإدارة')
                             ->required(fn (string $operation): bool => $operation === 'create')
                             ->minLength(5)
                             ->maxLength(2000)

@@ -174,6 +174,11 @@ class MobileOperationalService
                 'sales_returns' => $user->can(PermissionName::SALES_RETURNS_CREATE->value),
                 'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
                 'vehicle_load_handover' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+                'daily_closings' => [
+                    'open_today' => $user->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
+                    'submit_inventory' => $user->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
+                    'submit_cash' => $user->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
+                ],
             ],
             'financial_fields' => $user->can(PermissionName::DASHBOARD_FINANCIAL->value),
             'cost_fields' => $user->can(PermissionName::REPORT_PROFIT->value),

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Operational\CustomerController;
 use App\Http\Controllers\Api\V1\Operational\CustomerPaymentController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingController;
+use App\Http\Controllers\Api\V1\Operational\DailyClosingFieldHandoverController;
 use App\Http\Controllers\Api\V1\Operational\MobileSyncController;
 use App\Http\Controllers\Api\V1\Operational\OperationalBootstrapController;
 use App\Http\Controllers\Api\V1\Operational\ProductController;
@@ -155,6 +156,13 @@ Route::prefix('v1')
                         ->name('vehicle-expenses.approve');
                     Route::post('/vehicle-expenses/{vehicleExpense}/reject', [VehicleExpenseController::class, 'reject'])
                         ->name('vehicle-expenses.reject');
+
+                    Route::post('/daily-closings/open-today', [DailyClosingFieldHandoverController::class, 'openToday'])
+                        ->name('daily-closings.open-today');
+                    Route::post('/daily-closings/{dailyClosing}/submit-inventory', [DailyClosingFieldHandoverController::class, 'submitInventory'])
+                        ->name('daily-closings.submit-inventory');
+                    Route::post('/daily-closings/{dailyClosing}/submit-cash', [DailyClosingFieldHandoverController::class, 'submitCash'])
+                        ->name('daily-closings.submit-cash');
 
                     Route::post('/daily-closings', [DailyClosingController::class, 'store'])
                         ->name('daily-closings.store');

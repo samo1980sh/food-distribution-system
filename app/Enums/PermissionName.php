@@ -115,6 +115,9 @@ enum PermissionName: string
     case DAILY_CLOSINGS_VIEW = 'daily_closings.view';
     case DAILY_CLOSINGS_CREATE = 'daily_closings.create';
     case DAILY_CLOSINGS_CREATE_OFFICE = 'daily_closings.create_office';
+    case DAILY_CLOSINGS_OPEN_FIELD = 'daily_closings.open_field';
+    case DAILY_CLOSINGS_SUBMIT_INVENTORY = 'daily_closings.submit_inventory';
+    case DAILY_CLOSINGS_SUBMIT_CASH = 'daily_closings.submit_cash';
     case DAILY_CLOSINGS_UPDATE = 'daily_closings.update';
     case DAILY_CLOSINGS_DELETE = 'daily_closings.delete';
     case DAILY_CLOSINGS_REFRESH_TOTALS = 'daily_closings.refresh_totals';

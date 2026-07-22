@@ -65,6 +65,7 @@ final class OperationalContextValidator
                 'vehicle_id',
                 'route_id',
                 'warehouse_id',
+                'driver_id',
                 'sales_representative_id',
             ],
             default => [],
@@ -377,10 +378,17 @@ final class OperationalContextValidator
 
         $this->assertWarehouseVehicle($warehouse, $closing->vehicle_id);
         $this->assertRouteVehicle($route, $closing->vehicle_id, requireWhenAssigned: true);
+        $this->assertRouteDriver($route, $closing->driver_id);
         $this->assertRouteRepresentative(
             $route,
             $closing->sales_representative_id,
             requireWhenAssigned: false,
+        );
+        $this->assertEmployeeRole(
+            $closing->driver_id,
+            UserRole::DRIVER,
+            'driver_id',
+            'الموظف المحدد غير مؤهل للعمل كسائق.',
         );
         $this->assertEmployeeRole(
             $closing->sales_representative_id,
