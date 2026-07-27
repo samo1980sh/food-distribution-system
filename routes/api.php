@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Operational\CustomerController;
 use App\Http\Controllers\Api\V1\Operational\CustomerPaymentController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingFieldHandoverController;
+use App\Http\Controllers\Api\V1\Operational\FieldTodayController;
 use App\Http\Controllers\Api\V1\Operational\MobileSyncController;
 use App\Http\Controllers\Api\V1\Operational\OperationalBootstrapController;
 use App\Http\Controllers\Api\V1\Operational\ProductController;
@@ -57,6 +58,9 @@ Route::prefix('v1')
                 ->group(function (): void {
                     Route::get('/bootstrap', OperationalBootstrapController::class)
                         ->name('bootstrap');
+
+                    Route::get('/today', FieldTodayController::class)
+                        ->name('today');
 
                     Route::get('/sync/status', [MobileSyncController::class, 'status'])
                         ->name('sync.status');

@@ -5,11 +5,8 @@ namespace App\Services\Distribution;
 use App\Enums\OperationSource;
 use App\Enums\UserRole;
 use App\Models\DailyClosing;
-use App\Models\DistributionRoute;
 use App\Models\User;
 use App\Models\Warehouse;
-use App\Services\Authorization\AccessScopeService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -18,7 +15,7 @@ class DailyClosingFieldHandoverService
 {
     public function __construct(
         private readonly DailyClosingService $dailyClosingService,
-        private readonly AccessScopeService $accessScopeService,
+        private readonly FieldRouteAssignmentResolver $routeAssignmentResolver,
     ) {
     }
 
@@ -31,7 +28,10 @@ class DailyClosingFieldHandoverService
                 throw new RuntimeException('يجب ربط حساب المستخدم بموظف ميداني قبل فتح إغلاق اليوم.');
             }
 
-            $route = $this->resolveRoute($user, (int) $employeeId, $routeId);
+            $route = $this->routeAssignmentResolver->resolveForClosing(
+                $user,
+                $routeId,
+            );
             $vehicle = $route->vehicle;
 
             if ($vehicle === null || $vehicle->status !== 'active') {
@@ -201,53 +201,6 @@ class DailyClosingFieldHandoverService
 
             return $closing->refresh()->load($this->relations());
         });
-    }
-
-    private function resolveRoute(
-        User $user,
-        int $employeeId,
-        ?int $routeId,
-    ): DistributionRoute {
-        $query = DistributionRoute::withoutGlobalScopes()
-            ->with(['vehicle'])
-            ->where('status', 'active')
-            ->where(function (Builder $query) use ($user, $employeeId): void {
-                $hasCondition = false;
-
-                if ($user->hasRole(UserRole::DRIVER->value)) {
-                    $query->where('driver_id', $employeeId);
-                    $hasCondition = true;
-                }
-
-                if ($user->hasRole(UserRole::SALES_REPRESENTATIVE->value)) {
-                    $method = $hasCondition ? 'orWhere' : 'where';
-                    $query->{$method}('sales_representative_id', $employeeId);
-                }
-            });
-
-        $this->accessScopeService->apply($query, $user);
-
-        if ($routeId !== null) {
-            $route = $query->whereKey($routeId)->first();
-
-            if ($route === null) {
-                throw new RuntimeException('خط التوزيع المحدد غير متاح لهذا المستخدم.');
-            }
-
-            return $route;
-        }
-
-        $routes = $query->orderBy('id')->limit(2)->get();
-
-        if ($routes->isEmpty()) {
-            throw new RuntimeException('لا يوجد خط توزيع فعّال مخصص لهذا المستخدم.');
-        }
-
-        if ($routes->count() > 1) {
-            throw new RuntimeException('يوجد أكثر من خط متاح. يجب تحديد خط التوزيع لفتح إغلاق اليوم.');
-        }
-
-        return $routes->first();
     }
 
     private function ensureFieldDraft(DailyClosing $closing): void
