@@ -35,8 +35,19 @@ class VehicleLoadController extends Controller
             ->withCount('items')
             ->withCount([
                 'items as different_items_count' => fn ($query) => $query
-                    ->whereNotNull('received_quantity')
-                    ->whereColumn('received_quantity', '<>', 'quantity'),
+                    ->where(function ($query): void {
+                        $query
+                            ->where(function ($query): void {
+                                $query
+                                    ->whereNotNull('received_quantity')
+                                    ->whereColumn('received_quantity', '<>', 'quantity');
+                            })
+                            ->orWhere(function ($query): void {
+                                $query
+                                    ->whereNotNull('handover_note')
+                                    ->where('handover_note', '<>', '');
+                            });
+                    }),
             ]);
         $this->applySearch($query, $request, ['load_number', 'notes']);
         $query->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status));
@@ -72,8 +83,19 @@ class VehicleLoadController extends Controller
         ])->loadCount([
             'items',
             'items as different_items_count' => fn ($query) => $query
-                ->whereNotNull('received_quantity')
-                ->whereColumn('received_quantity', '<>', 'quantity'),
+                ->where(function ($query): void {
+                    $query
+                        ->where(function ($query): void {
+                            $query
+                                ->whereNotNull('received_quantity')
+                                ->whereColumn('received_quantity', '<>', 'quantity');
+                        })
+                        ->orWhere(function ($query): void {
+                            $query
+                                ->whereNotNull('handover_note')
+                                ->where('handover_note', '<>', '');
+                        });
+                }),
         ]);
 
         return ApiResponse::success(

@@ -36,34 +36,57 @@ class VehicleLoadHandoverService
                 throw new RuntimeException('يجب إرسال نتيجة استلام لكل بند من بنود أمر التحميل.');
             }
 
-            $hasDifference = false;
+            $hasDiscrepancy = false;
 
             /** @var VehicleLoadItem $item */
             foreach ($vehicleLoad->items as $item) {
                 $itemData = (array) $submitted->get((int) $item->id);
                 $received = round((float) $itemData['received_quantity'], 3);
                 $loaded = round((float) $item->quantity, 3);
-                $different = abs($received - $loaded) > 0.0005;
-                $hasDifference = $hasDifference || $different;
+                $note = trim((string) Arr::get($itemData, 'note', ''));
+                $quantityDifferent = abs($received - $loaded) > 0.0005;
+                $documentedIssue = $note !== '';
+
+                if ($quantityDifferent && ! $documentedIssue) {
+                    throw new RuntimeException(
+                        'كل بند يحتوي فرقاً في الكمية يحتاج إلى ملاحظة توضيحية.',
+                    );
+                }
+
+                $hasDiscrepancy = $hasDiscrepancy
+                    || $quantityDifferent
+                    || $documentedIssue;
 
                 $item->forceFill([
                     'received_quantity' => $received,
-                    'handover_note' => Arr::get($itemData, 'note'),
+                    'handover_note' => $documentedIssue ? $note : null,
                 ])->saveQuietly();
             }
 
             $status = (string) $data['handover_status'];
-            if ($status === 'received' && $hasDifference) {
-                throw new RuntimeException('لا يمكن تسجيل الاستلام الكامل مع وجود فروقات في الكميات.');
+            $handoverNotes = trim((string) ($data['notes'] ?? ''));
+
+            if ($status === 'received' && $hasDiscrepancy) {
+                throw new RuntimeException(
+                    'لا يمكن تسجيل الاستلام الكامل مع وجود فروقات أو ملاحظات على البنود.',
+                );
             }
 
-            if ($status === 'discrepancy' && ! $hasDifference && blank($data['notes'] ?? null)) {
-                throw new RuntimeException('حالة وجود فروقات تتطلب فرقاً فعلياً أو ملاحظة توضيحية.');
+            if ($status === 'discrepancy' && ! $hasDiscrepancy) {
+                throw new RuntimeException(
+                    'حالة وجود فروقات تتطلب فرقاً فعلياً أو ملاحظة موثقة على أحد البنود.',
+                );
+            }
+
+            if ($status === 'discrepancy' && $handoverNotes === '') {
+                throw new RuntimeException(
+                    'حالة وجود فروقات تتطلب ملاحظة عامة تلخص نتيجة الاستلام.',
+                );
             }
 
             $vehicleLoad->forceFill([
                 'handover_status' => $status,
-                'handover_notes' => $data['notes'] ?? null,
+                'handover_notes' => $handoverNotes !== '' ? $handoverNotes : null,
                 'handover_by' => Auth::id(),
                 'handover_at' => now(),
             ])->save();

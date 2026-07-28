@@ -104,6 +104,10 @@ class VehicleLoadResource extends OperationalResource
         }
 
         return $this->items->filter(function ($item): bool {
+            if (filled($item->handover_note)) {
+                return true;
+            }
+
             if ($item->received_quantity === null) {
                 return false;
             }
