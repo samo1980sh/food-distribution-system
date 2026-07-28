@@ -31,4 +31,22 @@ class DailyClosingFieldHandoverContractTest extends TestCase
         $this->assertStringNotContainsString("'submitted'", $service);
         $this->assertStringNotContainsString("'submitted'", $closingService);
     }
+    public function test_field_handover_exposes_sync_versions_and_batch_section_actions(): void
+    {
+        $fieldController = file_get_contents(app_path('Http/Controllers/Api/V1/Operational/DailyClosingFieldHandoverController.php'));
+        $recordController = file_get_contents(app_path('Http/Controllers/Api/V1/Operational/DailyClosingController.php'));
+        $registry = file_get_contents(app_path('Support/Api/MobileSyncPushRegistry.php'));
+        $operationService = file_get_contents(app_path('Services/Api/MobileSyncPushOperationService.php'));
+        $policy = file_get_contents(app_path('Policies/DailyClosingPolicy.php'));
+
+        $this->assertStringContainsString("'sync_version'", $fieldController);
+        $this->assertStringContainsString("'sync_version'", $recordController);
+        $this->assertStringContainsString("'submit_inventory'", $registry);
+        $this->assertStringContainsString("'submit_cash'", $registry);
+        $this->assertStringContainsString('DailyClosingFieldHandoverService', $operationService);
+        $this->assertStringContainsString('independent, one-time sections', $operationService);
+        $this->assertStringContainsString('! $record->inventorySubmitted()', $policy);
+        $this->assertStringContainsString('! $record->cashSubmitted()', $policy);
+    }
+
 }

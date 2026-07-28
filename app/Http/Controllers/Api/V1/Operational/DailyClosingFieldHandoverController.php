@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingInventoryRequest;
 use App\Http\Resources\Api\V1\Operational\DailyClosingResource;
 use App\Models\DailyClosing;
+use App\Services\Api\MobileSyncVersionService;
 use App\Services\Distribution\DailyClosingFieldHandoverService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -33,8 +34,9 @@ class DailyClosingFieldHandoverController extends Controller
     public function openToday(
         OpenDailyClosingFieldRequest $request,
         DailyClosingFieldHandoverService $service,
+        MobileSyncVersionService $versionService,
     ): JsonResponse {
-        return $this->handleOperationalWrite(function () use ($request, $service): JsonResponse {
+        return $this->handleOperationalWrite(function () use ($request, $service, $versionService): JsonResponse {
             $closing = $service->openToday(
                 $request->user(),
                 $request->validated('route_id'),
@@ -47,6 +49,7 @@ class DailyClosingFieldHandoverController extends Controller
                     ? 'تم فتح مسودة إغلاق اليوم وحساب ملخصها.'
                     : 'تم تحميل إغلاق اليوم الحالي.',
                 $closing->wasRecentlyCreated ? 201 : 200,
+                $versionService,
             );
         });
     }
@@ -55,6 +58,7 @@ class DailyClosingFieldHandoverController extends Controller
         SubmitDailyClosingInventoryRequest $request,
         DailyClosing $dailyClosing,
         DailyClosingFieldHandoverService $service,
+        MobileSyncVersionService $versionService,
     ): JsonResponse {
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
@@ -64,6 +68,7 @@ class DailyClosingFieldHandoverController extends Controller
                 $request->validated(),
             ),
             'تم تسليم جرد السيارة للإدارة.',
+            versionService: $versionService,
         ));
     }
 
@@ -71,6 +76,7 @@ class DailyClosingFieldHandoverController extends Controller
         SubmitDailyClosingCashRequest $request,
         DailyClosing $dailyClosing,
         DailyClosingFieldHandoverService $service,
+        MobileSyncVersionService $versionService,
     ): JsonResponse {
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
@@ -80,6 +86,7 @@ class DailyClosingFieldHandoverController extends Controller
                 $request->validated(),
             ),
             'تم تسليم النقد للإدارة.',
+            versionService: $versionService,
         ));
     }
 
@@ -88,11 +95,20 @@ class DailyClosingFieldHandoverController extends Controller
         DailyClosing $closing,
         string $message,
         int $status = 200,
+        ?MobileSyncVersionService $versionService = null,
     ): JsonResponse {
         $closing->loadMissing(self::RELATIONS);
 
+        $versionService ??= app(MobileSyncVersionService::class);
+
         return ApiResponse::success(
-            DailyClosingResource::make($closing)->resolve($request),
+            [
+                ...DailyClosingResource::make($closing)->resolve($request),
+                'sync_version' => $versionService->forRecord(
+                    'daily_closings',
+                    $closing,
+                ),
+            ],
             $message,
             $status,
         );

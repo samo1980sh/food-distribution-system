@@ -3,10 +3,13 @@
 namespace App\Services\Api;
 
 use App\Exceptions\Api\OperationalApiException;
+use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
+use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingInventoryRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseRejectRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\MobileSyncPushOperation;
 use App\Models\User;
+use App\Services\Distribution\DailyClosingFieldHandoverService;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\VehicleExpenseService;
 use App\Services\Distribution\VehicleLoadHandoverService;
@@ -36,6 +39,7 @@ class MobileSyncPushOperationService
         private readonly SalesReturnService $salesReturnService,
         private readonly VehicleExpenseService $vehicleExpenseService,
         private readonly VehicleLoadHandoverService $vehicleLoadHandoverService,
+        private readonly DailyClosingFieldHandoverService $dailyClosingFieldHandoverService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly MobileSyncVersionService $versionService,
     ) {
@@ -316,6 +320,26 @@ class MobileSyncPushOperationService
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
             $this->requestValidator->authorize($formRequest);
             $payload = $this->requestValidator->validate($formRequest);
+        } elseif ($entity === 'daily_closings'
+            && in_array($action, ['submit_inventory', 'submit_cash'], true)) {
+            $requestClass = $action === 'submit_inventory'
+                ? SubmitDailyClosingInventoryRequest::class
+                : SubmitDailyClosingCashRequest::class;
+            $formRequest = $this->requestValidator->make(
+                $requestClass,
+                'POST',
+                $payload,
+                $user,
+                ['dailyClosing' => $record],
+            );
+            Gate::forUser($user)->authorize('view', $record);
+
+            // Inventory and cash are independent, one-time sections on a
+            // shared closing. A version change caused only by the other
+            // section is mergeable. The field service refreshes server
+            // totals and locks each section after its first submission.
+            $this->requestValidator->authorize($formRequest);
+            $payload = $this->requestValidator->validate($formRequest);
         } else {
             Gate::forUser($user)->authorize('view', $record);
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
@@ -332,6 +356,10 @@ class MobileSyncPushOperationService
             ['vehicle_loads', 'acknowledge'] => $this->vehicleLoadHandoverService->acknowledge($record, $payload),
             ['vehicle_expenses', 'approve'] => $this->vehicleExpenseService->approve($record),
             ['vehicle_expenses', 'reject'] => $this->vehicleExpenseService->reject($record, $payload['reason']),
+            ['daily_closings', 'submit_inventory'] => $this->dailyClosingFieldHandoverService
+                ->submitInventory($record, $user, $payload),
+            ['daily_closings', 'submit_cash'] => $this->dailyClosingFieldHandoverService
+                ->submitCash($record, $user, $payload),
             ['daily_closings', 'refresh_totals'] => $this->dailyClosingService->refreshTotals($record),
             ['daily_closings', 'confirm'] => $this->dailyClosingService->confirm($record),
             ['daily_closings', 'cancel'] => $this->dailyClosingService->cancel($record),

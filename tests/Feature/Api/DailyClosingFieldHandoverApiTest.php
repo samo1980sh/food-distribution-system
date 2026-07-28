@@ -56,6 +56,10 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertJsonPath('data.field_handover.inventory.submitted', false);
 
         $this->assertNull($created->json('data.financial'));
+        $this->assertMatchesRegularExpression(
+            '/^c:[1-9][0-9]*$/',
+            (string) $created->json('data.sync_version'),
+        );
 
         $closingId = (int) $created->json('data.id');
 
@@ -136,7 +140,18 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.field_handover.inventory.submitted', true)
-            ->assertJsonPath('data.field_handover.complete', false);
+            ->assertJsonPath('data.field_handover.complete', false)
+            ->assertJsonPath('data.actions.can_submit_inventory', false)
+            ->assertJsonStructure(['data' => ['sync_version']]);
+
+        $this->withFreshToken($driverToken)
+            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-inventory', [
+                'items' => [[
+                    'product_id' => $context['product']->id,
+                    'actual_quantity' => $expected,
+                ]],
+            ])
+            ->assertForbidden();
 
         $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-cash', [
@@ -152,7 +167,15 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.field_handover.cash.submitted', true)
             ->assertJsonPath('data.field_handover.complete', true)
-            ->assertJsonPath('data.cash_difference', '10.00');
+            ->assertJsonPath('data.actions.can_submit_cash', false)
+            ->assertJsonPath('data.cash_difference', '10.00')
+            ->assertJsonStructure(['data' => ['sync_version']]);
+
+        $this->withFreshToken($salesToken)
+            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-cash', [
+                'actual_cash_amount' => 0,
+            ])
+            ->assertForbidden();
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,

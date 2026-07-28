@@ -52,6 +52,7 @@ class DailyClosingPolicy extends PermissionPolicy
         return $employeeId !== null
             && $record->isFieldWorkflow()
             && $record->isDraft()
+            && ! $record->inventorySubmitted()
             && (int) $record->driver_id === (int) $employeeId
             && $this->allowsMutation(
                 $user,
@@ -67,6 +68,7 @@ class DailyClosingPolicy extends PermissionPolicy
         return $employeeId !== null
             && $record->isFieldWorkflow()
             && $record->isDraft()
+            && ! $record->cashSubmitted()
             && (int) $record->sales_representative_id === (int) $employeeId
             && $this->allowsMutation(
                 $user,

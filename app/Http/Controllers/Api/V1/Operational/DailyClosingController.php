@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Resources\Api\V1\Operational\DailyClosingResource;
 use App\Models\DailyClosing;
 use App\Services\Api\MobileOperationalWriteService;
+use App\Services\Api\MobileSyncVersionService;
 use App\Services\Distribution\DailyClosingService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,11 @@ class DailyClosingController extends Controller
 {
     use BuildsOperationalQueries;
     use HandlesOperationalWriteResponses;
+
+    public function __construct(
+        private readonly MobileSyncVersionService $versionService,
+    ) {
+    }
 
     private const RELATIONS = [
         'vehicle.warehouse',
@@ -166,7 +172,13 @@ class DailyClosingController extends Controller
         $closing->loadMissing(self::RELATIONS);
 
         return ApiResponse::success(
-            DailyClosingResource::make($closing)->resolve($request),
+            [
+                ...DailyClosingResource::make($closing)->resolve($request),
+                'sync_version' => $this->versionService->forRecord(
+                    'daily_closings',
+                    $closing,
+                ),
+            ],
             $message,
             $status,
             $meta,

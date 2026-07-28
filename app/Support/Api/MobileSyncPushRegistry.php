@@ -20,7 +20,7 @@ use InvalidArgumentException;
 
 final class MobileSyncPushRegistry
 {
-    public const VERSION = 2;
+    public const VERSION = 3;
 
     /**
      * @return array<string, array{
@@ -67,7 +67,16 @@ final class MobileSyncPushRegistry
                 'model' => DailyClosing::class,
                 'request' => DailyClosingWriteRequest::class,
                 'route_parameter' => 'dailyClosing',
-                'actions' => ['create', 'update', 'delete', 'refresh_totals', 'confirm', 'cancel'],
+                'actions' => [
+                    'create',
+                    'update',
+                    'delete',
+                    'submit_inventory',
+                    'submit_cash',
+                    'refresh_totals',
+                    'confirm',
+                    'cancel',
+                ],
             ],
         ];
     }

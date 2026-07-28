@@ -122,6 +122,10 @@ class DailyClosingFieldHandoverService
             $this->ensureFieldDraft($closing);
             $this->ensureResponsibleEmployee($closing, $user, 'inventory');
 
+            if ($closing->inventorySubmitted()) {
+                throw new RuntimeException('تم تسليم جرد السيارة سابقاً ولا يمكن استبداله من التطبيق الميداني.');
+            }
+
             $closing = $this->dailyClosingService->refreshTotals($closing);
             $closing->load('items');
 
@@ -180,6 +184,10 @@ class DailyClosingFieldHandoverService
 
             $this->ensureFieldDraft($closing);
             $this->ensureResponsibleEmployee($closing, $user, 'cash');
+
+            if ($closing->cashSubmitted()) {
+                throw new RuntimeException('تم تسليم النقد سابقاً ولا يمكن استبداله من التطبيق الميداني.');
+            }
 
             $closing = $this->dailyClosingService->refreshTotals($closing);
 
