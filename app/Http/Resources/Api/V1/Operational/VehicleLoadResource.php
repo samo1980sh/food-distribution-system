@@ -20,6 +20,8 @@ class VehicleLoadResource extends OperationalResource
             'handover_status' => $this->handover_status ?? 'pending',
             'handover_notes' => $this->handover_notes,
             'total_quantity' => $this->decimal($this->total_quantity, 3),
+            'items_count' => $this->itemsCount(),
+            'different_items_count' => $this->differentItemsCount(),
             'total_cost' => $canSeeCost ? $this->decimal($this->total_cost) : null,
             'notes' => $this->notes,
             'vehicle' => $this->whenLoaded(
@@ -80,5 +82,33 @@ class VehicleLoadResource extends OperationalResource
                 'can_acknowledge' => $user?->can('acknowledge', $this->resource) ?? false,
             ],
         ];
+    }
+
+    private function itemsCount(): int
+    {
+        if (isset($this->resource->items_count)) {
+            return (int) $this->resource->items_count;
+        }
+
+        return $this->relationLoaded('items') ? $this->items->count() : 0;
+    }
+
+    private function differentItemsCount(): int
+    {
+        if (isset($this->resource->different_items_count)) {
+            return (int) $this->resource->different_items_count;
+        }
+
+        if (! $this->relationLoaded('items')) {
+            return 0;
+        }
+
+        return $this->items->filter(function ($item): bool {
+            if ($item->received_quantity === null) {
+                return false;
+            }
+
+            return abs((float) $item->received_quantity - (float) $item->quantity) > 0.0005;
+        })->count();
     }
 }

@@ -22,7 +22,22 @@ class VehicleLoadController extends Controller
 
     public function index(OperationalIndexRequest $request): JsonResponse
     {
-        $query = VehicleLoad::query()->with(['vehicle.warehouse', 'route', 'driver', 'salesRepresentative', 'fromWarehouse.vehicle', 'toWarehouse.vehicle', 'handoverUser']);
+        $query = VehicleLoad::query()
+            ->with([
+                'vehicle.warehouse',
+                'route',
+                'driver',
+                'salesRepresentative',
+                'fromWarehouse.vehicle',
+                'toWarehouse.vehicle',
+                'handoverUser',
+            ])
+            ->withCount('items')
+            ->withCount([
+                'items as different_items_count' => fn ($query) => $query
+                    ->whereNotNull('received_quantity')
+                    ->whereColumn('received_quantity', '<>', 'quantity'),
+            ]);
         $this->applySearch($query, $request, ['load_number', 'notes']);
         $query->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status));
         $this->applyDateRange($query, $request, 'load_date');
@@ -44,7 +59,22 @@ class VehicleLoadController extends Controller
     public function show(Request $request, VehicleLoad $vehicleLoad): JsonResponse
     {
         Gate::authorize('view', $vehicleLoad);
-        $vehicleLoad->loadMissing(['vehicle.warehouse', 'route', 'driver', 'salesRepresentative', 'fromWarehouse.vehicle', 'toWarehouse.vehicle', 'handoverUser', 'items.product.category', 'items.product.unit']);
+        $vehicleLoad->loadMissing([
+            'vehicle.warehouse',
+            'route',
+            'driver',
+            'salesRepresentative',
+            'fromWarehouse.vehicle',
+            'toWarehouse.vehicle',
+            'handoverUser',
+            'items.product.category',
+            'items.product.unit',
+        ])->loadCount([
+            'items',
+            'items as different_items_count' => fn ($query) => $query
+                ->whereNotNull('received_quantity')
+                ->whereColumn('received_quantity', '<>', 'quantity'),
+        ]);
 
         return ApiResponse::success(
             VehicleLoadResource::make($vehicleLoad)->resolve($request),

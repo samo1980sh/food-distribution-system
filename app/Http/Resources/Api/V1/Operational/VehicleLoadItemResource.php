@@ -19,6 +19,14 @@ class VehicleLoadItemResource extends OperationalResource
                     ? ProductResource::make($this->product)->resolve($request)
                     : null,
             ),
+            'product_id' => $this->product_id === null ? null : (int) $this->product_id,
+            'product_sku' => $this->whenLoaded('product', fn () => $this->product?->sku),
+            'product_name' => $this->whenLoaded('product', fn () => $this->product?->name_ar),
+            'unit_label' => $this->whenLoaded(
+                'product',
+                fn () => $this->product?->unit?->symbol
+                    ?: $this->product?->unit?->name_ar,
+            ),
             'batch_number' => $this->batch_number,
             'expiry_date' => $this->date($this->expiry_date),
             'quantity' => $this->decimal($this->quantity, 3),
