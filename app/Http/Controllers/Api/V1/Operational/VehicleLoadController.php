@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Http\Resources\Api\V1\Operational\VehicleLoadResource;
 use App\Models\VehicleLoad;
+use App\Services\Api\MobileSyncVersionService;
 use App\Services\Distribution\VehicleLoadHandoverService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -67,7 +68,11 @@ class VehicleLoadController extends Controller
         );
     }
 
-    public function show(Request $request, VehicleLoad $vehicleLoad): JsonResponse
+    public function show(
+        Request $request,
+        VehicleLoad $vehicleLoad,
+        MobileSyncVersionService $versionService,
+    ): JsonResponse
     {
         Gate::authorize('view', $vehicleLoad);
         $vehicleLoad->loadMissing([
@@ -99,7 +104,7 @@ class VehicleLoadController extends Controller
         ]);
 
         return ApiResponse::success(
-            VehicleLoadResource::make($vehicleLoad)->resolve($request),
+            $this->resourceData($request, $vehicleLoad, $versionService),
             'تم تحميل تفاصيل السجل.',
         );
     }
@@ -107,8 +112,14 @@ class VehicleLoadController extends Controller
         VehicleLoadHandoverRequest $request,
         VehicleLoad $vehicleLoad,
         VehicleLoadHandoverService $service,
+        MobileSyncVersionService $versionService,
     ): JsonResponse {
-        return $this->handleOperationalWrite(function () use ($request, $vehicleLoad, $service): JsonResponse {
+        return $this->handleOperationalWrite(function () use (
+            $request,
+            $vehicleLoad,
+            $service,
+            $versionService,
+        ): JsonResponse {
             $record = $service->acknowledge($vehicleLoad, $request->validated());
             $record->loadMissing([
                 'vehicle.warehouse',
@@ -123,7 +134,7 @@ class VehicleLoadController extends Controller
             ]);
 
             return ApiResponse::success(
-                VehicleLoadResource::make($record)->resolve($request),
+                $this->resourceData($request, $record, $versionService),
                 $record->handover_status === 'received'
                     ? 'تم تأكيد استلام أمر التحميل.'
                     : 'تم تسجيل فروقات استلام أمر التحميل.',
@@ -131,4 +142,18 @@ class VehicleLoadController extends Controller
         });
     }
 
+    /** @return array<string, mixed> */
+    private function resourceData(
+        Request $request,
+        VehicleLoad $vehicleLoad,
+        MobileSyncVersionService $versionService,
+    ): array {
+        return [
+            ...VehicleLoadResource::make($vehicleLoad)->resolve($request),
+            'sync_version' => $versionService->forRecord(
+                'vehicle_loads',
+                $vehicleLoad,
+            ),
+        ];
+    }
 }

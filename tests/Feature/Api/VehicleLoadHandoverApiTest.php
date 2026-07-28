@@ -27,7 +27,14 @@ class VehicleLoadHandoverApiTest extends TestCase
         $token = $this->tokenFor($context['user']);
         $movementCount = StockMovement::query()->count();
 
-        $this->withToken($token)
+        $readResponse = $this->withToken($token)
+            ->getJson('/api/v1/operational/vehicle-loads/'.$context['load']->id)
+            ->assertOk();
+
+        $baseVersion = (string) $readResponse->json('data.sync_version');
+        $this->assertMatchesRegularExpression('/^c:\\d+$/', $baseVersion);
+
+        $writeResponse = $this->withToken($token)
             ->postJson(
                 '/api/v1/operational/vehicle-loads/'.$context['load']->id.'/acknowledge',
                 [
@@ -45,6 +52,10 @@ class VehicleLoadHandoverApiTest extends TestCase
             ->assertJsonPath('data.different_items_count', 0)
             ->assertJsonPath('data.items.0.received_quantity', '12.500')
             ->assertJsonPath('data.actions.can_acknowledge', false);
+
+        $updatedVersion = (string) $writeResponse->json('data.sync_version');
+        $this->assertMatchesRegularExpression('/^c:\\d+$/', $updatedVersion);
+        $this->assertNotSame($baseVersion, $updatedVersion);
 
         $this->assertDatabaseHas('vehicle_loads', [
             'id' => $context['load']->id,
