@@ -11,6 +11,8 @@ use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\Unit;
@@ -100,6 +102,8 @@ class MobileSyncCascadeService
             $this->refreshWhere($plan, Customer::class, 'route_id', $model->getKey());
             $this->refreshWhere($plan, VehicleLoad::class, 'route_id', $model->getKey());
             $this->refreshWhere($plan, SalesInvoice::class, 'route_id', $model->getKey());
+            $this->refreshWhere($plan, SalesJourney::class, 'route_id', $model->getKey());
+            $this->refreshWhere($plan, SalesVisit::class, 'route_id', $model->getKey());
             $this->refreshWhere($plan, CustomerPayment::class, 'route_id', $model->getKey());
             $this->refreshWhere($plan, SalesReturn::class, 'route_id', $model->getKey());
             $this->refreshWhere($plan, VehicleExpense::class, 'route_id', $model->getKey());
@@ -112,6 +116,8 @@ class MobileSyncCascadeService
             $this->refreshWhere($plan, DistributionRoute::class, 'vehicle_id', $model->getKey());
             $this->refreshWhere($plan, Warehouse::class, 'vehicle_id', $model->getKey());
             $this->refreshWhere($plan, SalesInvoice::class, 'vehicle_id', $model->getKey());
+            $this->refreshWhere($plan, SalesJourney::class, 'vehicle_id', $model->getKey());
+            $this->refreshWhere($plan, SalesVisit::class, 'vehicle_id', $model->getKey());
             $this->refreshWhere($plan, CustomerPayment::class, 'vehicle_id', $model->getKey());
             $this->refreshWhere($plan, SalesReturn::class, 'vehicle_id', $model->getKey());
             $this->refreshWhere($plan, DailyClosing::class, 'vehicle_id', $model->getKey());
@@ -131,6 +137,8 @@ class MobileSyncCascadeService
 
         if ($model instanceof Warehouse) {
             $this->refreshWhere($plan, CustomerPayment::class, 'warehouse_id', $model->getKey());
+            $this->refreshWhere($plan, SalesJourney::class, 'warehouse_id', $model->getKey());
+            $this->refreshWhere($plan, SalesVisit::class, 'warehouse_id', $model->getKey());
             $this->cascadeQuery(
                 StockBalance::withoutGlobalScopes()->where('warehouse_id', $model->getKey()),
                 $plan,
@@ -179,6 +187,8 @@ class MobileSyncCascadeService
                 ->where('driver_id', $employeeId)
                 ->orWhere('sales_representative_id', $employeeId));
             $this->refreshWhere($plan, SalesInvoice::class, 'sales_representative_id', $employeeId);
+            $this->refreshWhere($plan, SalesJourney::class, 'sales_representative_id', $employeeId);
+            $this->refreshWhere($plan, SalesVisit::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, CustomerPayment::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, SalesReturn::class, 'sales_representative_id', $employeeId);
             $this->refreshQuery($plan, VehicleExpense::withoutGlobalScopes()
@@ -246,6 +256,11 @@ class MobileSyncCascadeService
 
         if ($model instanceof Customer) {
             $this->cascadeQuery(
+                SalesVisit::withoutGlobalScopes()->where('customer_id', $model->getKey()),
+                $plan,
+                $visited,
+            );
+            $this->cascadeQuery(
                 SalesInvoice::withoutGlobalScopes()->where('customer_id', $model->getKey()),
                 $plan,
                 $visited,
@@ -257,6 +272,16 @@ class MobileSyncCascadeService
             );
             $this->cascadeQuery(
                 SalesReturn::withoutGlobalScopes()->where('customer_id', $model->getKey()),
+                $plan,
+                $visited,
+            );
+
+            return;
+        }
+
+        if ($model instanceof SalesJourney) {
+            $this->cascadeQuery(
+                SalesVisit::withoutGlobalScopes()->where('sales_journey_id', $model->getKey()),
                 $plan,
                 $visited,
             );

@@ -4,12 +4,16 @@ namespace App\Services\Api;
 
 use App\Enums\OperationSource;
 use App\Exceptions\Api\OperationalApiException;
+use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\DistributionRoute;
 use App\Models\DailyClosing;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VehicleExpense;
 use App\Services\Distribution\DailyClosingService;
+use App\Services\Distribution\SalesFieldOperationService;
+use App\Services\Support\DocumentNumberService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
 use App\Support\Api\MobileWriteResult;
@@ -29,7 +33,49 @@ class MobileOperationalWriteService
         private readonly SalesInvoiceService $salesInvoiceService,
         private readonly SalesReturnService $salesReturnService,
         private readonly DailyClosingService $dailyClosingService,
+        private readonly SalesFieldOperationService $salesFieldOperationService,
+        private readonly DocumentNumberService $documentNumberService,
     ) {
+    }
+
+    public function createCustomer(array $data): MobileWriteResult
+    {
+        return $this->idempotentCreate(
+            Customer::class,
+            $data,
+            function (string $payloadHash) use ($data): Customer {
+                $route = DistributionRoute::query()
+                    ->with(['area', 'salesRepresentative'])
+                    ->where('status', 'active')
+                    ->findOrFail((int) $data['route_id']);
+
+                if ($route->sales_representative_id === null) {
+                    throw new OperationalApiException(
+                        'خط التوزيع لا يحتوي مندوب مبيعات فعّالاً.',
+                        'sales_route_representative_missing',
+                        422,
+                    );
+                }
+
+                $customer = Customer::query()->create([
+                    ...$data,
+                    'code' => $this->documentNumberService->next('customer', 'CUS'),
+                    'area_id' => $route->area_id,
+                    'customer_type' => $data['customer_type'] ?? 'grocery',
+                    'credit_limit' => $data['credit_limit'] ?? 0,
+                    'credit_days' => $data['credit_days'] ?? 30,
+                    'payment_type' => $data['payment_type'] ?? 'cash',
+                    'status' => 'active',
+                    'created_by' => Auth::id(),
+                    'client_payload_hash' => $payloadHash,
+                    'operation_source' => OperationSource::MOBILE_SALES,
+                ]);
+
+                $this->salesFieldOperationService->attachNewCustomer($customer);
+
+                return $customer->refresh();
+            },
+        );
     }
 
     public function createSalesInvoice(array $data): MobileWriteResult
@@ -40,15 +86,18 @@ class MobileOperationalWriteService
             SalesInvoice::class,
             [...$data, 'items' => $items],
             function (string $payloadHash) use ($data, $items): SalesInvoice {
-                $invoice = SalesInvoice::query()->create([
+                $invoice = new SalesInvoice([
                     ...$data,
                     'created_by' => Auth::id(),
                     'client_payload_hash' => $payloadHash,
                     'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
+                $this->salesFieldOperationService->assertDocumentVisitContext($invoice);
+                $invoice->save();
 
                 $invoice->items()->createMany($items);
                 $this->salesInvoiceService->recalculateTotals($invoice);
+                $this->salesFieldOperationService->touchVisitForDocument($invoice);
 
                 return $invoice->refresh();
             },
@@ -61,7 +110,9 @@ class MobileOperationalWriteService
             $hasItems = array_key_exists('items', $data);
             $items = Arr::pull($data, 'items', []);
 
-            $invoice->fill($data)->save();
+            $invoice->fill($data);
+            $this->salesFieldOperationService->assertDocumentVisitContext($invoice);
+            $invoice->save();
 
             if ($hasItems) {
                 $invoice->items()->delete();
@@ -69,6 +120,7 @@ class MobileOperationalWriteService
             }
 
             $this->salesInvoiceService->recalculateTotals($invoice);
+            $this->salesFieldOperationService->touchVisitForDocument($invoice);
 
             return $invoice->refresh();
         });
@@ -79,19 +131,29 @@ class MobileOperationalWriteService
         return $this->idempotentCreate(
             CustomerPayment::class,
             $data,
-            fn (string $payloadHash): CustomerPayment => CustomerPayment::query()->create([
-                ...$data,
-                'created_by' => Auth::id(),
-                'client_payload_hash' => $payloadHash,
-                'operation_source' => OperationSource::MOBILE_SALES,
-            ]),
+            function (string $payloadHash) use ($data): CustomerPayment {
+                $payment = new CustomerPayment([
+                    ...$data,
+                    'created_by' => Auth::id(),
+                    'client_payload_hash' => $payloadHash,
+                    'operation_source' => OperationSource::MOBILE_SALES,
+                ]);
+                $this->salesFieldOperationService->assertDocumentVisitContext($payment);
+                $payment->save();
+                $this->salesFieldOperationService->touchVisitForDocument($payment);
+
+                return $payment;
+            },
         );
     }
 
     public function updateCustomerPayment(CustomerPayment $payment, array $data): CustomerPayment
     {
         return DB::transaction(function () use ($payment, $data): CustomerPayment {
-            $payment->fill($data)->save();
+            $payment->fill($data);
+            $this->salesFieldOperationService->assertDocumentVisitContext($payment);
+            $payment->save();
+            $this->salesFieldOperationService->touchVisitForDocument($payment);
 
             return $payment->refresh();
         });
@@ -105,15 +167,18 @@ class MobileOperationalWriteService
             SalesReturn::class,
             [...$data, 'items' => $items],
             function (string $payloadHash) use ($data, $items): SalesReturn {
-                $salesReturn = SalesReturn::query()->create([
+                $salesReturn = new SalesReturn([
                     ...$data,
                     'created_by' => Auth::id(),
                     'client_payload_hash' => $payloadHash,
                     'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
+                $this->salesFieldOperationService->assertDocumentVisitContext($salesReturn);
+                $salesReturn->save();
 
                 $salesReturn->items()->createMany($items);
                 $this->salesReturnService->recalculateTotals($salesReturn);
+                $this->salesFieldOperationService->touchVisitForDocument($salesReturn);
 
                 return $salesReturn->refresh();
             },
@@ -126,7 +191,9 @@ class MobileOperationalWriteService
             $hasItems = array_key_exists('items', $data);
             $items = Arr::pull($data, 'items', []);
 
-            $salesReturn->fill($data)->save();
+            $salesReturn->fill($data);
+            $this->salesFieldOperationService->assertDocumentVisitContext($salesReturn);
+            $salesReturn->save();
 
             if ($hasItems) {
                 $salesReturn->items()->delete();
@@ -134,6 +201,7 @@ class MobileOperationalWriteService
             }
 
             $this->salesReturnService->recalculateTotals($salesReturn);
+            $this->salesFieldOperationService->touchVisitForDocument($salesReturn);
 
             return $salesReturn->refresh();
         });

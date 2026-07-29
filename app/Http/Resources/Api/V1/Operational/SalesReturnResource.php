@@ -15,6 +15,7 @@ class SalesReturnResource extends OperationalResource
 
         return [
             'id' => (int) $this->id,
+            'sales_visit_id' => $this->sales_visit_id === null ? null : (int) $this->sales_visit_id,
             'client_reference' => $this->client_reference,
             'operation_source' => $source->value,
             'operation_source_label' => $source->label(),

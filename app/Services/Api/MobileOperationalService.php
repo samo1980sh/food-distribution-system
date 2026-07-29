@@ -13,6 +13,8 @@ use App\Models\DistributionRoute;
 use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\User;
@@ -73,6 +75,11 @@ class MobileOperationalService
         $closingQuery = DailyClosing::query()->whereDate('closing_date', $today);
         $journeyQuery = DriverJourney::query()->whereDate('journey_date', $today);
         $deliveryQuery = DriverDelivery::query()->whereHas(
+            'journey',
+            fn ($query) => $query->whereDate('journey_date', $today),
+        );
+        $salesJourneyQuery = SalesJourney::query()->whereDate('journey_date', $today);
+        $salesVisitQuery = SalesVisit::query()->whereHas(
             'journey',
             fn ($query) => $query->whereDate('journey_date', $today),
         );
@@ -155,6 +162,22 @@ class MobileOperationalService
                     'failed' => (clone $deliveryQuery)->where('status', 'failed')->count(),
                 ]
                 : null,
+            'sales_journeys' => $user->can(PermissionName::SALES_JOURNEYS_VIEW->value)
+                ? [
+                    'total' => (clone $salesJourneyQuery)->count(),
+                    'ready' => (clone $salesJourneyQuery)->where('status', 'ready')->count(),
+                    'in_progress' => (clone $salesJourneyQuery)->where('status', 'in_progress')->count(),
+                    'completed' => (clone $salesJourneyQuery)->where('status', 'completed')->count(),
+                ]
+                : null,
+            'sales_visits' => $user->can(PermissionName::SALES_VISITS_VIEW->value)
+                ? [
+                    'total' => (clone $salesVisitQuery)->count(),
+                    'pending' => (clone $salesVisitQuery)->where('status', 'pending')->count(),
+                    'in_progress' => (clone $salesVisitQuery)->where('status', 'in_progress')->count(),
+                    'completed' => (clone $salesVisitQuery)->where('status', 'completed')->count(),
+                ]
+                : null,
             'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value)
                 ? [
                     'total' => (clone $closingQuery)->count(),
@@ -187,6 +210,8 @@ class MobileOperationalService
             'daily_closings' => PermissionName::DAILY_CLOSINGS_VIEW,
             'driver_journeys' => PermissionName::DRIVER_JOURNEYS_VIEW,
             'driver_deliveries' => PermissionName::DRIVER_DELIVERIES_VIEW,
+            'sales_journeys' => PermissionName::SALES_JOURNEYS_VIEW,
+            'sales_visits' => PermissionName::SALES_VISITS_VIEW,
         ];
 
         return [
@@ -195,11 +220,21 @@ class MobileOperationalService
                 ->all(),
             'write' => [
                 'enabled' => false,
+                'customers' => $user->can(PermissionName::CUSTOMERS_CREATE->value),
                 'sales_invoices' => $user->can(PermissionName::SALES_INVOICES_CREATE->value),
                 'customer_payments' => $user->can(PermissionName::CUSTOMER_PAYMENTS_CREATE->value),
                 'sales_returns' => $user->can(PermissionName::SALES_RETURNS_CREATE->value),
                 'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
                 'vehicle_load_handover' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+                'sales_journeys' => [
+                    'open_today' => $user->can(PermissionName::SALES_JOURNEYS_OPEN->value),
+                    'start' => $user->can(PermissionName::SALES_JOURNEYS_START->value),
+                    'finish' => $user->can(PermissionName::SALES_JOURNEYS_FINISH->value),
+                ],
+                'sales_visits' => [
+                    'start' => $user->can(PermissionName::SALES_VISITS_START->value),
+                    'complete' => $user->can(PermissionName::SALES_VISITS_COMPLETE->value),
+                ],
                 'driver_journeys' => [
                     'open_today' => $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
                     'start' => $user->can(PermissionName::DRIVER_JOURNEYS_START->value),

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OperationSource;
 use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,10 @@ class Customer extends Model
         'payment_type',
         'status',
         'notes',
+        'created_by',
+        'client_reference',
+        'client_payload_hash',
+        'operation_source',
     ];
 
     protected $casts = [
@@ -33,6 +38,7 @@ class Customer extends Model
         'longitude' => 'decimal:8',
         'credit_limit' => 'decimal:2',
         'credit_days' => 'integer',
+        'operation_source' => OperationSource::class,
     ];
 
     protected static function booted(): void
@@ -60,5 +66,15 @@ class Customer extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(CustomerPayment::class);
+    }
+
+    public function visits(): HasMany
+    {
+        return $this->hasMany(SalesVisit::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

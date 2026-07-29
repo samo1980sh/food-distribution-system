@@ -6,6 +6,7 @@ use App\Enums\OperationSource;
 use App\Enums\UserRole;
 use App\Models\DailyClosing;
 use App\Models\DriverJourney;
+use App\Models\SalesJourney;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Support\Arr;
@@ -187,6 +188,8 @@ class DailyClosingFieldHandoverService
             $this->ensureFieldDraft($closing);
             $this->ensureResponsibleEmployee($closing, $user, 'cash');
 
+            $this->ensureSalesJourneyCompletedWhenPresent($closing);
+
             if ($closing->cashSubmitted()) {
                 throw new RuntimeException('تم تسليم النقد سابقاً ولا يمكن استبداله من التطبيق الميداني.');
             }
@@ -255,6 +258,22 @@ class DailyClosingFieldHandoverService
         if ($journey !== null && ! $journey->isCompleted()) {
             throw new RuntimeException(
                 'يجب إنهاء رحلة السائق ومعالجة جميع التسليمات قبل تسليم جرد السيارة.',
+            );
+        }
+    }
+
+    private function ensureSalesJourneyCompletedWhenPresent(DailyClosing $closing): void
+    {
+        $journey = SalesJourney::withoutGlobalScopes()
+            ->whereDate('journey_date', $closing->closing_date)
+            ->where('route_id', $closing->route_id)
+            ->where('sales_representative_id', $closing->sales_representative_id)
+            ->lockForUpdate()
+            ->first();
+
+        if ($journey !== null && ! $journey->isCompleted()) {
+            throw new RuntimeException(
+                'يجب إنهاء رحلة المبيعات وجميع الزيارات قبل تسليم النقد.',
             );
         }
     }

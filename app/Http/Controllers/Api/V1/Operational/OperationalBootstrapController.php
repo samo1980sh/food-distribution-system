@@ -14,6 +14,8 @@ use App\Models\DistributionRoute;
 use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\Vehicle;
@@ -56,6 +58,8 @@ class OperationalBootstrapController extends Controller
             'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value),
             'driver_journeys' => $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value),
             'driver_deliveries' => $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value),
+            'sales_journeys' => $user->can(PermissionName::SALES_JOURNEYS_VIEW->value),
+            'sales_visits' => $user->can(PermissionName::SALES_VISITS_VIEW->value),
         ];
 
         $routes = $modules['routes']
@@ -87,6 +91,18 @@ class OperationalBootstrapController extends Controller
                 'client_reference_required' => true,
                 'vehicle_loads' => [
                     'acknowledge' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+                ],
+                'customers' => [
+                    'create' => $user->can('create', Customer::class),
+                ],
+                'sales_journeys' => [
+                    'open_today' => $user->can(PermissionName::SALES_JOURNEYS_OPEN->value),
+                    'start' => $user->can(PermissionName::SALES_JOURNEYS_START->value),
+                    'finish' => $user->can(PermissionName::SALES_JOURNEYS_FINISH->value),
+                ],
+                'sales_visits' => [
+                    'start' => $user->can(PermissionName::SALES_VISITS_START->value),
+                    'complete' => $user->can(PermissionName::SALES_VISITS_COMPLETE->value),
                 ],
                 'sales_invoices' => $this->writeCapabilities($user, SalesInvoice::class, [
                     'confirm' => PermissionName::SALES_INVOICES_CONFIRM,
@@ -157,6 +173,8 @@ class OperationalBootstrapController extends Controller
                 'daily_closings' => $modules['daily_closings'] ? DailyClosing::query()->whereDate('closing_date', $today)->count() : null,
                 'driver_journeys' => $modules['driver_journeys'] ? DriverJourney::query()->whereDate('journey_date', $today)->count() : null,
                 'driver_deliveries' => $modules['driver_deliveries'] ? DriverDelivery::query()->whereHas('journey', fn ($query) => $query->whereDate('journey_date', $today))->count() : null,
+                'sales_journeys' => $modules['sales_journeys'] ? SalesJourney::query()->whereDate('journey_date', $today)->count() : null,
+                'sales_visits' => $modules['sales_visits'] ? SalesVisit::query()->whereHas('journey', fn ($query) => $query->whereDate('journey_date', $today))->count() : null,
             ],
         ], 'تم تحميل البيانات التشغيلية الأساسية.');
     }

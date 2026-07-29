@@ -19,6 +19,7 @@ class CustomerPayment extends Model
         'route_id',
         'warehouse_id',
         'sales_representative_id',
+        'sales_visit_id',
         'payment_date',
         'payment_method',
         'status',
@@ -98,6 +99,11 @@ class CustomerPayment extends Model
     public function salesRepresentative(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'sales_representative_id');
+    }
+
+    public function salesVisit(): BelongsTo
+    {
+        return $this->belongsTo(SalesVisit::class);
     }
 
     public function creator(): BelongsTo

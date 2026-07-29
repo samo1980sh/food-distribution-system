@@ -24,6 +24,8 @@ class CustomerResource extends OperationalResource
             'payment_type' => $this->payment_type,
             'status' => $this->status,
             'notes' => $this->notes,
+            'client_reference' => $this->client_reference,
+            'operation_source' => $this->operation_source?->value ?? $this->operation_source,
             'area' => $this->whenLoaded('area', fn () => $this->area
                 ? AreaResource::make($this->area)->resolve($request)
                 : null),

@@ -13,6 +13,8 @@ use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
@@ -64,6 +66,8 @@ class AccessScopeService
             SalesReturn::class,
             DriverJourney::class,
             DriverDelivery::class,
+            SalesJourney::class,
+            SalesVisit::class,
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class,
@@ -214,6 +218,8 @@ class AccessScopeService
             SalesReturn::class,
             DriverJourney::class,
             DriverDelivery::class,
+            SalesJourney::class,
+            SalesVisit::class,
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class => $this->allowsOperationalAttributes($scope, $record),

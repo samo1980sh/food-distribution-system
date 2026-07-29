@@ -2,19 +2,26 @@
 
 namespace App\Support\Api;
 
+use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\CustomerPaymentWriteRequest;
+use App\Http\Requests\Api\V1\Operational\CustomerWriteRequest;
 use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
 use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
+use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
+use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
@@ -24,7 +31,7 @@ use InvalidArgumentException;
 
 final class MobileSyncPushRegistry
 {
-    public const VERSION = 4;
+    public const VERSION = 5;
 
     /**
      * @return array<string, array{
@@ -37,6 +44,24 @@ final class MobileSyncPushRegistry
     public static function definitions(): array
     {
         return [
+            'customers' => [
+                'model' => Customer::class,
+                'request' => CustomerWriteRequest::class,
+                'route_parameter' => 'customer',
+                'actions' => ['create'],
+            ],
+            'sales_journeys' => [
+                'model' => SalesJourney::class,
+                'request' => StartSalesJourneyRequest::class,
+                'route_parameter' => 'salesJourney',
+                'actions' => ['start', 'finish'],
+            ],
+            'sales_visits' => [
+                'model' => SalesVisit::class,
+                'request' => StartSalesVisitRequest::class,
+                'route_parameter' => 'salesVisit',
+                'actions' => ['start', 'complete'],
+            ],
             'driver_journeys' => [
                 'model' => DriverJourney::class,
                 'request' => StartDriverJourneyRequest::class,

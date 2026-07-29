@@ -12,6 +12,8 @@ use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
@@ -37,6 +39,8 @@ final class ScopedModelRegistry
             VehicleLoad::class,
             DriverJourney::class,
             DriverDelivery::class,
+            SalesJourney::class,
+            SalesVisit::class,
             SalesInvoice::class,
             SalesReturn::class,
             CustomerPayment::class,

@@ -3,8 +3,12 @@
 namespace App\Services\Api;
 
 use App\Exceptions\Api\OperationalApiException;
+use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\FinishDriverJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\FinishSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingInventoryRequest;
@@ -14,6 +18,7 @@ use App\Models\MobileSyncPushOperation;
 use App\Models\User;
 use App\Services\Distribution\DailyClosingFieldHandoverService;
 use App\Services\Distribution\DriverFieldOperationService;
+use App\Services\Distribution\SalesFieldOperationService;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\VehicleExpenseService;
 use App\Services\Distribution\VehicleLoadHandoverService;
@@ -45,6 +50,7 @@ class MobileSyncPushOperationService
         private readonly VehicleLoadHandoverService $vehicleLoadHandoverService,
         private readonly DailyClosingFieldHandoverService $dailyClosingFieldHandoverService,
         private readonly DriverFieldOperationService $driverFieldOperationService,
+        private readonly SalesFieldOperationService $salesFieldOperationService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly MobileSyncVersionService $versionService,
     ) {
@@ -193,6 +199,7 @@ class MobileSyncPushOperationService
         $validated = $this->requestValidator->validate($formRequest);
 
         $writeResult = match ($entity) {
+            'customers' => $this->writeService->createCustomer($validated),
             'sales_invoices' => $this->writeService->createSalesInvoice($validated),
             'customer_payments' => $this->writeService->createCustomerPayment($validated),
             'sales_returns' => $this->writeService->createSalesReturn($validated),
@@ -325,6 +332,52 @@ class MobileSyncPushOperationService
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
             $this->requestValidator->authorize($formRequest);
             $payload = $this->requestValidator->validate($formRequest);
+        } elseif ($entity === 'sales_journeys'
+            && in_array($action, ['start', 'finish'], true)) {
+            $requestClass = $action === 'start'
+                ? StartSalesJourneyRequest::class
+                : FinishSalesJourneyRequest::class;
+            $formRequest = $this->requestValidator->make(
+                $requestClass,
+                'POST',
+                $payload,
+                $user,
+                ['salesJourney' => $record],
+            );
+            Gate::forUser($user)->authorize('view', $record);
+
+            if ($action === 'start') {
+                $this->ensureVersion(
+                    $request,
+                    $entity,
+                    $record,
+                    (string) $operation['base_version'],
+                );
+            }
+
+            $this->requestValidator->authorize($formRequest);
+            $payload = $this->requestValidator->validate($formRequest);
+        } elseif ($entity === 'sales_visits'
+            && in_array($action, ['start', 'complete'], true)) {
+            $requestClass = $action === 'start'
+                ? StartSalesVisitRequest::class
+                : CompleteSalesVisitRequest::class;
+            $formRequest = $this->requestValidator->make(
+                $requestClass,
+                'POST',
+                $payload,
+                $user,
+                ['salesVisit' => $record],
+            );
+            Gate::forUser($user)->authorize('view', $record);
+            $this->ensureVersion(
+                $request,
+                $entity,
+                $record,
+                (string) $operation['base_version'],
+            );
+            $this->requestValidator->authorize($formRequest);
+            $payload = $this->requestValidator->validate($formRequest);
         } elseif ($entity === 'driver_journeys'
             && in_array($action, ['start', 'finish'], true)) {
             $requestClass = $action === 'start'
@@ -394,6 +447,10 @@ class MobileSyncPushOperationService
         }
 
         $updated = match ([$entity, $action]) {
+            ['sales_journeys', 'start'] => $this->salesFieldOperationService->start($record, $payload),
+            ['sales_journeys', 'finish'] => $this->salesFieldOperationService->finish($record, $payload),
+            ['sales_visits', 'start'] => $this->salesFieldOperationService->startVisit($record, $payload),
+            ['sales_visits', 'complete'] => $this->salesFieldOperationService->completeVisit($record, $payload),
             ['driver_journeys', 'start'] => $this->driverFieldOperationService->start($record, $payload),
             ['driver_journeys', 'finish'] => $this->driverFieldOperationService->finish($record, $payload),
             ['driver_deliveries', 'submit_outcome'] => $this->driverFieldOperationService->submitOutcome($record, $payload),

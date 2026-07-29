@@ -8,6 +8,7 @@ use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\User;
@@ -186,6 +187,19 @@ class FieldTodayReadService
     ): array {
         $representativeId = (int) $route->sales_representative_id;
 
+        $journey = SalesJourney::withoutGlobalScopes()
+            ->with(['visits.customer.area', 'visits.customer.route'])
+            ->withCount([
+                'visits',
+                'visits as pending_visits_count' => fn (Builder $query) => $query->where('status', 'pending'),
+                'visits as in_progress_visits_count' => fn (Builder $query) => $query->where('status', 'in_progress'),
+                'visits as completed_visits_count' => fn (Builder $query) => $query->where('status', 'completed'),
+            ])
+            ->whereDate('journey_date', $date)
+            ->where('route_id', $route->getKey())
+            ->where('sales_representative_id', $representativeId)
+            ->first();
+
         $customers = Customer::withoutGlobalScopes()
             ->where('route_id', $route->getKey())
             ->where('status', 'active');
@@ -210,6 +224,19 @@ class FieldTodayReadService
         $returns = $this->scoped($returns, $user);
 
         return [
+            'journey' => $journey === null ? null : [
+                'id' => (int) $journey->id,
+                'journey_number' => $journey->journey_number,
+                'status' => $journey->status,
+                'started_at' => $journey->started_at?->toIso8601String(),
+                'finished_at' => $journey->finished_at?->toIso8601String(),
+                'visits' => [
+                    'total' => (int) $journey->visits_count,
+                    'pending' => (int) $journey->pending_visits_count,
+                    'in_progress' => (int) $journey->in_progress_visits_count,
+                    'completed' => (int) $journey->completed_visits_count,
+                ],
+            ],
             'assigned_customers' => (clone $customers)->count(),
             'invoices' => [
                 'total' => (clone $invoices)->count(),

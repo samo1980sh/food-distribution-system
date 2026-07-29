@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\V1\Operational\OperationalBootstrapController;
 use App\Http\Controllers\Api\V1\Operational\ProductController;
 use App\Http\Controllers\Api\V1\Operational\RouteController as OperationalRouteController;
 use App\Http\Controllers\Api\V1\Operational\SalesInvoiceController;
+use App\Http\Controllers\Api\V1\Operational\SalesJourneyController;
+use App\Http\Controllers\Api\V1\Operational\SalesVisitController;
 use App\Http\Controllers\Api\V1\Operational\SalesReturnController;
 use App\Http\Controllers\Api\V1\Operational\StockBalanceController;
 use App\Http\Controllers\Api\V1\Operational\VehicleController;
@@ -116,6 +118,9 @@ Route::prefix('v1')
                         ->parameters(['daily-closings' => 'dailyClosing'])
                         ->middleware('can:daily_closings.view');
 
+                    Route::post('/customers', [CustomerController::class, 'store'])
+                        ->name('customers.store');
+
                     Route::post('/sales-invoices', [SalesInvoiceController::class, 'store'])
                         ->name('sales-invoices.store');
                     Route::patch('/sales-invoices/{salesInvoice}', [SalesInvoiceController::class, 'update'])
@@ -162,6 +167,21 @@ Route::prefix('v1')
                         ->name('vehicle-expenses.approve');
                     Route::post('/vehicle-expenses/{vehicleExpense}/reject', [VehicleExpenseController::class, 'reject'])
                         ->name('vehicle-expenses.reject');
+
+                    Route::post('/sales-journeys/open-today', [SalesJourneyController::class, 'openToday'])
+                        ->name('sales-journeys.open-today');
+                    Route::get('/sales-journeys/{salesJourney}', [SalesJourneyController::class, 'show'])
+                        ->name('sales-journeys.show');
+                    Route::post('/sales-journeys/{salesJourney}/start', [SalesJourneyController::class, 'start'])
+                        ->name('sales-journeys.start');
+                    Route::post('/sales-journeys/{salesJourney}/finish', [SalesJourneyController::class, 'finish'])
+                        ->name('sales-journeys.finish');
+                    Route::get('/sales-visits/{salesVisit}', [SalesVisitController::class, 'show'])
+                        ->name('sales-visits.show');
+                    Route::post('/sales-visits/{salesVisit}/start', [SalesVisitController::class, 'start'])
+                        ->name('sales-visits.start');
+                    Route::post('/sales-visits/{salesVisit}/complete', [SalesVisitController::class, 'complete'])
+                        ->name('sales-visits.complete');
 
                     Route::post('/driver-journeys/open-today', [DriverJourneyController::class, 'openToday'])
                         ->name('driver-journeys.open-today');

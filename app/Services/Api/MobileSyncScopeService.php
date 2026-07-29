@@ -12,6 +12,8 @@ use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\Unit;
@@ -104,6 +106,8 @@ class MobileSyncScopeService
         }
 
         if ($model instanceof SalesInvoice
+            || $model instanceof SalesJourney
+            || $model instanceof SalesVisit
             || $model instanceof CustomerPayment
             || $model instanceof SalesReturn
             || $model instanceof VehicleExpense
@@ -157,8 +161,8 @@ class MobileSyncScopeService
             'vehicle_loads' => $scope->role === UserRole::WAREHOUSE_KEEPER
                 ? $this->intersects($scope->warehouseIds, $snapshot['warehouse_ids'] ?? [])
                 : $this->matchesOperationalScope($scope, $snapshot),
-            'sales_invoices', 'customer_payments', 'sales_returns', 'vehicle_expenses', 'daily_closings' =>
-                $scope->role === UserRole::WAREHOUSE_KEEPER
+            'sales_invoices', 'sales_journeys', 'sales_visits', 'customer_payments', 'sales_returns',
+            'vehicle_expenses', 'daily_closings' => $scope->role === UserRole::WAREHOUSE_KEEPER
                     ? $this->contains($scope->warehouseIds, $snapshot['warehouse_id'] ?? null)
                     : $this->matchesOperationalScope($scope, $snapshot),
             default => false,

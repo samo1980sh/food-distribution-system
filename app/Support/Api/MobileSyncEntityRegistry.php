@@ -14,6 +14,8 @@ use App\Http\Resources\Api\V1\Operational\ProductCategoryResource;
 use App\Http\Resources\Api\V1\Operational\ProductResource;
 use App\Http\Resources\Api\V1\Operational\RouteResource;
 use App\Http\Resources\Api\V1\Operational\SalesInvoiceResource;
+use App\Http\Resources\Api\V1\Operational\SalesJourneyResource;
+use App\Http\Resources\Api\V1\Operational\SalesVisitResource;
 use App\Http\Resources\Api\V1\Operational\SalesReturnResource;
 use App\Http\Resources\Api\V1\Operational\StockBalanceResource;
 use App\Http\Resources\Api\V1\Operational\UnitResource;
@@ -32,6 +34,8 @@ use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
 use App\Models\Unit;
@@ -45,7 +49,7 @@ use InvalidArgumentException;
 
 final class MobileSyncEntityRegistry
 {
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     /**
      * @return array<string, array{
@@ -179,6 +183,41 @@ final class MobileSyncEntityRegistry
                     'salesRepresentative',
                     'items.product.category',
                     'items.product.unit',
+                ],
+            ],
+            'sales_journeys' => [
+                'model' => SalesJourney::class,
+                'resource' => SalesJourneyResource::class,
+                'permissions' => [PermissionName::SALES_JOURNEYS_VIEW->value],
+                'relations' => [
+                    'route.area',
+                    'route.vehicle.warehouse',
+                    'vehicle.warehouse',
+                    'warehouse.vehicle',
+                    'salesRepresentative',
+                    'driver',
+                    'visits.customer.area',
+                    'visits.customer.route',
+                    'visits.invoices',
+                    'visits.payments',
+                    'visits.returns',
+                ],
+            ],
+            'sales_visits' => [
+                'model' => SalesVisit::class,
+                'resource' => SalesVisitResource::class,
+                'permissions' => [PermissionName::SALES_VISITS_VIEW->value],
+                'relations' => [
+                    'journey',
+                    'customer.area',
+                    'customer.route',
+                    'route.area',
+                    'vehicle.warehouse',
+                    'warehouse.vehicle',
+                    'salesRepresentative',
+                    'invoices',
+                    'payments',
+                    'returns',
                 ],
             ],
             'sales_invoices' => [

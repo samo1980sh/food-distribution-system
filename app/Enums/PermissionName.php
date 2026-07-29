@@ -119,6 +119,14 @@ enum PermissionName: string
     case DRIVER_DELIVERIES_VIEW = 'driver_deliveries.view';
     case DRIVER_DELIVERIES_SUBMIT_OUTCOME = 'driver_deliveries.submit_outcome';
 
+    case SALES_JOURNEYS_VIEW = 'sales_journeys.view';
+    case SALES_JOURNEYS_OPEN = 'sales_journeys.open';
+    case SALES_JOURNEYS_START = 'sales_journeys.start';
+    case SALES_JOURNEYS_FINISH = 'sales_journeys.finish';
+    case SALES_VISITS_VIEW = 'sales_visits.view';
+    case SALES_VISITS_START = 'sales_visits.start';
+    case SALES_VISITS_COMPLETE = 'sales_visits.complete';
+
     case DAILY_CLOSINGS_VIEW = 'daily_closings.view';
     case DAILY_CLOSINGS_CREATE = 'daily_closings.create';
     case DAILY_CLOSINGS_CREATE_OFFICE = 'daily_closings.create_office';

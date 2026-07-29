@@ -28,6 +28,7 @@ class CustomerPaymentWriteRequest extends OperationalWriteRequest
     {
         return [
             'client_reference' => $this->clientReferenceRules(),
+            'sales_visit_id' => ['sometimes', 'nullable', 'integer', Rule::exists('sales_visits', 'id')],
             'customer_id' => $this->requiredOrSometimes([
                 'integer',
                 Rule::exists('customers', 'id')->where('status', 'active'),

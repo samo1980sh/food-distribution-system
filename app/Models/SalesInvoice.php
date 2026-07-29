@@ -20,6 +20,7 @@ class SalesInvoice extends Model
         'route_id',
         'warehouse_id',
         'sales_representative_id',
+        'sales_visit_id',
         'invoice_date',
         'due_date',
         'status',
@@ -134,6 +135,11 @@ class SalesInvoice extends Model
     public function salesRepresentative(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'sales_representative_id');
+    }
+
+    public function salesVisit(): BelongsTo
+    {
+        return $this->belongsTo(SalesVisit::class);
     }
 
     public function creator(): BelongsTo

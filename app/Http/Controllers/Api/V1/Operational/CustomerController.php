@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Api\V1\Operational;
 
 use App\Http\Controllers\Api\V1\Operational\Concerns\BuildsOperationalQueries;
+use App\Http\Controllers\Api\V1\Operational\Concerns\HandlesOperationalWriteResponses;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Operational\CustomerWriteRequest;
 use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Resources\Api\V1\Operational\CustomerResource;
 use App\Models\Customer;
+use App\Services\Api\MobileOperationalWriteService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +18,7 @@ use Illuminate\Support\Facades\Gate;
 class CustomerController extends Controller
 {
     use BuildsOperationalQueries;
+    use HandlesOperationalWriteResponses;
 
     public function index(OperationalIndexRequest $request): JsonResponse
     {
@@ -34,6 +38,24 @@ class CustomerController extends Controller
             $paginator,
             'تم تحميل العملاء.',
         );
+    }
+
+    public function store(
+        CustomerWriteRequest $request,
+        MobileOperationalWriteService $writeService,
+    ): JsonResponse {
+        return $this->handleOperationalWrite(function () use ($request, $writeService): JsonResponse {
+            $result = $writeService->createCustomer($request->validated());
+            Gate::authorize('view', $result->record);
+            $result->record->loadMissing(['area', 'route']);
+
+            return ApiResponse::success(
+                CustomerResource::make($result->record)->resolve($request),
+                $result->replayed ? 'تمت إعادة العميل المسجل سابقاً.' : 'تم تسجيل العميل الجديد ضمن خط المندوب.',
+                $result->replayed ? 200 : 201,
+                ['idempotency' => ['replayed' => $result->replayed]],
+            );
+        });
     }
 
     public function show(Request $request, Customer $customer): JsonResponse

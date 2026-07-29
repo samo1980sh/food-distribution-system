@@ -7,6 +7,8 @@ use App\Models\DailyClosing;
 use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
+use App\Models\SalesVisit;
 use App\Models\SalesReturn;
 use App\Models\StockMovement;
 use App\Models\VehicleExpense;
@@ -38,6 +40,8 @@ class AccessScopeServiceProvider extends ServiceProvider
             VehicleLoad::class,
             DriverJourney::class,
             DriverDelivery::class,
+            SalesJourney::class,
+            SalesVisit::class,
             SalesInvoice::class,
             SalesReturn::class,
             CustomerPayment::class,
