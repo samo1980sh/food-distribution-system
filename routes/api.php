@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\Operational\CustomerController;
 use App\Http\Controllers\Api\V1\Operational\CustomerPaymentController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingController;
 use App\Http\Controllers\Api\V1\Operational\DailyClosingFieldHandoverController;
+use App\Http\Controllers\Api\V1\Operational\DriverDeliveryController;
+use App\Http\Controllers\Api\V1\Operational\DriverJourneyController;
 use App\Http\Controllers\Api\V1\Operational\FieldTodayController;
 use App\Http\Controllers\Api\V1\Operational\MobileSyncController;
 use App\Http\Controllers\Api\V1\Operational\OperationalBootstrapController;
@@ -160,6 +162,19 @@ Route::prefix('v1')
                         ->name('vehicle-expenses.approve');
                     Route::post('/vehicle-expenses/{vehicleExpense}/reject', [VehicleExpenseController::class, 'reject'])
                         ->name('vehicle-expenses.reject');
+
+                    Route::post('/driver-journeys/open-today', [DriverJourneyController::class, 'openToday'])
+                        ->name('driver-journeys.open-today');
+                    Route::get('/driver-journeys/{driverJourney}', [DriverJourneyController::class, 'show'])
+                        ->name('driver-journeys.show');
+                    Route::post('/driver-journeys/{driverJourney}/start', [DriverJourneyController::class, 'start'])
+                        ->name('driver-journeys.start');
+                    Route::post('/driver-journeys/{driverJourney}/finish', [DriverJourneyController::class, 'finish'])
+                        ->name('driver-journeys.finish');
+                    Route::get('/driver-deliveries/{driverDelivery}', [DriverDeliveryController::class, 'show'])
+                        ->name('driver-deliveries.show');
+                    Route::post('/driver-deliveries/{driverDelivery}/submit-outcome', [DriverDeliveryController::class, 'submitOutcome'])
+                        ->name('driver-deliveries.submit-outcome');
 
                     Route::post('/daily-closings/open-today', [DailyClosingFieldHandoverController::class, 'openToday'])
                         ->name('daily-closings.open-today');

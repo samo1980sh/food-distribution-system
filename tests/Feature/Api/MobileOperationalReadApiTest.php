@@ -56,7 +56,7 @@ class MobileOperationalReadApiTest extends TestCase
             ->assertJsonPath('data.items.*.id', [$first['invoice']->id]);
     }
 
-    public function test_driver_can_read_assigned_route_vehicle_stock_and_loads_but_not_customers(): void
+    public function test_driver_can_read_assigned_route_vehicle_stock_loads_and_customers(): void
     {
         $first = $this->context('A');
         $this->context('B');
@@ -74,7 +74,10 @@ class MobileOperationalReadApiTest extends TestCase
         $this->withToken($token)->getJson('/api/v1/operational/vehicle-loads')
             ->assertOk()->assertJsonCount(1, 'data.items');
         $this->withToken($token)->getJson('/api/v1/operational/customers')
-            ->assertForbidden()->assertJsonPath('code', 'http_403');
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $first['customer']->id)
+            ->assertJsonPath('meta.pagination.total', 1);
     }
 
     public function test_out_of_scope_detail_is_hidden_as_not_found(): void

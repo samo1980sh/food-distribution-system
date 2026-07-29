@@ -7,6 +7,8 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
@@ -33,6 +35,8 @@ final class ScopedModelRegistry
             StockBalance::class,
             StockMovement::class,
             VehicleLoad::class,
+            DriverJourney::class,
+            DriverDelivery::class,
             SalesInvoice::class,
             SalesReturn::class,
             CustomerPayment::class,

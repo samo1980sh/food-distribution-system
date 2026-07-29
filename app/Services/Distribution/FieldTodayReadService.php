@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
@@ -315,6 +316,7 @@ class FieldTodayReadService
                 ],
             ],
             'stock' => $stock,
+            'journey' => $this->driverJourneySummary($user, $route, $date),
             'expenses' => [
                 'total' => (clone $expenses)->count(),
                 'pending' => (clone $expenses)->where('status', 'pending')->count(),
@@ -324,6 +326,46 @@ class FieldTodayReadService
                 'approved_amount' => $this->decimal(
                     (clone $expenses)->where('status', 'approved')->sum('amount'),
                 ),
+            ],
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function driverJourneySummary(
+        User $user,
+        DistributionRoute $route,
+        string $date,
+    ): ?array {
+        $query = DriverJourney::withoutGlobalScopes()
+            ->withCount([
+                'deliveries',
+                'deliveries as pending_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'pending'),
+                'deliveries as delivered_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'delivered'),
+                'deliveries as partial_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'partial'),
+                'deliveries as failed_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'failed'),
+            ])
+            ->whereDate('journey_date', $date)
+            ->where('route_id', $route->getKey())
+            ->where('driver_id', $route->driver_id);
+        $query = $this->scoped($query, $user);
+        $journey = $query->first();
+
+        if ($journey === null) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $journey->getKey(),
+            'journey_number' => $journey->journey_number,
+            'status' => $journey->status,
+            'started_at' => $journey->started_at?->toIso8601String(),
+            'finished_at' => $journey->finished_at?->toIso8601String(),
+            'deliveries' => [
+                'total' => (int) $journey->deliveries_count,
+                'pending' => (int) $journey->pending_deliveries_count,
+                'delivered' => (int) $journey->delivered_deliveries_count,
+                'partial' => (int) $journey->partial_deliveries_count,
+                'failed' => (int) $journey->failed_deliveries_count,
             ],
         ];
     }

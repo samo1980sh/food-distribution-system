@@ -11,6 +11,8 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
@@ -52,6 +54,8 @@ class OperationalBootstrapController extends Controller
             'sales_returns' => $user->can(PermissionName::SALES_RETURNS_VIEW->value),
             'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_VIEW->value),
             'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value),
+            'driver_journeys' => $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value),
+            'driver_deliveries' => $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value),
         ];
 
         $routes = $modules['routes']
@@ -100,6 +104,14 @@ class OperationalBootstrapController extends Controller
                     'approve' => PermissionName::VEHICLE_EXPENSES_APPROVE,
                     'reject' => PermissionName::VEHICLE_EXPENSES_REJECT,
                 ]),
+                'driver_journeys' => [
+                    'open_today' => $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
+                    'start' => $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
+                    'finish' => $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
+                ],
+                'driver_deliveries' => [
+                    'submit_outcome' => $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
+                ],
                 'daily_closings' => [
                     ...$this->writeCapabilities($user, DailyClosing::class, [
                         'refresh_totals' => PermissionName::DAILY_CLOSINGS_REFRESH_TOTALS,
@@ -143,6 +155,8 @@ class OperationalBootstrapController extends Controller
                 'sales_returns' => $modules['sales_returns'] ? SalesReturn::query()->whereDate('return_date', $today)->count() : null,
                 'vehicle_expenses' => $modules['vehicle_expenses'] ? VehicleExpense::query()->whereDate('expense_date', $today)->count() : null,
                 'daily_closings' => $modules['daily_closings'] ? DailyClosing::query()->whereDate('closing_date', $today)->count() : null,
+                'driver_journeys' => $modules['driver_journeys'] ? DriverJourney::query()->whereDate('journey_date', $today)->count() : null,
+                'driver_deliveries' => $modules['driver_deliveries'] ? DriverDelivery::query()->whereHas('journey', fn ($query) => $query->whereDate('journey_date', $today))->count() : null,
             ],
         ], 'تم تحميل البيانات التشغيلية الأساسية.');
     }

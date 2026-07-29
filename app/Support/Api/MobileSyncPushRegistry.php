@@ -4,12 +4,16 @@ namespace App\Support\Api;
 
 use App\Http\Requests\Api\V1\Operational\CustomerPaymentWriteRequest;
 use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
+use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
 use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\VehicleExpense;
@@ -20,7 +24,7 @@ use InvalidArgumentException;
 
 final class MobileSyncPushRegistry
 {
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     /**
      * @return array<string, array{
@@ -33,6 +37,18 @@ final class MobileSyncPushRegistry
     public static function definitions(): array
     {
         return [
+            'driver_journeys' => [
+                'model' => DriverJourney::class,
+                'request' => StartDriverJourneyRequest::class,
+                'route_parameter' => 'driverJourney',
+                'actions' => ['start', 'finish'],
+            ],
+            'driver_deliveries' => [
+                'model' => DriverDelivery::class,
+                'request' => SubmitDriverDeliveryOutcomeRequest::class,
+                'route_parameter' => 'driverDelivery',
+                'actions' => ['submit_outcome'],
+            ],
             'sales_invoices' => [
                 'model' => SalesInvoice::class,
                 'request' => SalesInvoiceWriteRequest::class,

@@ -10,6 +10,8 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\StockBalance;
@@ -69,6 +71,11 @@ class MobileOperationalService
         $expenseQuery = VehicleExpense::query()->whereDate('expense_date', $today);
         $loadQuery = VehicleLoad::query()->whereDate('load_date', $today);
         $closingQuery = DailyClosing::query()->whereDate('closing_date', $today);
+        $journeyQuery = DriverJourney::query()->whereDate('journey_date', $today);
+        $deliveryQuery = DriverDelivery::query()->whereHas(
+            'journey',
+            fn ($query) => $query->whereDate('journey_date', $today),
+        );
 
         $data = [
             'date' => $today,
@@ -131,6 +138,23 @@ class MobileOperationalService
                         : null,
                 ]
                 : null,
+            'driver_journeys' => $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value)
+                ? [
+                    'total' => (clone $journeyQuery)->count(),
+                    'ready' => (clone $journeyQuery)->where('status', 'ready')->count(),
+                    'in_progress' => (clone $journeyQuery)->where('status', 'in_progress')->count(),
+                    'completed' => (clone $journeyQuery)->where('status', 'completed')->count(),
+                ]
+                : null,
+            'driver_deliveries' => $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value)
+                ? [
+                    'total' => (clone $deliveryQuery)->count(),
+                    'pending' => (clone $deliveryQuery)->where('status', 'pending')->count(),
+                    'delivered' => (clone $deliveryQuery)->where('status', 'delivered')->count(),
+                    'partial' => (clone $deliveryQuery)->where('status', 'partial')->count(),
+                    'failed' => (clone $deliveryQuery)->where('status', 'failed')->count(),
+                ]
+                : null,
             'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value)
                 ? [
                     'total' => (clone $closingQuery)->count(),
@@ -161,6 +185,8 @@ class MobileOperationalService
             'sales_returns' => PermissionName::SALES_RETURNS_VIEW,
             'vehicle_expenses' => PermissionName::VEHICLE_EXPENSES_VIEW,
             'daily_closings' => PermissionName::DAILY_CLOSINGS_VIEW,
+            'driver_journeys' => PermissionName::DRIVER_JOURNEYS_VIEW,
+            'driver_deliveries' => PermissionName::DRIVER_DELIVERIES_VIEW,
         ];
 
         return [
@@ -174,6 +200,14 @@ class MobileOperationalService
                 'sales_returns' => $user->can(PermissionName::SALES_RETURNS_CREATE->value),
                 'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
                 'vehicle_load_handover' => $user->can(PermissionName::VEHICLE_LOADS_VIEW->value),
+                'driver_journeys' => [
+                    'open_today' => $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
+                    'start' => $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
+                    'finish' => $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
+                ],
+                'driver_deliveries' => [
+                    'submit_outcome' => $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
+                ],
                 'daily_closings' => [
                     'open_today' => $user->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
                     'submit_inventory' => $user->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),

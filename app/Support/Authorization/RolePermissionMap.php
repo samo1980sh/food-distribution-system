@@ -48,6 +48,8 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_APPROVE,
                 P::VEHICLE_EXPENSES_REJECT,
                 P::VEHICLE_EXPENSES_PRINT,
+                P::DRIVER_JOURNEYS_VIEW,
+                P::DRIVER_DELIVERIES_VIEW,
                 P::DAILY_CLOSINGS_VIEW,
                 P::DAILY_CLOSINGS_UPDATE,
                 P::DAILY_CLOSINGS_REFRESH_TOTALS,
@@ -150,6 +152,8 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_VIEW,
                 P::VEHICLE_EXPENSES_CREATE,
                 P::VEHICLE_EXPENSES_UPDATE,
+                P::DRIVER_JOURNEYS_VIEW,
+                P::DRIVER_DELIVERIES_VIEW,
             ]),
             UserRole::DRIVER->value => self::values([
                 P::API_ACCESS,
@@ -157,6 +161,7 @@ final class RolePermissionMap
                 P::DISTRIBUTION_ROUTES_VIEW,
                 P::VEHICLES_VIEW,
                 P::WAREHOUSES_VIEW,
+                P::CUSTOMERS_VIEW,
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
                 P::DAILY_CLOSINGS_VIEW,
@@ -165,6 +170,12 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_VIEW,
                 P::VEHICLE_EXPENSES_CREATE,
                 P::VEHICLE_EXPENSES_UPDATE,
+                P::DRIVER_JOURNEYS_VIEW,
+                P::DRIVER_JOURNEYS_OPEN,
+                P::DRIVER_JOURNEYS_START,
+                P::DRIVER_JOURNEYS_FINISH,
+                P::DRIVER_DELIVERIES_VIEW,
+                P::DRIVER_DELIVERIES_SUBMIT_OUTCOME,
             ]),
         ];
     }

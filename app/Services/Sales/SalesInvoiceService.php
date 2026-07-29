@@ -3,9 +3,12 @@
 namespace App\Services\Sales;
 
 use App\Models\CustomerPayment;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Services\Distribution\DailyClosingGuard;
+use App\Services\Distribution\DriverFieldOperationService;
 use App\Services\Inventory\InventoryMovementService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +59,7 @@ class SalesInvoiceService
                 $invoice->invoice_date,
                 $invoice->warehouse_id,
             );
+            $this->ensureDriverJourneyAcceptsInvoice($invoice);
 
             $inventory = app(InventoryMovementService::class);
 
@@ -85,7 +89,10 @@ class SalesInvoiceService
                 'confirmed_at' => now(),
             ])->save();
 
-            return $invoice->refresh();
+            $invoice = $invoice->refresh();
+            $this->syncDriverDeliveryWhenJourneyIsOpen($invoice);
+
+            return $invoice;
         });
     }
 
@@ -127,6 +134,7 @@ class SalesInvoiceService
                 $invoice->invoice_date,
                 $invoice->warehouse_id,
             );
+            $this->removeReadyJourneyDeliveryOrFail($invoice);
 
             $inventory = app(InventoryMovementService::class);
 
@@ -156,6 +164,68 @@ class SalesInvoiceService
 
             return $invoice->refresh();
         });
+    }
+
+    private function ensureDriverJourneyAcceptsInvoice(SalesInvoice $invoice): void
+    {
+        $journey = $this->driverJourneyFor($invoice);
+
+        if ($journey?->isCompleted()) {
+            throw new RuntimeException(
+                'لا يمكن اعتماد فاتورة جديدة بعد إنهاء رحلة السائق لهذا الخط واليوم.',
+            );
+        }
+    }
+
+    private function syncDriverDeliveryWhenJourneyIsOpen(SalesInvoice $invoice): void
+    {
+        $journey = $this->driverJourneyFor($invoice);
+
+        if ($journey !== null && ! $journey->isCompleted()) {
+            app(DriverFieldOperationService::class)
+                ->syncConfirmedInvoiceDeliveries($journey);
+        }
+    }
+
+    private function removeReadyJourneyDeliveryOrFail(SalesInvoice $invoice): void
+    {
+        $delivery = DriverDelivery::withoutGlobalScopes()
+            ->with('journey')
+            ->where('sales_invoice_id', $invoice->getKey())
+            ->lockForUpdate()
+            ->first();
+
+        if ($delivery === null) {
+            return;
+        }
+
+        $journey = $delivery->journey;
+
+        if ($delivery->isPending() && $journey?->isReady()) {
+            $delivery->delete();
+            $journey->touch();
+
+            return;
+        }
+
+        throw new RuntimeException(
+            'لا يمكن إلغاء الفاتورة بعد بدء رحلة السائق أو تسجيل نتيجة التسليم. استخدم مسار المرتجع الرسمي عند الحاجة.',
+        );
+    }
+
+    private function driverJourneyFor(SalesInvoice $invoice): ?DriverJourney
+    {
+        if ($invoice->route_id === null || $invoice->vehicle_id === null) {
+            return null;
+        }
+
+        return DriverJourney::withoutGlobalScopes()
+            ->whereDate('journey_date', $invoice->invoice_date)
+            ->where('route_id', $invoice->route_id)
+            ->where('vehicle_id', $invoice->vehicle_id)
+            ->where('warehouse_id', $invoice->warehouse_id)
+            ->lockForUpdate()
+            ->first();
     }
 
     public function recalculateTotals(SalesInvoice $invoice): void

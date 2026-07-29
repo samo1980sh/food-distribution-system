@@ -5,6 +5,7 @@ namespace App\Services\Distribution;
 use App\Enums\OperationSource;
 use App\Enums\UserRole;
 use App\Models\DailyClosing;
+use App\Models\DriverJourney;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Support\Arr;
@@ -121,6 +122,7 @@ class DailyClosingFieldHandoverService
 
             $this->ensureFieldDraft($closing);
             $this->ensureResponsibleEmployee($closing, $user, 'inventory');
+            $this->ensureDriverJourneyCompletedWhenPresent($closing);
 
             if ($closing->inventorySubmitted()) {
                 throw new RuntimeException('تم تسليم جرد السيارة سابقاً ولا يمكن استبداله من التطبيق الميداني.');
@@ -237,6 +239,22 @@ class DailyClosingFieldHandoverService
                 $section === 'inventory'
                     ? 'جرد السيارة متاح للسائق المسؤول عن هذا الخط فقط.'
                     : 'تسليم النقد متاح لمندوب المبيعات المسؤول عن هذا الخط فقط.',
+            );
+        }
+    }
+
+    private function ensureDriverJourneyCompletedWhenPresent(DailyClosing $closing): void
+    {
+        $journey = DriverJourney::withoutGlobalScopes()
+            ->whereDate('journey_date', $closing->closing_date)
+            ->where('route_id', $closing->route_id)
+            ->where('driver_id', $closing->driver_id)
+            ->lockForUpdate()
+            ->first();
+
+        if ($journey !== null && ! $journey->isCompleted()) {
+            throw new RuntimeException(
+                'يجب إنهاء رحلة السائق ومعالجة جميع التسليمات قبل تسليم جرد السيارة.',
             );
         }
     }

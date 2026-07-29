@@ -7,6 +7,8 @@ use App\Http\Resources\Api\V1\Operational\AreaResource;
 use App\Http\Resources\Api\V1\Operational\CustomerPaymentResource;
 use App\Http\Resources\Api\V1\Operational\CustomerResource;
 use App\Http\Resources\Api\V1\Operational\DailyClosingResource;
+use App\Http\Resources\Api\V1\Operational\DriverDeliveryResource;
+use App\Http\Resources\Api\V1\Operational\DriverJourneyResource;
 use App\Http\Resources\Api\V1\Operational\EmployeeSummaryResource;
 use App\Http\Resources\Api\V1\Operational\ProductCategoryResource;
 use App\Http\Resources\Api\V1\Operational\ProductResource;
@@ -24,6 +26,8 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -41,7 +45,7 @@ use InvalidArgumentException;
 
 final class MobileSyncEntityRegistry
 {
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     /**
      * @return array<string, array{
@@ -141,6 +145,38 @@ final class MobileSyncEntityRegistry
                     'fromWarehouse.vehicle',
                     'toWarehouse.vehicle',
                     'handoverUser',
+                    'items.product.category',
+                    'items.product.unit',
+                ],
+            ],
+            'driver_journeys' => [
+                'model' => DriverJourney::class,
+                'resource' => DriverJourneyResource::class,
+                'permissions' => [PermissionName::DRIVER_JOURNEYS_VIEW->value],
+                'relations' => [
+                    'route.area',
+                    'route.vehicle.warehouse',
+                    'route.driver',
+                    'route.salesRepresentative',
+                    'vehicle.warehouse',
+                    'warehouse.vehicle',
+                    'driver',
+                    'salesRepresentative',
+                    'deliveries.salesInvoice',
+                    'deliveries.customer',
+                    'deliveries.items.product.category',
+                    'deliveries.items.product.unit',
+                ],
+            ],
+            'driver_deliveries' => [
+                'model' => DriverDelivery::class,
+                'resource' => DriverDeliveryResource::class,
+                'permissions' => [PermissionName::DRIVER_DELIVERIES_VIEW->value],
+                'relations' => [
+                    'journey',
+                    'salesInvoice',
+                    'customer',
+                    'salesRepresentative',
                     'items.product.category',
                     'items.product.unit',
                 ],

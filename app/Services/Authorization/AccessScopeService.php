@@ -8,6 +8,8 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
@@ -60,6 +62,8 @@ class AccessScopeService
             VehicleLoad::class => $this->scopeVehicleLoads($query, $scope),
             SalesInvoice::class,
             SalesReturn::class,
+            DriverJourney::class,
+            DriverDelivery::class,
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class,
@@ -208,6 +212,8 @@ class AccessScopeService
             VehicleLoad::class => $this->allowsVehicleLoadAttributes($scope, $record),
             SalesInvoice::class,
             SalesReturn::class,
+            DriverJourney::class,
+            DriverDelivery::class,
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class => $this->allowsOperationalAttributes($scope, $record),
@@ -562,7 +568,8 @@ class AccessScopeService
         if ($scope->role === UserRole::WAREHOUSE_KEEPER) {
             return match ($table) {
                 'sales_invoices', 'sales_returns', 'customer_payments',
-                'vehicle_expenses', 'daily_closings' => [
+                'vehicle_expenses', 'daily_closings',
+                'driver_journeys', 'driver_deliveries' => [
                     'warehouse_id' => $scope->warehouseIds,
                 ],
                 'vehicle_loads' => [
@@ -585,7 +592,8 @@ class AccessScopeService
                 'sales_representative_id' => $scope->employeeIds,
                 'driver_id' => $scope->employeeIds,
             ],
-            'vehicle_expenses', 'vehicle_loads' => [
+            'vehicle_expenses', 'vehicle_loads',
+            'driver_journeys', 'driver_deliveries' => [
                 'route_id' => $scope->routeIds,
                 'vehicle_id' => $scope->vehicleIds,
                 'sales_representative_id' => $scope->employeeIds,
@@ -678,6 +686,8 @@ class AccessScopeService
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class,
+            DriverJourney::class,
+            DriverDelivery::class,
         ] as $model) {
             $ids = array_merge(
                 $ids,
