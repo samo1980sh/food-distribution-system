@@ -11,6 +11,7 @@ use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleExpense;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -184,6 +185,46 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'cash_notes' => 'زيادة نقدية قيد المراجعة',
             'status' => 'draft',
         ]);
+    }
+
+    public function test_negative_net_cash_submits_zero_without_a_false_cash_difference(): void
+    {
+        $context = $this->context();
+        $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
+        $salesToken = $this->tokenFor($sales);
+
+        VehicleExpense::withoutEvents(fn () => VehicleExpense::query()->create([
+            'expense_number' => 'EXP-NEGATIVE-CASH',
+            'expense_date' => today()->toDateString(),
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'route_id' => $context['route']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'expense_type' => 'fuel',
+            'amount' => 40000,
+            'payment_method' => 'cash',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]));
+
+        $opened = $this->withFreshToken($salesToken)
+            ->postJson('/api/v1/operational/daily-closings/open-today', [
+                'route_id' => $context['route']->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.financial.expected_cash_amount', '-40000.00');
+
+        $closingId = (int) $opened->json('data.id');
+
+        $this->withFreshToken($salesToken)
+            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-cash', [
+                'actual_cash_amount' => 0,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.actual_cash_amount', '0.00')
+            ->assertJsonPath('data.cash_difference', '0.00')
+            ->assertJsonPath('data.field_handover.cash.submitted', true);
     }
 
     /** @return array<string, mixed> */

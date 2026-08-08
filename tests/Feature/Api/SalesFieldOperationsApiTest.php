@@ -66,6 +66,7 @@ class SalesFieldOperationsApiTest extends TestCase
                 'mobile' => '0999000000',
                 'route_id' => $context['route']->id,
                 'address' => 'ضمن خط المندوب',
+                'attach_to_today_journey' => true,
             ])
             ->assertCreated()
             ->assertJsonPath('data.route.id', $context['route']->id)
@@ -130,6 +131,56 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.summary.pending', 0)
             ->assertJsonPath('data.summary.in_progress', 0)
             ->assertJsonPath('data.summary.completed', 3);
+    }
+
+    public function test_existing_today_journey_keeps_its_visit_plan_frozen_unless_new_customer_is_explicitly_attached(): void
+    {
+        $context = $this->context(1);
+        $user = $this->salesUser($context['representative']);
+        $token = $this->tokenFor($user);
+
+        $opened = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated()
+            ->assertJsonCount(1, 'data.visits');
+
+        $journeyId = (int) $opened->json('data.id');
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/customers', [
+                'client_reference' => 'sales-new-customer-no-attach-0001',
+                'name' => 'عميل جديد بدون ربط بالرحلة',
+                'mobile' => '0999111100',
+                'route_id' => $context['route']->id,
+                'attach_to_today_journey' => false,
+            ])
+            ->assertCreated();
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertOk()
+            ->assertJsonPath('data.id', $journeyId)
+            ->assertJsonCount(1, 'data.visits');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.visits');
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/customers', [
+                'client_reference' => 'sales-new-customer-explicit-attach-0001',
+                'name' => 'عميل جديد مع ربط صريح بالرحلة',
+                'mobile' => '0999111101',
+                'route_id' => $context['route']->id,
+                'attach_to_today_journey' => true,
+            ])
+            ->assertCreated();
+
+        $this->withFreshToken($token)
+            ->getJson("/api/v1/operational/sales-journeys/{$journeyId}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data.visits');
     }
 
     public function test_visit_outcome_requires_the_matching_official_document(): void

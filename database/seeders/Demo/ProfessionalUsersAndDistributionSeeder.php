@@ -17,6 +17,17 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
 {
     private const PASSWORD = 'Demo@2026';
 
+    /** @var list<string> */
+    private const DAILY_OPERATION_DAYS = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+    ];
+
     public function run(): void
     {
         $users = $this->seedUsers();
@@ -115,7 +126,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'vehicle' => 'VH-101',
                 'driver' => 'driver',
                 'sales' => 'sales',
-                'days' => ['saturday', 'monday', 'wednesday'],
+                'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
                 'notes' => 'خط عالي النشاط ويضم كبار العملاء.',
             ],
@@ -126,7 +137,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'vehicle' => 'VH-102',
                 'driver' => 'field_team',
                 'sales' => 'field_team',
-                'days' => ['sunday', 'tuesday', 'thursday'],
+                'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
                 'notes' => 'خط تجريبي لحساب يجمع دور السائق والمندوب.',
             ],
@@ -137,7 +148,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'vehicle' => 'VH-103',
                 'driver' => 'driver_rif',
                 'sales' => 'sales_rif',
-                'days' => ['saturday', 'tuesday', 'thursday'],
+                'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
                 'notes' => 'خط واسع جغرافياً مع مبيعات آجلة وتحصيل دوري.',
             ],

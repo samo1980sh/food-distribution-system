@@ -62,7 +62,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
         $journey = $this->withFreshToken($token)
             ->getJson("/api/v1/operational/sales-journeys/{$journeyId}")
             ->assertOk()
-            ->assertJsonCount(2, 'data.visits');
+            ->assertJsonCount(1, 'data.visits');
 
         foreach ($journey->json('data.visits') as $index => $visit) {
             $visitId = (int) $visit['id'];
@@ -103,7 +103,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             ->assertJsonPath('data.results.0.record.status', 'completed');
 
         $this->assertDatabaseHas('sales_journeys', ['id' => $journeyId, 'status' => 'completed']);
-        $this->assertDatabaseCount('sales_visits', 2);
+        $this->assertDatabaseCount('sales_visits', 1);
         $this->assertDatabaseCount('customers', 2);
     }
 

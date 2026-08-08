@@ -197,7 +197,8 @@ class DailyClosingFieldHandoverService
             $closing = $this->dailyClosingService->refreshTotals($closing);
 
             $actualCash = round((float) $data['actual_cash_amount'], 2);
-            $difference = round($actualCash - (float) $closing->expected_cash_amount, 2);
+            $expectedCashHandover = max((float) $closing->expected_cash_amount, 0);
+            $difference = round($actualCash - $expectedCashHandover, 2);
             $notes = trim((string) ($data['cash_notes'] ?? ''));
 
             if (abs($difference) >= 0.005 && $notes === '') {

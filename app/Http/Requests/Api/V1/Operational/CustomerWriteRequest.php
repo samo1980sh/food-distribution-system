@@ -37,6 +37,7 @@ class CustomerWriteRequest extends OperationalWriteRequest
             'credit_days' => ['sometimes', 'integer', 'min:1', 'max:365'],
             'payment_type' => ['sometimes', Rule::in(['cash', 'credit', 'weekly', 'monthly'])],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'attach_to_today_journey' => ['sometimes', 'boolean'],
         ];
     }
 }

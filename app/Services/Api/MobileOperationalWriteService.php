@@ -57,6 +57,9 @@ class MobileOperationalWriteService
                     );
                 }
 
+                $attachToTodayJourney = (bool) ($data['attach_to_today_journey'] ?? false);
+                unset($data['attach_to_today_journey']);
+
                 $customer = Customer::query()->create([
                     ...$data,
                     'code' => $this->documentNumberService->next('customer', 'CUS'),
@@ -71,7 +74,9 @@ class MobileOperationalWriteService
                     'operation_source' => OperationSource::MOBILE_SALES,
                 ]);
 
-                $this->salesFieldOperationService->attachNewCustomer($customer);
+                if ($attachToTodayJourney) {
+                    $this->salesFieldOperationService->attachNewCustomer($customer);
+                }
 
                 return $customer->refresh();
             },

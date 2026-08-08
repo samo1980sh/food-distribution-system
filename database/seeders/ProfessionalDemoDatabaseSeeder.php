@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Database\Seeders\Demo\ProfessionalCatalogSeeder;
+use Database\Seeders\Demo\ProfessionalFieldWorkspacesSeeder;
 use Database\Seeders\Demo\ProfessionalOperationsSeeder;
 use Database\Seeders\Demo\ProfessionalUsersAndDistributionSeeder;
 use Illuminate\Database\Seeder;
@@ -18,6 +19,7 @@ class ProfessionalDemoDatabaseSeeder extends Seeder
                 ProfessionalCatalogSeeder::class,
                 ProfessionalUsersAndDistributionSeeder::class,
                 ProfessionalOperationsSeeder::class,
+                ProfessionalFieldWorkspacesSeeder::class,
             ]);
         });
     }

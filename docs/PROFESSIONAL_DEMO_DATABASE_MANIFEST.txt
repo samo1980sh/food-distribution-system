@@ -1,22 +1,29 @@
 Professional Demo Database Reset
-Baseline: edc750a
+Current baseline: fb239da
 
-Added files:
+Core files:
 - app/Console/Commands/ResetProfessionalDemoDatabase.php
 - database/seeders/ProfessionalDemoDatabaseSeeder.php
 - database/seeders/ProfessionalDemoSeeder.php
 - database/seeders/Demo/ProfessionalCatalogSeeder.php
 - database/seeders/Demo/ProfessionalUsersAndDistributionSeeder.php
 - database/seeders/Demo/ProfessionalOperationsSeeder.php
+- database/seeders/Demo/ProfessionalFieldWorkspacesSeeder.php
 - docs/PROFESSIONAL_DEMO_DATABASE_AR.md
 - docs/PROFESSIONAL_DEMO_DATABASE_MANIFEST.txt
 - scripts/professional-demo-database-git-add.ps1
 - tests/Feature/ProfessionalDemoDatabaseTest.php
 
-Command:
+Commands:
 - php artisan demo:reset --check
 - php artisan demo:reset --apply
 - php artisan demo:reset --apply --force
+
+Flutter-ready reset guarantees:
+- Daily schedules for the three active field routes
+- Ready sales journeys and pending visits for all sales demo accounts
+- Ready driver journeys and pending deliveries for all driver demo accounts
+- Approved current-day loads left pending for explicit handover testing
 
 Shared demo password:
 - Demo@2026

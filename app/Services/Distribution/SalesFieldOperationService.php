@@ -83,7 +83,10 @@ class SalesFieldOperationService
                 $created = true;
             }
 
-            $this->syncRouteCustomers($journey);
+            if ($created) {
+                $this->syncRouteCustomers($journey);
+            }
+
             $journey = $this->loadJourney($journey);
             $journey->wasRecentlyCreated = $created;
 
@@ -105,7 +108,9 @@ class SalesFieldOperationService
                 (int) $journey->warehouse_id,
             );
 
-            $this->syncRouteCustomers($journey);
+            // The visit plan is frozen when the journey is first opened.
+            // Customers created afterwards are attached only when the caller
+            // explicitly requests attach_to_today_journey.
             $journey->forceFill([
                 'status' => 'in_progress',
                 'start_notes' => $payload['notes'] ?? null,
@@ -206,8 +211,11 @@ class SalesFieldOperationService
                 throw new RuntimeException('لا يمكن إنهاء رحلة مبيعات ليست قيد التنفيذ.');
             }
 
-            $this->syncRouteCustomers($journey);
-
+            // The visit plan is frozen once the journey starts. Customers
+            // created during an active journey are attached only when the
+            // caller explicitly requests it. Re-syncing the whole route here
+            // would silently add pending visits at finish time and make an
+            // otherwise completed offline journey conflict.
             if ($journey->visits()->where('status', '!=', 'completed')->exists()) {
                 throw new OperationalApiException(
                     'لا يمكن إنهاء الرحلة قبل معالجة جميع الزيارات المخططة.',

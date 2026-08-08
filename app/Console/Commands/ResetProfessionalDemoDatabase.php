@@ -156,6 +156,10 @@ class ResetProfessionalDemoDatabase extends Command
             'vehicle_loads',
             'vehicle_expenses',
             'daily_closings',
+            'sales_journeys',
+            'sales_visits',
+            'driver_journeys',
+            'driver_deliveries',
         ];
 
         $rows = [];
@@ -185,6 +189,7 @@ class ResetProfessionalDemoDatabase extends Command
                 ['Catalog', '15 products across 6 categories and 5 units'],
                 ['Inventory', 'Opening balances, vehicle stock, expiry-risk batches and weighted costs'],
                 ['Operations', 'Loads, invoices, collections, returns, expenses and daily closings'],
+                ['Flutter today', 'Ready sales and driver journeys with visits and pending deliveries for every demo field account'],
                 ['Reports', 'Data for sales, profit, overdue, top customers, route performance and expiry risk'],
             ],
         );
@@ -207,6 +212,26 @@ class ResetProfessionalDemoDatabase extends Command
                 ['Approved loads', DB::table('vehicle_loads')->where('status', 'approved')->count()],
                 ['Approved expenses', DB::table('vehicle_expenses')->where('status', 'approved')->count()],
                 ['Confirmed closings', DB::table('daily_closings')->where('status', 'confirmed')->count()],
+                ['Today sales journeys', DB::table('sales_journeys')->whereDate('journey_date', today())->count()],
+                [
+                    'Today sales visits',
+                    DB::table('sales_visits')->whereIn(
+                        'sales_journey_id',
+                        DB::table('sales_journeys')
+                            ->whereDate('journey_date', today())
+                            ->select('id'),
+                    )->count(),
+                ],
+                ['Today driver journeys', DB::table('driver_journeys')->whereDate('journey_date', today())->count()],
+                [
+                    'Today driver deliveries',
+                    DB::table('driver_deliveries')->whereIn(
+                        'driver_journey_id',
+                        DB::table('driver_journeys')
+                            ->whereDate('journey_date', today())
+                            ->select('id'),
+                    )->count(),
+                ],
             ],
         );
     }

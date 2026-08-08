@@ -4,11 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\DistributionRoute;
+use App\Models\DriverJourney;
 use App\Models\Product;
+use App\Models\SalesJourney;
 use App\Models\SalesInvoice;
 use App\Models\StockBalance;
 use App\Models\User;
 use App\Services\Authorization\AccessScopeService;
+use App\Services\Distribution\FieldRouteAssignmentResolver;
 use App\Services\Reports\OverdueCustomerReportService;
 use App\Services\Reports\RoutePerformanceReportService;
 use App\Support\Api\MobileAppAccess;
@@ -52,6 +55,11 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $this->assertTrue(DB::table('vehicle_expenses')->where('status', 'pending')->exists());
         $this->assertTrue(DB::table('vehicle_expenses')->where('status', 'rejected')->exists());
         $this->assertTrue(DB::table('daily_closings')->where('status', 'draft')->exists());
+
+        $this->assertSame(3, SalesJourney::query()->whereDate('journey_date', today())->count());
+        $this->assertSame(16, DB::table('sales_visits')->count());
+        $this->assertSame(3, DriverJourney::query()->whereDate('journey_date', today())->count());
+        $this->assertSame(3, DB::table('driver_deliveries')->count());
     }
 
     public function test_demo_accounts_support_admin_sales_driver_and_dual_flutter_scenarios(): void
@@ -80,6 +88,58 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $this->assertNotEmpty($scopeService->for($sales)->routeIds);
         $this->assertNotEmpty($scopeService->for($driver)->vehicleIds);
         $this->assertNotEmpty($scopeService->for($dual)->warehouseIds);
+    }
+
+    public function test_flutter_demo_accounts_have_ready_today_workspaces_on_every_reset_day(): void
+    {
+        $resolver = app(FieldRouteAssignmentResolver::class);
+        $sales = User::query()->where('email', 'sales@demo.local')->firstOrFail();
+        $driver = User::query()->where('email', 'driver@demo.local')->firstOrFail();
+        $dual = User::query()->where('email', 'field.team@demo.local')->firstOrFail();
+
+        foreach ([
+            [$sales, User::ROLE_SALES_REPRESENTATIVE],
+            [$driver, User::ROLE_DRIVER],
+            [$dual, User::ROLE_SALES_REPRESENTATIVE],
+            [$dual, User::ROLE_DRIVER],
+        ] as [$user, $role]) {
+            $resolution = $resolver->resolveRole($user, $role, null, today());
+
+            $this->assertSame(FieldRouteAssignmentResolver::STATUS_READY, $resolution['status']);
+            $this->assertTrue($resolution['scheduled_today']);
+            $this->assertNotNull($resolution['route']);
+        }
+
+        $centralRoute = DistributionRoute::query()->where('code', 'RT-DAM-C')->firstOrFail();
+        $salesJourney = SalesJourney::query()
+            ->whereDate('journey_date', today())
+            ->where('route_id', $centralRoute->id)
+            ->firstOrFail();
+        $driverJourney = DriverJourney::query()
+            ->whereDate('journey_date', today())
+            ->where('route_id', $centralRoute->id)
+            ->firstOrFail();
+
+        $this->assertSame('ready', $salesJourney->status);
+        $this->assertSame(5, $salesJourney->visits()->count());
+        $this->assertSame(5, $salesJourney->visits()->where('status', 'pending')->count());
+
+        $this->assertSame('ready', $driverJourney->status);
+        $this->assertSame(1, $driverJourney->deliveries()->count());
+        $this->assertSame(1, $driverJourney->deliveries()->where('status', 'pending')->count());
+
+        $this->assertTrue(DB::table('vehicle_loads')
+            ->whereDate('load_date', today())
+            ->where('route_id', $centralRoute->id)
+            ->where('status', 'approved')
+            ->where('handover_status', 'pending')
+            ->exists());
+
+        $this->assertFalse(DB::table('daily_closings')
+            ->whereDate('closing_date', today())
+            ->where('warehouse_id', $salesJourney->warehouse_id)
+            ->where('status', 'confirmed')
+            ->exists());
     }
 
     public function test_demo_inventory_and_financial_cases_feed_risk_and_performance_reports(): void

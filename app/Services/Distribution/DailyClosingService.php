@@ -156,6 +156,7 @@ class DailyClosingService
                 + $otherVehicleExpenses;
 
             $expectedCash = $invoiceCash + $cashCollections - $cashVehicleExpenses;
+            $expectedCashHandover = max($expectedCash, 0);
             $actualCash = (float) $closing->actual_cash_amount;
 
             $closing->forceFill([
@@ -179,7 +180,7 @@ class DailyClosingService
                 'cash_vehicle_expenses_amount' => $cashVehicleExpenses,
                 'non_cash_vehicle_expenses_amount' => $nonCashVehicleExpenses,
                 'expected_cash_amount' => $expectedCash,
-                'cash_difference' => $actualCash - $expectedCash,
+                'cash_difference' => $actualCash - $expectedCashHandover,
                 'snapshot_at' => null,
             ])->save();
 
