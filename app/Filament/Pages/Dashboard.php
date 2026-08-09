@@ -3,7 +3,6 @@
 namespace App\Filament\Pages;
 
 use App\Enums\PermissionName;
-
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -28,12 +27,17 @@ class Dashboard extends BaseDashboard
 
     public function getHeading(): string|Htmlable
     {
-        return 'لوحة التحكم';
+        return 'لوحة العمليات';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'متابعة تنفيذية للمبيعات والمقبوضات والربحية والتنبيهات التشغيلية.';
+        return 'تابع جاهزية عمل اليوم، تقدم الرحلات، الحالات التي تحتاج إجراءً، والنتائج ضمن نطاق مسؤوليتك.';
+    }
+
+    public function getWidgets(): array
+    {
+        return [];
     }
 
     public function getColumns(): int|array

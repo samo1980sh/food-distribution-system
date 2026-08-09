@@ -192,7 +192,7 @@ class ExecutiveDashboardTest extends TestCase
         );
     }
 
-    public function test_super_admin_can_open_executive_dashboard(): void
+    public function test_super_admin_can_open_clean_dashboard(): void
     {
         $user = User::factory()->create([
             'role' => User::ROLE_SUPER_ADMIN,
@@ -206,25 +206,30 @@ class ExecutiveDashboardTest extends TestCase
         $this
             ->get('/admin')
             ->assertOk()
-            ->assertSeeLivewire(
+            ->assertSee('لوحة العمليات')
+            ->assertSee('تابع جاهزية عمل اليوم، تقدم الرحلات، الحالات التي تحتاج إجراءً، والنتائج ضمن نطاق مسؤوليتك.')
+            ->assertDontSee('لوحة تشغيل توزيع المواد الغذائية والأسطول')
+            ->assertDontSee('حالة النظام')
+            ->assertDontSee('المرحلة الحالية')
+            ->assertDontSeeLivewire(
                 AdminWelcomeWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 DistributionOverviewWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 FinancialTrendChartWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 OperationalAlertsWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 ExecutiveRankingsWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 RecentOperationsWidget::class,
             )
-            ->assertSeeLivewire(
+            ->assertDontSeeLivewire(
                 OperationsFollowUpWidget::class,
             );
 
@@ -257,6 +262,20 @@ class ExecutiveDashboardTest extends TestCase
         Livewire::test(OperationsFollowUpWidget::class)
             ->assertSee('متابعة السيارات والمستودعات')
             ->assertSee('DASH-001');
+    }
+
+    public function test_dashboard_access_still_requires_dashboard_view_permission(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_DRIVER,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($user);
+
+        $this->assertFalse(
+            \App\Filament\Pages\Dashboard::canAccess(),
+        );
     }
 
     public function test_dashboard_uses_native_filament_visual_components(): void
