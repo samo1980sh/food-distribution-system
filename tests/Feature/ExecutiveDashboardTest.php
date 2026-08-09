@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Widgets\AdminWelcomeWidget;
 use App\Filament\Widgets\DistributionOverviewWidget;
 use App\Filament\Widgets\ExecutiveRankingsWidget;
 use App\Filament\Widgets\FinancialTrendChartWidget;
@@ -206,6 +207,9 @@ class ExecutiveDashboardTest extends TestCase
             ->get('/admin')
             ->assertOk()
             ->assertSeeLivewire(
+                AdminWelcomeWidget::class,
+            )
+            ->assertSeeLivewire(
                 DistributionOverviewWidget::class,
             )
             ->assertSeeLivewire(
@@ -223,6 +227,13 @@ class ExecutiveDashboardTest extends TestCase
             ->assertSeeLivewire(
                 OperationsFollowUpWidget::class,
             );
+
+        Livewire::test(AdminWelcomeWidget::class)
+            ->assertSee('لوحة تشغيل توزيع المواد الغذائية والأسطول')
+            ->assertDontSee('حالة النظام')
+            ->assertDontSee('تشغيلي ومستقر')
+            ->assertDontSee('المرحلة الحالية')
+            ->assertDontSee('لوحة تشغيلية وقياسات يومية');
 
         Livewire::test(DistributionOverviewWidget::class)
             ->assertSee('مبيعات اليوم')
@@ -246,6 +257,55 @@ class ExecutiveDashboardTest extends TestCase
         Livewire::test(OperationsFollowUpWidget::class)
             ->assertSee('متابعة السيارات والمستودعات')
             ->assertSee('DASH-001');
+    }
+
+    public function test_dashboard_uses_native_filament_visual_components(): void
+    {
+        $provider = file_get_contents(
+            app_path('Providers/Filament/AdminPanelProvider.php'),
+        );
+
+        $views = collect([
+            'admin-welcome-widget.blade.php',
+            'operational-alerts-widget.blade.php',
+            'executive-rankings-widget.blade.php',
+            'recent-operations-widget.blade.php',
+            'operations-follow-up-widget.blade.php',
+        ])->map(
+            fn (string $view): string => file_get_contents(
+                resource_path('views/filament/widgets/'.$view),
+            ),
+        );
+
+        $this->assertStringNotContainsString(
+            'freshroute-admin-theme',
+            $provider,
+        );
+        foreach ($views as $view) {
+            $this->assertStringContainsString(
+                '<x-filament::section',
+                $view,
+            );
+            $this->assertStringNotContainsString(
+                'executive-dashboard-styles',
+                $view,
+            );
+            $this->assertStringNotContainsString('fr-', $view);
+            $this->assertStringNotContainsString('<style', $view);
+            $this->assertStringNotContainsString('style=', $view);
+        }
+
+        $this->assertFileDoesNotExist(
+            resource_path('css/filament/admin/theme.css'),
+        );
+        $this->assertFileDoesNotExist(
+            public_path('css/app/freshroute-admin-theme.css'),
+        );
+        $this->assertFileDoesNotExist(
+            resource_path(
+                'views/filament/widgets/partials/executive-dashboard-styles.blade.php',
+            ),
+        );
     }
 
     private function insertDashboardData(): void

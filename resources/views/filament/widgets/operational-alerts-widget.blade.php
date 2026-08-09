@@ -1,5 +1,4 @@
 <x-filament-widgets::widget>
-    @include('filament.widgets.partials.executive-dashboard-styles')
     <x-filament::section>
         <x-slot name="heading">
             التنبيهات التشغيلية
@@ -9,70 +8,63 @@
             الحالات التي تحتاج متابعة حسب صلاحيات حسابك.
         </x-slot>
 
-        <div class="fr-exec-dashboard fr-operational-alerts">
+        <div class="grid gap-4">
             @if ($alerts === [])
-                <div class="fr-operational-alerts__healthy">
-                    <x-filament::icon
-                        icon="heroicon-o-check-circle"
-                        class="fr-operational-alerts__healthy-icon"
-                    />
-
-                    <div>
-                        <strong>لا توجد تنبيهات عاجلة</strong>
-                        <span>
-                            المؤشرات المتاحة ضمن صلاحياتك مستقرة حاليًا.
-                        </span>
-                    </div>
-                </div>
+                <x-filament::empty-state
+                    heading="لا توجد تنبيهات عاجلة"
+                    description="المؤشرات المتاحة ضمن صلاحياتك مستقرة حاليًا."
+                    icon="heroicon-o-check-circle"
+                    icon-color="success"
+                    compact
+                />
             @else
-                <div class="fr-operational-alerts__list">
+                <div class="grid gap-3">
                     @foreach ($alerts as $alert)
-                        <a
-                            href="{{ $alert['url'] }}"
-                            class="fr-operational-alert fr-operational-alert--{{ $alert['level'] }}"
-                            wire:navigate
+                        <x-filament::callout
+                            :color="$alert['level']"
+                            :icon="$alert['icon']"
+                            :heading="$alert['title']"
+                            :description="$alert['description']"
                         >
-                            <span class="fr-operational-alert__icon">
-                                <x-filament::icon
-                                    :icon="$alert['icon']"
-                                />
-                            </span>
+                            <x-slot name="controls">
+                                <x-filament::badge :color="$alert['level']">
+                                    {{ $alert['value'] }}
+                                </x-filament::badge>
+                            </x-slot>
 
-                            <span class="fr-operational-alert__content">
-                                <strong>{{ $alert['title'] }}</strong>
-                                <small>{{ $alert['description'] }}</small>
-                            </span>
-
-                            <span class="fr-operational-alert__value">
-                                {{ $alert['value'] }}
-                            </span>
-                        </a>
+                            <x-slot name="footer">
+                                <x-filament::link
+                                    :href="$alert['url']"
+                                    :color="$alert['level']"
+                                    icon="heroicon-m-arrow-left"
+                                    wire:navigate
+                                >
+                                    عرض التفاصيل
+                                </x-filament::link>
+                            </x-slot>
+                        </x-filament::callout>
                     @endforeach
                 </div>
             @endif
 
             @if ($quickLinks !== [])
-                <div class="fr-dashboard-quick-links">
-                    <span class="fr-dashboard-quick-links__title">
-                        وصول سريع
-                    </span>
-
-                    <div class="fr-dashboard-quick-links__items">
+                <x-filament::section heading="وصول سريع" secondary compact>
+                    <div class="flex flex-wrap gap-2">
                         @foreach ($quickLinks as $link)
-                            <a
-                                href="{{ $link['url'] }}"
-                                class="fr-dashboard-quick-link"
+                            <x-filament::button
+                                tag="a"
+                                :href="$link['url']"
+                                :icon="$link['icon']"
+                                color="gray"
+                                size="sm"
+                                outlined
                                 wire:navigate
                             >
-                                <x-filament::icon
-                                    :icon="$link['icon']"
-                                />
-
-                                <span>{{ $link['label'] }}</span>
-                            </a>
+                                {{ $link['label'] }}
+                            </x-filament::button>
                         @endforeach
                     </div>
-                </div>
+                </x-filament::section>
             @endif
         </div>
     </x-filament::section>

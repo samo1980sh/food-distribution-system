@@ -17,7 +17,6 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Assets\Css;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -44,9 +43,6 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Red,
                 'info' => Color::Blue,
                 'gray' => Color::Slate,
-            ])
-            ->assets([
-                Css::make('freshroute-admin-theme', resource_path('css/filament/admin/theme.css')),
             ])
             ->maxContentWidth(Width::Full)
             ->simplePageMaxContentWidth(Width::Large)
