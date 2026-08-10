@@ -11,7 +11,7 @@ class RecentOperationsWidget extends Widget
     protected string $view =
         'filament.widgets.recent-operations-widget';
 
-    protected static ?int $sort = 6;
+    protected static ?int $sort = 4;
 
     protected int|string|array $columnSpan = [
         'md' => 2,
@@ -28,7 +28,7 @@ class RecentOperationsWidget extends Widget
         return [
             'activities' => app(
                 ExecutiveDashboardService::class
-            )->recentActivity(limit: 10),
+            )->recentActivity(limit: 6),
         ];
     }
 }

@@ -11,7 +11,7 @@ class OperationalAlertsWidget extends Widget
     protected string $view =
         'filament.widgets.operational-alerts-widget';
 
-    protected static ?int $sort = 4;
+    protected static ?int $sort = 3;
 
     public static function canView(): bool
     {
@@ -25,11 +25,8 @@ class OperationalAlertsWidget extends Widget
 
     public function getViewData(): array
     {
-        $service = app(ExecutiveDashboardService::class);
-
         return [
-            'alerts' => $service->alerts(),
-            'quickLinks' => $service->quickLinks(),
+            'alerts' => app(ExecutiveDashboardService::class)->alerts(),
         ];
     }
 }

@@ -3,6 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Enums\PermissionName;
+use App\Filament\Widgets\DistributionOverviewWidget;
+use App\Filament\Widgets\ExecutiveRankingsWidget;
+use App\Filament\Widgets\FinancialTrendChartWidget;
+use App\Filament\Widgets\OperationalAlertsWidget;
+use App\Filament\Widgets\RecentOperationsWidget;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -13,7 +18,6 @@ class Dashboard extends BaseDashboard
     protected static ?string $title = 'لوحة التحكم';
 
     protected static ?int $navigationSort = 0;
-
 
     public static function canAccess(): bool
     {
@@ -27,17 +31,23 @@ class Dashboard extends BaseDashboard
 
     public function getHeading(): string|Htmlable
     {
-        return 'لوحة العمليات';
+        return 'لوحة التحكم';
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'تابع جاهزية عمل اليوم، تقدم الرحلات، الحالات التي تحتاج إجراءً، والنتائج ضمن نطاق مسؤوليتك.';
+        return 'نظرة شاملة على المبيعات والتحصيل والأداء التشغيلي';
     }
 
     public function getWidgets(): array
     {
-        return [];
+        return [
+            DistributionOverviewWidget::class,
+            FinancialTrendChartWidget::class,
+            OperationalAlertsWidget::class,
+            RecentOperationsWidget::class,
+            ExecutiveRankingsWidget::class,
+        ];
     }
 
     public function getColumns(): int|array

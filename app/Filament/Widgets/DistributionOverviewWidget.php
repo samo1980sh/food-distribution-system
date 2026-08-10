@@ -9,9 +9,19 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class DistributionOverviewWidget extends StatsOverviewWidget
 {
-    protected static ?int $sort = 2;
+    protected static ?int $sort = 1;
 
     protected int|string|array $columnSpan = 'full';
+
+    protected ?string $heading = 'المؤشرات الرئيسية';
+
+    protected ?string $description =
+        'ملخص الأداء المالي لليوم والشهر الحالي.';
+
+    protected int|array|null $columns = [
+        'md' => 2,
+        'xl' => 4,
+    ];
 
     protected ?string $pollingInterval = '60s';
 
@@ -23,6 +33,10 @@ class DistributionOverviewWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $summary = app(ExecutiveDashboardService::class)->summary();
+        $trend = app(ExecutiveDashboardService::class)->trend(days: 14);
+        $todayExpenses = (float) ($trend['expenses'][
+            count($trend['expenses']) - 1
+        ] ?? 0);
 
         return [
             Stat::make(
@@ -34,9 +48,56 @@ class DistributionOverviewWidget extends StatsOverviewWidget
                     .' فاتورة معتمدة'
                 )
                 ->descriptionIcon('heroicon-m-receipt-percent')
+                ->icon('heroicon-o-shopping-cart')
                 ->color('primary')
-                ->url(route(
-                    'filament.admin.resources.sales-reports.index'
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_SALES,
+                    'filament.admin.resources.sales-reports.index',
+                )),
+
+            Stat::make(
+                'مقبوضات اليوم',
+                $this->money($summary['today_collections']),
+            )
+                ->description('نقد الفواتير والتحصيلات المعتمدة')
+                ->descriptionIcon('heroicon-m-check-circle')
+                ->icon('heroicon-o-banknotes')
+                ->color('success')
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_CUSTOMER_PAYMENTS,
+                    'filament.admin.resources.customer-payment-reports.index',
+                )),
+
+            Stat::make(
+                'مرتجعات اليوم',
+                $this->money($summary['today_returns']),
+            )
+                ->description('مرتجعات مبيعات مؤكدة')
+                ->descriptionIcon('heroicon-m-arrow-uturn-left')
+                ->icon('heroicon-o-arrow-path-rounded-square')
+                ->color(
+                    $summary['today_returns'] > 0
+                        ? 'warning'
+                        : 'gray'
+                )
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_SALES_RETURNS,
+                    'filament.admin.resources.sales-return-reports.index',
+                )),
+
+            Stat::make(
+                'مصاريف اليوم',
+                $this->money($todayExpenses),
+            )
+                ->description('مصاريف سيارات معتمدة')
+                ->descriptionIcon('heroicon-m-receipt-refund')
+                ->icon('heroicon-o-credit-card')
+                ->color(
+                    $todayExpenses > 0 ? 'warning' : 'gray'
+                )
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_VEHICLE_EXPENSES,
+                    'filament.admin.resources.vehicle-expense-reports.index',
                 )),
 
             Stat::make(
@@ -44,51 +105,32 @@ class DistributionOverviewWidget extends StatsOverviewWidget
                 $this->money($summary['month_net_sales']),
             )
                 ->description(
-                    'مرتجعات: '
-                    .$this->money($summary['month_returns'])
+                    number_format($summary['month_invoice_count'])
+                    .' فاتورة مؤكدة'
                 )
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->icon('heroicon-o-chart-bar-square')
                 ->color(
                     $summary['month_net_sales'] >= 0
                         ? 'success'
                         : 'danger'
                 )
-                ->url(route(
-                    'filament.admin.resources.sales-reports.index'
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_SALES,
+                    'filament.admin.resources.sales-reports.index',
                 )),
 
             Stat::make(
                 'مقبوضات الشهر',
-                $this->money(
-                    $summary['month_total_collections']
-                ),
+                $this->money($summary['month_total_collections']),
             )
-                ->description(
-                    'نقد الفواتير والتحصيلات المعتمدة'
-                )
+                ->description('الفواتير النقدية وسندات القبض')
                 ->descriptionIcon('heroicon-m-banknotes')
-                ->color('success')
-                ->url(route(
-                    'filament.admin.resources.customer-payment-reports.index'
-                )),
-
-            Stat::make(
-                'صافي مساهمة الشهر',
-                $this->money(
-                    $summary['month_net_contribution']
-                ),
-            )
-                ->description(
-                    'الربح بعد مصاريف السيارات'
-                )
-                ->descriptionIcon('heroicon-m-calculator')
-                ->color(
-                    $summary['month_net_contribution'] >= 0
-                        ? 'success'
-                        : 'danger'
-                )
-                ->url(route(
-                    'filament.admin.resources.profit-reports.index'
+                ->icon('heroicon-o-wallet')
+                ->color('info')
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_CUSTOMER_PAYMENTS,
+                    'filament.admin.resources.customer-payment-reports.index',
                 )),
 
             Stat::make(
@@ -101,28 +143,15 @@ class DistributionOverviewWidget extends StatsOverviewWidget
                     'قبل مصاريف السيارات المعتمدة'
                 )
                 ->descriptionIcon('heroicon-m-presentation-chart-line')
+                ->icon('heroicon-o-calculator')
                 ->color(
                     $summary['month_approximate_profit'] >= 0
                         ? 'info'
                         : 'danger'
                 )
-                ->url(route(
-                    'filament.admin.resources.profit-reports.index'
-                )),
-
-            Stat::make(
-                'مصاريف الشهر',
-                $this->money($summary['month_expenses']),
-            )
-                ->description('مصاريف سيارات معتمدة')
-                ->descriptionIcon('heroicon-m-receipt-refund')
-                ->color(
-                    $summary['month_expenses'] > 0
-                        ? 'warning'
-                        : 'gray'
-                )
-                ->url(route(
-                    'filament.admin.resources.vehicle-expense-reports.index'
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_PROFIT,
+                    'filament.admin.resources.profit-reports.index',
                 )),
 
             Stat::make(
@@ -136,42 +165,15 @@ class DistributionOverviewWidget extends StatsOverviewWidget
                     .$this->money($summary['overdue_amount'])
                 )
                 ->descriptionIcon('heroicon-m-user-minus')
+                ->icon('heroicon-o-user-group')
                 ->color(
                     $summary['overdue_customers_count'] > 0
                         ? 'danger'
                         : 'success'
                 )
-                ->url(route(
-                    'filament.admin.resources.overdue-customer-reports.index'
-                )),
-
-            Stat::make(
-                'إغلاقات اليوم',
-                number_format(
-                    $summary['today_confirmed_closings']
-                ),
-            )
-                ->description(
-                    $summary['today_missing_closing_warehouses'] > 0
-                        ? number_format(
-                            $summary[
-                                'today_missing_closing_warehouses'
-                            ]
-                        ).' مستودع لم يُغلق'
-                        : 'لا توجد حركة مفتوحة دون إغلاق'
-                )
-                ->descriptionIcon(
-                    $summary['today_missing_closing_warehouses'] > 0
-                        ? 'heroicon-m-lock-open'
-                        : 'heroicon-m-lock-closed'
-                )
-                ->color(
-                    $summary['today_missing_closing_warehouses'] > 0
-                        ? 'danger'
-                        : 'success'
-                )
-                ->url(route(
-                    'filament.admin.resources.daily-closing-reports.index'
+                ->url($this->reportUrl(
+                    PermissionName::REPORT_OVERDUE_CUSTOMERS,
+                    'filament.admin.resources.overdue-customer-reports.index',
                 )),
         ];
     }
@@ -179,5 +181,16 @@ class DistributionOverviewWidget extends StatsOverviewWidget
     private function money(float $amount): string
     {
         return number_format($amount, 2).' ل.س';
+    }
+
+    private function reportUrl(
+        PermissionName $permission,
+        string $routeName,
+    ): ?string {
+        if (auth()->user()?->can($permission->value) !== true) {
+            return null;
+        }
+
+        return route($routeName);
     }
 }

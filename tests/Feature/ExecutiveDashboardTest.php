@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\AdminWelcomeWidget;
 use App\Filament\Widgets\DistributionOverviewWidget;
 use App\Filament\Widgets\ExecutiveRankingsWidget;
@@ -192,7 +193,7 @@ class ExecutiveDashboardTest extends TestCase
         );
     }
 
-    public function test_super_admin_can_open_clean_dashboard(): void
+    public function test_super_admin_can_open_classic_dashboard(): void
     {
         $user = User::factory()->create([
             'role' => User::ROLE_SUPER_ADMIN,
@@ -206,32 +207,38 @@ class ExecutiveDashboardTest extends TestCase
         $this
             ->get('/admin')
             ->assertOk()
-            ->assertSee('لوحة العمليات')
-            ->assertSee('تابع جاهزية عمل اليوم، تقدم الرحلات، الحالات التي تحتاج إجراءً، والنتائج ضمن نطاق مسؤوليتك.')
+            ->assertSee('لوحة التحكم')
+            ->assertSee('نظرة شاملة على المبيعات والتحصيل والأداء التشغيلي')
             ->assertDontSee('لوحة تشغيل توزيع المواد الغذائية والأسطول')
-            ->assertDontSee('حالة النظام')
-            ->assertDontSee('المرحلة الحالية')
             ->assertDontSeeLivewire(
                 AdminWelcomeWidget::class,
             )
-            ->assertDontSeeLivewire(
+            ->assertSeeLivewire(
                 DistributionOverviewWidget::class,
             )
-            ->assertDontSeeLivewire(
+            ->assertSeeLivewire(
                 FinancialTrendChartWidget::class,
             )
-            ->assertDontSeeLivewire(
+            ->assertSeeLivewire(
                 OperationalAlertsWidget::class,
             )
-            ->assertDontSeeLivewire(
+            ->assertSeeLivewire(
                 ExecutiveRankingsWidget::class,
             )
-            ->assertDontSeeLivewire(
+            ->assertSeeLivewire(
                 RecentOperationsWidget::class,
             )
             ->assertDontSeeLivewire(
                 OperationsFollowUpWidget::class,
             );
+
+        $this->assertSame([
+            DistributionOverviewWidget::class,
+            FinancialTrendChartWidget::class,
+            OperationalAlertsWidget::class,
+            RecentOperationsWidget::class,
+            ExecutiveRankingsWidget::class,
+        ], (new Dashboard)->getWidgets());
 
         Livewire::test(AdminWelcomeWidget::class)
             ->assertSee('لوحة تشغيل توزيع المواد الغذائية والأسطول')
@@ -242,21 +249,24 @@ class ExecutiveDashboardTest extends TestCase
 
         Livewire::test(DistributionOverviewWidget::class)
             ->assertSee('مبيعات اليوم')
+            ->assertSee('مقبوضات اليوم')
+            ->assertSee('مرتجعات اليوم')
+            ->assertSee('مصاريف اليوم')
             ->assertSee('صافي مبيعات الشهر');
 
         Livewire::test(FinancialTrendChartWidget::class)
-            ->assertSee('الحركة المالية خلال آخر 14 يومًا');
+            ->assertSee('اتجاه المبيعات والتحصيل خلال آخر 14 يومًا');
 
         Livewire::test(OperationalAlertsWidget::class)
-            ->assertSee('التنبيهات التشغيلية');
+            ->assertSee('تنبيهات تحتاج المتابعة');
 
         Livewire::test(ExecutiveRankingsWidget::class)
-            ->assertSee('الترتيب التنفيذي لهذا الشهر')
+            ->assertSee('الأداء خلال الشهر الحالي')
             ->assertSee('عميل لوحة التحكم')
             ->assertSee('خط لوحة التحكم');
 
         Livewire::test(RecentOperationsWidget::class)
-            ->assertSee('أحدث الحركات المهمة')
+            ->assertSee('أحدث العمليات')
             ->assertSee('DASH-INV-1');
 
         Livewire::test(OperationsFollowUpWidget::class)
@@ -274,7 +284,7 @@ class ExecutiveDashboardTest extends TestCase
         $this->actingAs($user);
 
         $this->assertFalse(
-            \App\Filament\Pages\Dashboard::canAccess(),
+            Dashboard::canAccess(),
         );
     }
 
@@ -312,6 +322,39 @@ class ExecutiveDashboardTest extends TestCase
             $this->assertStringNotContainsString('fr-', $view);
             $this->assertStringNotContainsString('<style', $view);
             $this->assertStringNotContainsString('style=', $view);
+        }
+
+        foreach ([
+            'operational-alerts-widget.blade.php',
+            'recent-operations-widget.blade.php',
+            'executive-rankings-widget.blade.php',
+        ] as $scrollableView) {
+            $view = file_get_contents(
+                resource_path(
+                    'views/filament/widgets/'.$scrollableView
+                ),
+            );
+
+            $this->assertStringContainsString(
+                'class="fi-scrollable"',
+                $view,
+            );
+            $this->assertStringContainsString(
+                'class="fi-sc-form fi-dense"',
+                $view,
+            );
+            $this->assertStringContainsString(
+                "'height: 32rem'",
+                $view,
+            );
+            $this->assertStringContainsString(
+                "'overflow-y: auto'",
+                $view,
+            );
+            $this->assertStringContainsString(
+                "'overflow-x: hidden'",
+                $view,
+            );
         }
 
         $this->assertFileDoesNotExist(

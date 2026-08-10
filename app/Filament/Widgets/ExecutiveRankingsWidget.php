@@ -22,7 +22,15 @@ class ExecutiveRankingsWidget extends Widget
 
     public function getViewData(): array
     {
-        return app(ExecutiveDashboardService::class)
-            ->executiveRankings();
+        return [
+            ...app(ExecutiveDashboardService::class)
+                ->executiveRankings(),
+            'canViewTopCustomers' => auth()->user()?->can(
+                PermissionName::REPORT_TOP_CUSTOMERS->value
+            ) === true,
+            'canViewRoutePerformance' => auth()->user()?->can(
+                PermissionName::REPORT_ROUTE_PERFORMANCE->value
+            ) === true,
+        ];
     }
 }

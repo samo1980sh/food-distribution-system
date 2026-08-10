@@ -1,14 +1,21 @@
 <x-filament-widgets::widget>
     <x-filament::section>
         <x-slot name="heading">
-            التنبيهات التشغيلية
+            تنبيهات تحتاج المتابعة
         </x-slot>
 
         <x-slot name="description">
             الحالات التي تحتاج متابعة حسب صلاحيات حسابك.
         </x-slot>
 
-        <div class="grid gap-4">
+        <div
+            class="fi-scrollable"
+            @style([
+                'height: 32rem',
+                'overflow-y: auto',
+                'overflow-x: hidden',
+            ])
+        >
             @if ($alerts === [])
                 <x-filament::empty-state
                     heading="لا توجد تنبيهات عاجلة"
@@ -18,7 +25,7 @@
                     compact
                 />
             @else
-                <div class="grid gap-3">
+                <div class="fi-sc-form fi-dense">
                     @foreach ($alerts as $alert)
                         <x-filament::callout
                             :color="$alert['level']"
@@ -45,26 +52,6 @@
                         </x-filament::callout>
                     @endforeach
                 </div>
-            @endif
-
-            @if ($quickLinks !== [])
-                <x-filament::section heading="وصول سريع" secondary compact>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach ($quickLinks as $link)
-                            <x-filament::button
-                                tag="a"
-                                :href="$link['url']"
-                                :icon="$link['icon']"
-                                color="gray"
-                                size="sm"
-                                outlined
-                                wire:navigate
-                            >
-                                {{ $link['label'] }}
-                            </x-filament::button>
-                        @endforeach
-                    </div>
-                </x-filament::section>
             @endif
         </div>
     </x-filament::section>
