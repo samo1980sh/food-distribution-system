@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesInvoices\Actions;
 use App\Models\SalesInvoice;
 use App\Services\Sales\SalesInvoiceService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
@@ -53,11 +54,19 @@ final class SalesInvoiceActions
             ->modalHeading('إلغاء فاتورة البيع')
             ->modalDescription('سيتم عكس حركة المخزون. يجب إلغاء أي تحصيلات مرتبطة أولًا، ولا يمكن التراجع عن هذه العملية من الواجهة.')
             ->modalSubmitActionLabel('تأكيد الإلغاء')
+            ->schema([
+                Textarea::make('cancellation_reason')
+                    ->label('سبب الإلغاء')
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull(),
+            ])
             ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('cancel', $record) === true)
-            ->action(function (SalesInvoice $record): void {
+            ->action(function (SalesInvoice $record, array $data): void {
                 try {
                     Gate::authorize('cancel', $record);
-                    app(SalesInvoiceService::class)->cancel($record);
+                    app(SalesInvoiceService::class)->cancel($record, $data['cancellation_reason'] ?? null);
 
                     Notification::make()
                         ->title('تم إلغاء الفاتورة')

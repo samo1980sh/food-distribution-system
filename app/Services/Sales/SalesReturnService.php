@@ -7,6 +7,7 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturnItem;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
+use App\Services\Support\CancellationAuditService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -88,9 +89,9 @@ class SalesReturnService
         });
     }
 
-    public function cancel(SalesReturn $salesReturn): SalesReturn
+    public function cancel(SalesReturn $salesReturn, ?string $reason): SalesReturn
     {
-        return DB::transaction(function () use ($salesReturn): SalesReturn {
+        return DB::transaction(function () use ($salesReturn, $reason): SalesReturn {
             $salesReturn = SalesReturn::query()
                 ->lockForUpdate()
                 ->findOrFail($salesReturn->getKey());
@@ -103,6 +104,8 @@ class SalesReturnService
             if (! $salesReturn->isConfirmed()) {
                 throw new RuntimeException('لا يمكن إلغاء مرتجع غير معتمد.');
             }
+
+            $cancellationAudit = app(CancellationAuditService::class)->attributes($reason);
 
             app(DailyClosingGuard::class)->ensureOpen($salesReturn->return_date, $salesReturn->warehouse_id);
 
@@ -124,7 +127,7 @@ class SalesReturnService
 
             $salesReturn->forceFill([
                 'status' => 'cancelled',
-            ])->save();
+            ] + $cancellationAudit)->save();
 
             if ($salesReturn->sales_invoice_id) {
                 app(SalesInvoiceService::class)->refreshFinancialBalance($salesReturn->sales_invoice_id);

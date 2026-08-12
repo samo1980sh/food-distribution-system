@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SalesReturns\Actions;
 use App\Models\SalesReturn;
 use App\Services\Sales\SalesReturnService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
@@ -53,11 +54,19 @@ final class SalesReturnActions
             ->modalHeading('إلغاء مرتجع البيع')
             ->modalDescription('سيتم عكس حركة المخزون وإخراج الكميات التي أُعيدت عند الاعتماد، مع تحديث الأثر المالي المرتبط.')
             ->modalSubmitActionLabel('تأكيد الإلغاء')
+            ->schema([
+                Textarea::make('cancellation_reason')
+                    ->label('سبب الإلغاء')
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull(),
+            ])
             ->visible(fn (SalesReturn $record): bool => auth()->user()?->can('cancel', $record) === true)
-            ->action(function (SalesReturn $record): void {
+            ->action(function (SalesReturn $record, array $data): void {
                 try {
                     Gate::authorize('cancel', $record);
-                    app(SalesReturnService::class)->cancel($record);
+                    app(SalesReturnService::class)->cancel($record, $data['cancellation_reason'] ?? null);
 
                     Notification::make()
                         ->title('تم إلغاء المرتجع')

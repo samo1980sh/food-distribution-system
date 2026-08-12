@@ -3,6 +3,7 @@
 namespace App\Services\Distribution;
 
 use App\Models\DailyClosing;
+use App\Services\Support\CancellationAuditService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -241,9 +242,9 @@ class DailyClosingService
         });
     }
 
-    public function cancel(DailyClosing $closing): DailyClosing
+    public function cancel(DailyClosing $closing, ?string $reason): DailyClosing
     {
-        return DB::transaction(function () use ($closing): DailyClosing {
+        return DB::transaction(function () use ($closing, $reason): DailyClosing {
             $closing = DailyClosing::query()
                 ->lockForUpdate()
                 ->findOrFail($closing->getKey());
@@ -252,9 +253,11 @@ class DailyClosingService
                 throw new RuntimeException('لا يمكن إلغاء إغلاق يوم غير معتمد.');
             }
 
+            $cancellationAudit = app(CancellationAuditService::class)->attributes($reason);
+
             $closing->forceFill([
                 'status' => 'cancelled',
-            ])->save();
+            ] + $cancellationAudit)->save();
 
             return $closing->refresh();
         });

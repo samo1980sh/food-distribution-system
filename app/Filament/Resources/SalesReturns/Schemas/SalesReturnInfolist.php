@@ -85,6 +85,20 @@ class SalesReturnInfolist
                             ->label('بيان / سبب الإدخال الإداري')
                             ->placeholder('لا يوجد - العملية واردة من التطبيق أو من بيانات سابقة')
                             ->columnSpanFull(),
+                        TextEntry::make('canceller.name')
+                            ->label('ألغاه')
+                            ->placeholder('-')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled'),
+                        TextEntry::make('cancelled_at')
+                            ->label('تاريخ الإلغاء')
+                            ->dateTime('Y-m-d H:i')
+                            ->placeholder('-')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled'),
+                        TextEntry::make('cancellation_reason')
+                            ->label('سبب الإلغاء')
+                            ->placeholder('غير مسجل - إلغاء سابق')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled')
+                            ->columnSpanFull(),
                         TextEntry::make('created_at')->label('تاريخ الإنشاء')->dateTime('Y-m-d H:i'),
                         TextEntry::make('confirmed_at')->label('تاريخ الاعتماد')->dateTime('Y-m-d H:i')->placeholder('-'),
                     ]),

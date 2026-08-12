@@ -4,6 +4,7 @@ namespace App\Services\Sales;
 
 use App\Models\CustomerPayment;
 use App\Services\Distribution\DailyClosingGuard;
+use App\Services\Support\CancellationAuditService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -56,9 +57,9 @@ class CustomerPaymentService
         });
     }
 
-    public function cancel(CustomerPayment $payment): CustomerPayment
+    public function cancel(CustomerPayment $payment, ?string $reason): CustomerPayment
     {
-        return DB::transaction(function () use ($payment): CustomerPayment {
+        return DB::transaction(function () use ($payment, $reason): CustomerPayment {
             $payment = CustomerPayment::query()
                 ->lockForUpdate()
                 ->findOrFail($payment->id);
@@ -66,6 +67,8 @@ class CustomerPaymentService
             if (! $payment->isConfirmed()) {
                 throw new RuntimeException('لا يمكن إلغاء تحصيل غير معتمد.');
             }
+
+            $cancellationAudit = app(CancellationAuditService::class)->attributes($reason);
 
             if (! $payment->warehouse_id) {
                 throw new RuntimeException('لا يمكن إلغاء تحصيل لا يحتوي مستودعاً.');
@@ -75,7 +78,7 @@ class CustomerPaymentService
 
             $payment->forceFill([
                 'status' => 'cancelled',
-            ])->save();
+            ] + $cancellationAudit)->save();
 
             if ($payment->sales_invoice_id) {
                 app(SalesInvoiceService::class)->refreshFinancialBalance($payment->sales_invoice_id);

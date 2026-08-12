@@ -31,6 +31,9 @@ class VehicleLoad extends Model
         'approved_at',
         'handover_by',
         'handover_at',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -39,6 +42,7 @@ class VehicleLoad extends Model
         'total_cost' => 'decimal:2',
         'approved_at' => 'datetime',
         'handover_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -113,6 +117,11 @@ class VehicleLoad extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function handoverUser(): BelongsTo

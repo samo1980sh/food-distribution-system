@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Operational;
 use App\Http\Controllers\Api\V1\Operational\Concerns\BuildsOperationalQueries;
 use App\Http\Controllers\Api\V1\Operational\Concerns\HandlesOperationalWriteResponses;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
 use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Resources\Api\V1\Operational\DailyClosingResource;
@@ -148,15 +149,13 @@ class DailyClosingController extends Controller
     }
 
     public function cancel(
-        Request $request,
+        CancelOperationalDocumentRequest $request,
         DailyClosing $dailyClosing,
         DailyClosingService $service,
     ): JsonResponse {
-        Gate::authorize('cancel', $dailyClosing);
-
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
-            $service->cancel($dailyClosing),
+            $service->cancel($dailyClosing, $request->validated('reason')),
             'تم إلغاء الإغلاق اليومي.',
         ));
     }

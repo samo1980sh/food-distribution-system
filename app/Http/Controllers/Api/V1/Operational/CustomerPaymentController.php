@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Operational;
 use App\Http\Controllers\Api\V1\Operational\Concerns\BuildsOperationalQueries;
 use App\Http\Controllers\Api\V1\Operational\Concerns\HandlesOperationalWriteResponses;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\CustomerPaymentWriteRequest;
 use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Resources\Api\V1\Operational\CustomerPaymentResource;
@@ -118,15 +119,13 @@ class CustomerPaymentController extends Controller
     }
 
     public function cancel(
-        Request $request,
+        CancelOperationalDocumentRequest $request,
         CustomerPayment $customerPayment,
         CustomerPaymentService $service,
     ): JsonResponse {
-        Gate::authorize('cancel', $customerPayment);
-
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
-            $service->cancel($customerPayment),
+            $service->cancel($customerPayment, $request->validated('reason')),
             'تم إلغاء تحصيل العميل.',
         ));
     }

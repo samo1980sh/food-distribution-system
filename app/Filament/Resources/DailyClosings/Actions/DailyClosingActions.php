@@ -5,6 +5,7 @@ namespace App\Filament\Resources\DailyClosings\Actions;
 use App\Models\DailyClosing;
 use App\Services\Distribution\DailyClosingService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
@@ -87,11 +88,19 @@ final class DailyClosingActions
             ->modalHeading('إلغاء إغلاق اليوم')
             ->modalDescription('سيتم تحرير التاريخ والمستودع لإجراء العمليات العكسية أو التصحيحات. تبقى اللقطة السابقة محفوظة كسجل تاريخي.')
             ->modalSubmitActionLabel('تأكيد الإلغاء')
+            ->schema([
+                Textarea::make('cancellation_reason')
+                    ->label('سبب الإلغاء')
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull(),
+            ])
             ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('cancel', $record) === true)
-            ->action(function (DailyClosing $record): void {
+            ->action(function (DailyClosing $record, array $data): void {
                 try {
                     Gate::authorize('cancel', $record);
-                    app(DailyClosingService::class)->cancel($record);
+                    app(DailyClosingService::class)->cancel($record, $data['cancellation_reason'] ?? null);
                     $record->refresh();
 
                     Notification::make()

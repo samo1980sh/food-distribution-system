@@ -5,6 +5,7 @@ namespace App\Filament\Resources\VehicleLoads\Actions;
 use App\Models\VehicleLoad;
 use App\Services\Distribution\VehicleLoadService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
@@ -54,11 +55,19 @@ final class VehicleLoadActions
             ->modalHeading('إلغاء أمر التحميل')
             ->modalDescription('سيتم عكس حركة المخزون وإرجاع المواد إلى المستودع المصدر. لا يمكن تنفيذ العملية بعد إغلاق يوم المستودع.')
             ->modalSubmitActionLabel('تأكيد الإلغاء')
+            ->schema([
+                Textarea::make('cancellation_reason')
+                    ->label('سبب الإلغاء')
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull(),
+            ])
             ->visible(fn (VehicleLoad $record): bool => auth()->user()?->can('cancel', $record) === true)
-            ->action(function (VehicleLoad $record): void {
+            ->action(function (VehicleLoad $record, array $data): void {
                 try {
                     Gate::authorize('cancel', $record);
-                    app(VehicleLoadService::class)->cancel($record);
+                    app(VehicleLoadService::class)->cancel($record, $data['cancellation_reason'] ?? null);
                     self::refreshRecord($record);
 
                     Notification::make()

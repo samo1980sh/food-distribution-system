@@ -48,6 +48,9 @@ class SalesInvoice extends Model
         'administrative_reason',
         'confirmed_by',
         'confirmed_at',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -68,6 +71,7 @@ class SalesInvoice extends Model
         'credit_limit_overridden' => 'boolean',
         'credit_limit_overridden_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -150,6 +154,11 @@ class SalesInvoice extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function creditLimitOverrider(): BelongsTo

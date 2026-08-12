@@ -60,6 +60,9 @@ class DailyClosing extends Model
         'administrative_reason',
         'confirmed_by',
         'confirmed_at',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -92,6 +95,7 @@ class DailyClosing extends Model
         'inventory_submitted_at' => 'datetime',
         'cash_submitted_at' => 'datetime',
         'confirmed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -195,6 +199,11 @@ class DailyClosing extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function isDraft(): bool

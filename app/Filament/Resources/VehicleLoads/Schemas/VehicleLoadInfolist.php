@@ -76,6 +76,20 @@ class VehicleLoadInfolist
                     ->collapsible()
                     ->schema([
                         TextEntry::make('notes')->label('الملاحظات')->placeholder('لا توجد ملاحظات')->columnSpanFull(),
+                        TextEntry::make('canceller.name')
+                            ->label('ألغاه')
+                            ->placeholder('-')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled'),
+                        TextEntry::make('cancelled_at')
+                            ->label('تاريخ الإلغاء')
+                            ->dateTime('Y-m-d H:i')
+                            ->placeholder('-')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled'),
+                        TextEntry::make('cancellation_reason')
+                            ->label('سبب الإلغاء')
+                            ->placeholder('غير مسجل - إلغاء سابق')
+                            ->visible(fn ($record): bool => $record?->status === 'cancelled')
+                            ->columnSpanFull(),
                         TextEntry::make('created_at')->label('تاريخ الإنشاء')->dateTime('Y-m-d H:i'),
                         TextEntry::make('updated_at')->label('آخر تحديث')->dateTime('Y-m-d H:i'),
                     ]),

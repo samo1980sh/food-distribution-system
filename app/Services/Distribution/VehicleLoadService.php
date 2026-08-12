@@ -7,6 +7,7 @@ use App\Models\StockBalance;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Services\Inventory\InventoryMovementService;
+use App\Services\Support\CancellationAuditService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -89,9 +90,9 @@ class VehicleLoadService
         });
     }
 
-    public function cancel(VehicleLoad $vehicleLoad): VehicleLoad
+    public function cancel(VehicleLoad $vehicleLoad, ?string $reason): VehicleLoad
     {
-        return DB::transaction(function () use ($vehicleLoad): VehicleLoad {
+        return DB::transaction(function () use ($vehicleLoad, $reason): VehicleLoad {
             $vehicleLoad = VehicleLoad::query()
                 ->lockForUpdate()
                 ->findOrFail($vehicleLoad->getKey());
@@ -105,6 +106,8 @@ class VehicleLoadService
             if (! $vehicleLoad->isApproved()) {
                 throw new RuntimeException('لا يمكن إلغاء أمر تحميل غير معتمد.');
             }
+
+            $cancellationAudit = app(CancellationAuditService::class)->attributes($reason);
 
             app(DailyClosingGuard::class)->ensureOpen($vehicleLoad->load_date, $vehicleLoad->to_warehouse_id);
 
@@ -127,7 +130,7 @@ class VehicleLoadService
 
             $vehicleLoad->forceFill([
                 'status' => 'cancelled',
-            ])->save();
+            ] + $cancellationAudit)->save();
 
             return $vehicleLoad;
         });

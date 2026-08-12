@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Operational;
 use App\Http\Controllers\Api\V1\Operational\Concerns\BuildsOperationalQueries;
 use App\Http\Controllers\Api\V1\Operational\Concerns\HandlesOperationalWriteResponses;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
 use App\Http\Resources\Api\V1\Operational\SalesReturnResource;
@@ -120,15 +121,13 @@ class SalesReturnController extends Controller
     }
 
     public function cancel(
-        Request $request,
+        CancelOperationalDocumentRequest $request,
         SalesReturn $salesReturn,
         SalesReturnService $service,
     ): JsonResponse {
-        Gate::authorize('cancel', $salesReturn);
-
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
-            $service->cancel($salesReturn),
+            $service->cancel($salesReturn, $request->validated('reason')),
             'تم إلغاء مرتجع المبيعات.',
         ));
     }

@@ -10,6 +10,7 @@ use App\Models\SalesReturn;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Distribution\DriverFieldOperationService;
 use App\Services\Inventory\InventoryMovementService;
+use App\Services\Support\CancellationAuditService;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -96,9 +97,9 @@ class SalesInvoiceService
         });
     }
 
-    public function cancel(SalesInvoice $invoice): SalesInvoice
+    public function cancel(SalesInvoice $invoice, ?string $reason): SalesInvoice
     {
-        return DB::transaction(function () use ($invoice): SalesInvoice {
+        return DB::transaction(function () use ($invoice, $reason): SalesInvoice {
             $invoice = SalesInvoice::query()
                 ->lockForUpdate()
                 ->findOrFail($invoice->getKey());
@@ -111,6 +112,8 @@ class SalesInvoiceService
             if (! $invoice->isConfirmed()) {
                 throw new RuntimeException('لا يمكن إلغاء فاتورة غير معتمدة.');
             }
+
+            $cancellationAudit = app(CancellationAuditService::class)->attributes($reason);
 
             $confirmedPayments = CustomerPayment::query()
                 ->where('sales_invoice_id', $invoice->id)
@@ -160,7 +163,7 @@ class SalesInvoiceService
                 'paid_amount' => 0,
                 'invoice_cash_amount' => 0,
                 'remaining_amount' => 0,
-            ])->save();
+            ] + $cancellationAudit)->save();
 
             return $invoice->refresh();
         });

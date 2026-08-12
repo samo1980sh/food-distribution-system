@@ -96,7 +96,7 @@ class OperationalInventoryImpactTest extends TestCase
         $this->assertEqualsWithDelta(12, (float) $vehicleLoad->items()->firstOrFail()->unit_cost, 0.000001);
         $this->assertEqualsWithDelta(48, (float) $vehicleLoad->refresh()->total_cost, 0.001);
 
-        app(VehicleLoadService::class)->cancel($vehicleLoad->refresh());
+        app(VehicleLoadService::class)->cancel($vehicleLoad->refresh(), 'إلغاء اختباري لأمر التحميل.');
 
         $this->assertEqualsWithDelta(10, $this->balanceQuantity($sourceWarehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(0, $this->balanceQuantity($vehicleWarehouse, $product), 0.0001);
@@ -216,7 +216,7 @@ class OperationalInventoryImpactTest extends TestCase
             0.0001,
         );
 
-        app(VehicleLoadService::class)->cancel($vehicleLoad->refresh());
+        app(VehicleLoadService::class)->cancel($vehicleLoad->refresh(), 'إلغاء اختباري لأمر التحميل.');
 
         $this->assertEqualsWithDelta(
             3,
@@ -287,7 +287,7 @@ class OperationalInventoryImpactTest extends TestCase
         $this->assertEqualsWithDelta(12, (float) $invoiceItem->unit_cost, 0.000001);
         $this->assertEqualsWithDelta(36, (float) $invoiceItem->total_cost, 0.001);
 
-        app(SalesInvoiceService::class)->cancel($invoice->refresh());
+        app(SalesInvoiceService::class)->cancel($invoice->refresh(), 'إلغاء اختباري لفاتورة البيع.');
 
         $this->assertEqualsWithDelta(10, $this->balanceQuantity($warehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(12, $this->balanceAverageCost($warehouse, $product), 0.000001);
@@ -365,7 +365,7 @@ class OperationalInventoryImpactTest extends TestCase
         $this->assertEqualsWithDelta(12, (float) $returnItem->unit_cost, 0.000001);
         $this->assertEqualsWithDelta(24, (float) $returnItem->total_cost, 0.001);
 
-        app(SalesReturnService::class)->cancel($salesReturn->refresh());
+        app(SalesReturnService::class)->cancel($salesReturn->refresh(), 'إلغاء اختباري لمرتجع البيع.');
 
         $this->assertEqualsWithDelta(5, $this->balanceQuantity($warehouse, $product), 0.0001);
         $this->assertEqualsWithDelta(12, $this->balanceAverageCost($warehouse, $product), 0.000001);

@@ -285,7 +285,7 @@ class ProfessionalOperationsSeeder extends Seeder
             );
 
             if ($plan['cancel'] ?? false) {
-                $invoice = app(SalesInvoiceService::class)->cancel($invoice);
+                $invoice = app(SalesInvoiceService::class)->cancel($invoice, 'إلغاء تجريبي لعرض دورة حياة الفاتورة.');
             }
 
             $invoices[$plan['key']] = $invoice;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Operational;
 use App\Http\Controllers\Api\V1\Operational\Concerns\BuildsOperationalQueries;
 use App\Http\Controllers\Api\V1\Operational\Concerns\HandlesOperationalWriteResponses;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
 use App\Http\Resources\Api\V1\Operational\SalesInvoiceResource;
@@ -120,15 +121,13 @@ class SalesInvoiceController extends Controller
     }
 
     public function cancel(
-        Request $request,
+        CancelOperationalDocumentRequest $request,
         SalesInvoice $salesInvoice,
         SalesInvoiceService $service,
     ): JsonResponse {
-        Gate::authorize('cancel', $salesInvoice);
-
         return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
             $request,
-            $service->cancel($salesInvoice),
+            $service->cancel($salesInvoice, $request->validated('reason')),
             'تم إلغاء فاتورة المبيعات.',
         ));
     }

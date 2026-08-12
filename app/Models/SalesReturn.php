@@ -35,6 +35,9 @@ class SalesReturn extends Model
         'administrative_reason',
         'confirmed_by',
         'confirmed_at',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -44,6 +47,7 @@ class SalesReturn extends Model
         'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -129,6 +133,11 @@ class SalesReturn extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function isDraft(): bool

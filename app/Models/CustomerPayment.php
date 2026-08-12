@@ -33,6 +33,9 @@ class CustomerPayment extends Model
         'administrative_reason',
         'confirmed_by',
         'confirmed_at',
+        'cancelled_by',
+        'cancelled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
@@ -40,6 +43,7 @@ class CustomerPayment extends Model
         'payment_date' => 'date',
         'amount' => 'decimal:2',
         'confirmed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -114,6 +118,11 @@ class CustomerPayment extends Model
     public function confirmer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'confirmed_by');
+    }
+
+    public function canceller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     public function isDraft(): bool

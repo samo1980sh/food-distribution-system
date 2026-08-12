@@ -3,6 +3,7 @@
 namespace App\Services\Api;
 
 use App\Exceptions\Api\OperationalApiException;
+use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\FinishDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\FinishSalesJourneyRequest;
@@ -320,6 +321,29 @@ class MobileSyncPushOperationService
             $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
             $this->requestValidator->authorize($formRequest);
             $payload = $this->requestValidator->validate($formRequest);
+        } elseif ($action === 'cancel' && in_array($entity, [
+            'sales_invoices',
+            'customer_payments',
+            'sales_returns',
+            'daily_closings',
+        ], true)) {
+            $routeParameter = match ($entity) {
+                'sales_invoices' => 'salesInvoice',
+                'customer_payments' => 'customerPayment',
+                'sales_returns' => 'salesReturn',
+                'daily_closings' => 'dailyClosing',
+            };
+            $formRequest = $this->requestValidator->make(
+                CancelOperationalDocumentRequest::class,
+                'POST',
+                $payload,
+                $user,
+                [$routeParameter => $record],
+            );
+            Gate::forUser($user)->authorize('view', $record);
+            $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
+            $this->requestValidator->authorize($formRequest);
+            $payload = $this->requestValidator->validate($formRequest);
         } elseif ($entity === 'vehicle_loads' && $action === 'acknowledge') {
             $formRequest = $this->requestValidator->make(
                 VehicleLoadHandoverRequest::class,
@@ -455,11 +479,11 @@ class MobileSyncPushOperationService
             ['driver_journeys', 'finish'] => $this->driverFieldOperationService->finish($record, $payload),
             ['driver_deliveries', 'submit_outcome'] => $this->driverFieldOperationService->submitOutcome($record, $payload),
             ['sales_invoices', 'confirm'] => $this->salesInvoiceService->confirm($record),
-            ['sales_invoices', 'cancel'] => $this->salesInvoiceService->cancel($record),
+            ['sales_invoices', 'cancel'] => $this->salesInvoiceService->cancel($record, $payload['reason']),
             ['customer_payments', 'confirm'] => $this->customerPaymentService->confirm($record),
-            ['customer_payments', 'cancel'] => $this->customerPaymentService->cancel($record),
+            ['customer_payments', 'cancel'] => $this->customerPaymentService->cancel($record, $payload['reason']),
             ['sales_returns', 'confirm'] => $this->salesReturnService->confirm($record),
-            ['sales_returns', 'cancel'] => $this->salesReturnService->cancel($record),
+            ['sales_returns', 'cancel'] => $this->salesReturnService->cancel($record, $payload['reason']),
             ['vehicle_loads', 'acknowledge'] => $this->vehicleLoadHandoverService->acknowledge($record, $payload),
             ['vehicle_expenses', 'approve'] => $this->vehicleExpenseService->approve($record),
             ['vehicle_expenses', 'reject'] => $this->vehicleExpenseService->reject($record, $payload['reason']),
@@ -469,7 +493,7 @@ class MobileSyncPushOperationService
                 ->submitCash($record, $user, $payload),
             ['daily_closings', 'refresh_totals'] => $this->dailyClosingService->refreshTotals($record),
             ['daily_closings', 'confirm'] => $this->dailyClosingService->confirm($record),
-            ['daily_closings', 'cancel'] => $this->dailyClosingService->cancel($record),
+            ['daily_closings', 'cancel'] => $this->dailyClosingService->cancel($record, $payload['reason']),
         };
 
         return $this->success($operation, $request, $entity, $updated, 'applied', 200, $action, 'تم تنفيذ العملية.');

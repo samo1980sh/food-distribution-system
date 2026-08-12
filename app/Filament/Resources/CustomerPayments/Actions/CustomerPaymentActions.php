@@ -5,6 +5,7 @@ namespace App\Filament\Resources\CustomerPayments\Actions;
 use App\Models\CustomerPayment;
 use App\Services\Sales\CustomerPaymentService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
@@ -53,11 +54,19 @@ final class CustomerPaymentActions
             ->modalHeading('إلغاء تحصيل العميل')
             ->modalDescription('سيتم عكس أثر التحصيل على الفاتورة المرتبطة، ولن يُحتسب المبلغ ضمن التحصيلات الفعالة.')
             ->modalSubmitActionLabel('تأكيد الإلغاء')
+            ->schema([
+                Textarea::make('cancellation_reason')
+                    ->label('سبب الإلغاء')
+                    ->required()
+                    ->maxLength(2000)
+                    ->rows(4)
+                    ->columnSpanFull(),
+            ])
             ->visible(fn (CustomerPayment $record): bool => auth()->user()?->can('cancel', $record) === true)
-            ->action(function (CustomerPayment $record): void {
+            ->action(function (CustomerPayment $record, array $data): void {
                 try {
                     Gate::authorize('cancel', $record);
-                    app(CustomerPaymentService::class)->cancel($record);
+                    app(CustomerPaymentService::class)->cancel($record, $data['cancellation_reason'] ?? null);
 
                     Notification::make()
                         ->title('تم إلغاء التحصيل')
