@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\Operational\SalesReturnController;
 use App\Http\Controllers\Api\V1\Operational\StockBalanceController;
 use App\Http\Controllers\Api\V1\Operational\VehicleController;
 use App\Http\Controllers\Api\V1\Operational\VehicleExpenseController;
+use App\Http\Controllers\Api\V1\Operational\VehicleExpenseReceiptController;
 use App\Http\Controllers\Api\V1\Operational\VehicleLoadController;
 use App\Http\Controllers\Api\V1\Operational\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -113,6 +114,9 @@ Route::prefix('v1')
                         ->only(['index', 'show'])
                         ->parameters(['vehicle-expenses' => 'vehicleExpense'])
                         ->middleware('can:vehicle_expenses.view');
+                    Route::get('/vehicle-expenses/{vehicleExpense}/receipt', VehicleExpenseReceiptController::class)
+                        ->middleware('can:vehicle_expenses.view')
+                        ->name('vehicle-expenses.receipt');
                     Route::apiResource('daily-closings', DailyClosingController::class)
                         ->only(['index', 'show'])
                         ->parameters(['daily-closings' => 'dailyClosing'])

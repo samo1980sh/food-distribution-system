@@ -45,7 +45,9 @@ class VehicleExpenseInfolist
                             ->label('الإيصال')
                             ->placeholder('لا يوجد إيصال مرفق')
                             ->formatStateUsing(fn (?string $state): string => filled($state) ? 'فتح الإيصال المرفق' : 'لا يوجد إيصال مرفق')
-                            ->url(fn (?string $state): ?string => filled($state) ? asset('storage/'.$state) : null)
+                            ->url(fn (?string $state, ?VehicleExpense $record): ?string => filled($state) && $record
+                                ? route('vehicle-expenses.receipt', ['vehicleExpense' => $record])
+                                : null)
                             ->openUrlInNewTab(),
                     ]),
 

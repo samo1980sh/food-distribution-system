@@ -4,7 +4,6 @@ namespace App\Http\Resources\Api\V1\Operational;
 
 use App\Enums\OperationSource;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class VehicleExpenseResource extends OperationalResource
 {
@@ -29,7 +28,9 @@ class VehicleExpenseResource extends OperationalResource
             'notes' => $this->notes,
             'rejection_reason' => $this->rejection_reason,
             'receipt_url' => $this->receipt_path
-                ? Storage::disk('public')->url($this->receipt_path)
+                ? route('api.v1.operational.vehicle-expenses.receipt', [
+                    'vehicleExpense' => $this->id,
+                ])
                 : null,
             'vehicle' => $this->whenLoaded('vehicle', fn () => $this->vehicle
                 ? VehicleResource::make($this->vehicle)->resolve($request)

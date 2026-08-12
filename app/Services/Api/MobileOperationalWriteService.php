@@ -14,6 +14,7 @@ use App\Models\VehicleExpense;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\SalesFieldOperationService;
 use App\Services\Support\DocumentNumberService;
+use App\Services\Support\VehicleExpenseReceiptService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
 use App\Support\Api\MobileWriteResult;
@@ -24,7 +25,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class MobileOperationalWriteService
@@ -35,6 +35,7 @@ class MobileOperationalWriteService
         private readonly DailyClosingService $dailyClosingService,
         private readonly SalesFieldOperationService $salesFieldOperationService,
         private readonly DocumentNumberService $documentNumberService,
+        private readonly VehicleExpenseReceiptService $vehicleExpenseReceipts,
     ) {
     }
 
@@ -222,7 +223,7 @@ class MobileOperationalWriteService
             VehicleExpense::class,
             $this->payloadWithFileFingerprint($data, $receipt),
             function (string $payloadHash) use ($data, $receipt): VehicleExpense {
-                $receiptPath = $receipt?->store('vehicle-expense-receipts', 'public');
+                $receiptPath = $this->vehicleExpenseReceipts->store($receipt);
 
                 try {
                     return VehicleExpense::query()->create([
@@ -234,7 +235,7 @@ class MobileOperationalWriteService
                     ]);
                 } catch (Throwable $exception) {
                     if ($receiptPath) {
-                        Storage::disk('public')->delete($receiptPath);
+                        $this->vehicleExpenseReceipts->delete($receiptPath);
                     }
 
                     throw $exception;
@@ -253,7 +254,7 @@ class MobileOperationalWriteService
             Arr::pull($data, 'remove_receipt', false),
             FILTER_VALIDATE_BOOLEAN,
         );
-        $newReceiptPath = $receipt?->store('vehicle-expense-receipts', 'public');
+        $newReceiptPath = $this->vehicleExpenseReceipts->store($receipt);
         $oldReceiptPath = $expense->receipt_path;
 
         try {
@@ -275,14 +276,14 @@ class MobileOperationalWriteService
             });
         } catch (Throwable $exception) {
             if ($newReceiptPath) {
-                Storage::disk('public')->delete($newReceiptPath);
+                $this->vehicleExpenseReceipts->delete($newReceiptPath);
             }
 
             throw $exception;
         }
 
         if (($newReceiptPath !== null || $removeReceipt) && $oldReceiptPath) {
-            Storage::disk('public')->delete($oldReceiptPath);
+            $this->vehicleExpenseReceipts->delete($oldReceiptPath);
         }
 
         return $updated;
@@ -352,7 +353,7 @@ class MobileOperationalWriteService
         });
 
         if ($receiptPath) {
-            Storage::disk('public')->delete($receiptPath);
+            $this->vehicleExpenseReceipts->delete($receiptPath);
         }
     }
 

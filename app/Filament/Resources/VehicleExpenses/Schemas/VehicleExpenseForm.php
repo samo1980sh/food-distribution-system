@@ -4,6 +4,7 @@ namespace App\Filament\Resources\VehicleExpenses\Schemas;
 
 use App\Enums\UserRole;
 use App\Models\VehicleExpense;
+use App\Services\Support\VehicleExpenseReceiptService;
 use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -184,12 +185,21 @@ class VehicleExpenseForm
                     ->schema([
                         FileUpload::make('receipt_path')
                             ->label('صورة الإيصال')
-                            ->disk('public')
-                            ->directory('vehicle-expense-receipts')
+                            ->disk(VehicleExpenseReceiptService::DISK)
+                            ->directory(VehicleExpenseReceiptService::DIRECTORY)
+                            ->visibility('private')
                             ->image()
-                            ->imagePreviewHeight('180')
-                            ->openable()
-                            ->downloadable(),
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ])
+                            ->maxSize((int) config('mobile_api.expense_receipt_max_kb', 5120))
+                            ->previewable(false)
+                            ->openable(false)
+                            ->downloadable(false)
+                            ->preventFilePathTampering()
+                            ->helperText('يُحفظ الإيصال بشكل خاص، ويمكن فتحه بعد الحفظ من شاشة تفاصيل المصروف فقط.'),
 
                         Textarea::make('notes')
                             ->label('ملاحظات')

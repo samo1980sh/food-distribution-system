@@ -19,6 +19,7 @@ use App\Http\Controllers\Reports\SalesReportFilteredPrintController;
 use App\Http\Controllers\Reports\SalesReturnPrintController;
 use App\Http\Controllers\Reports\SalesReturnReportFilteredPrintController;
 use App\Http\Controllers\Reports\VehicleExpensePrintController;
+use App\Http\Controllers\VehicleExpenseReceiptController;
 use App\Http\Controllers\Reports\VehicleExpenseReportFilteredPrintController;
 use App\Http\Controllers\Reports\VehicleLoadPrintController;
 use App\Http\Controllers\Reports\VehicleLoadReportFilteredPrintController;
@@ -109,6 +110,11 @@ Route::get(
     '/admin/reports/vehicle-expenses/{vehicleExpense}/print',
     VehicleExpensePrintController::class,
 )->name('reports.vehicle-expenses.print');
+
+Route::get(
+    '/admin/vehicle-expenses/{vehicleExpense}/receipt',
+    VehicleExpenseReceiptController::class,
+)->name('vehicle-expenses.receipt');
 
 Route::get(
     '/admin/reports/expiry-risk/print-filtered',
