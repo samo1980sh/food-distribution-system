@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Vehicles\Tables;
 
 use App\Models\Vehicle;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -97,7 +98,7 @@ class VehiclesTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(Vehicle::class))
             ->defaultSort('created_at', 'desc')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()

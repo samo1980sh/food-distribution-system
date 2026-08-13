@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Areas\Tables;
 
 use App\Models\Area;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -63,7 +64,7 @@ class AreasTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(Area::class))
             ->defaultSort('created_at', 'desc')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()

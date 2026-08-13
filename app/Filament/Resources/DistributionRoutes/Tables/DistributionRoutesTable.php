@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DistributionRoutes\Tables;
 
 use App\Models\DistributionRoute;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -93,7 +94,7 @@ class DistributionRoutesTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(DistributionRoute::class))
             ->defaultSort('created_at', 'desc')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()

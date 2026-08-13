@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Customers\Tables;
 
 use App\Models\Customer;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -133,7 +134,7 @@ class CustomersTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(Customer::class))
             ->defaultSort('created_at', 'desc')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()

@@ -70,7 +70,7 @@ class MasterDataUserFilamentWorkspaceTest extends TestCase
             $this->assertStringContainsString('persistFiltersInSession', $table, $resource.' table does not persist filters.');
             $this->assertStringContainsString('persistSortInSession', $table, $resource.' table does not persist sorting.');
             $this->assertStringContainsString('emptyStateHeading', $table, $resource.' table has no empty state.');
-            $this->assertStringNotContainsString('DeleteAction', $table, $resource.' table exposes destructive deletion.');
+            $this->assertStringNotContainsString('DeleteAction::make(', $table, $resource.' table exposes direct destructive row deletion.');
             $this->assertStringContainsString('->slideOver()', $page, $resource.' create action is not a slide-over.');
             $this->assertStringContainsString('->slideOver()', $table, $resource.' edit action is not a slide-over.');
         }

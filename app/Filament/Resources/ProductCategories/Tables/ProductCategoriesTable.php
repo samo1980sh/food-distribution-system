@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProductCategories\Tables;
 
 use App\Models\ProductCategory;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -71,7 +72,7 @@ class ProductCategoriesTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(ProductCategory::class))
             ->defaultSort('sort_order')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()

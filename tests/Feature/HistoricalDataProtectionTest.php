@@ -22,11 +22,19 @@ class HistoricalDataProtectionTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_master_data_is_deactivated_instead_of_deleted_from_application_policies(): void
+    public function test_master_data_deletion_is_limited_to_super_admin_by_application_policies(): void
     {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+
         $superAdmin = User::factory()->create([
             'role' => User::ROLE_SUPER_ADMIN,
         ]);
+        $superAdmin->syncRoles(User::ROLE_SUPER_ADMIN);
+
+        $manager = User::factory()->create([
+            'role' => User::ROLE_MANAGER,
+        ]);
+        $manager->syncRoles(User::ROLE_MANAGER);
 
         $records = [
             new Area(),
@@ -41,9 +49,13 @@ class HistoricalDataProtectionTest extends TestCase
         ];
 
         foreach ($records as $record) {
-            $this->assertFalse(
+            $this->assertTrue(
                 $superAdmin->can('delete', $record),
-                $record::class.' must be deactivated instead of deleted.',
+                $record::class.' should be deletable by super admin when policy and scope allow it.',
+            );
+            $this->assertFalse(
+                $manager->can('delete', $record),
+                $record::class.' must remain protected from non-super-admin deletion.',
             );
         }
     }

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Warehouses\Tables;
 
 use App\Filament\Resources\Warehouses\WarehouseResource;
 use App\Models\Warehouse;
+use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
@@ -92,7 +93,7 @@ class WarehousesTable
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button(),
             ])
-            ->toolbarActions([])
+            ->toolbarActions(MasterDataBulkDeleteAction::actionsFor(Warehouse::class))
             ->defaultSort('created_at', 'desc')
             ->persistSearchInSession()
             ->persistColumnSearchesInSession()
