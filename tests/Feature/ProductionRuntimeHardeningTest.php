@@ -70,7 +70,7 @@ class ProductionRuntimeHardeningTest extends TestCase
     {
         $readme = file_get_contents(base_path('README.md'));
 
-        $this->assertStringContainsString('FreshRoute', $readme);
+        $this->assertStringContainsString('نظام التوزيع والمبيعات', $readme);
         $this->assertStringContainsString('Food Distribution System', $readme);
         $this->assertStringContainsString('docs/PRODUCTION_DEPLOYMENT.md', $readme);
         $this->assertStringNotContainsString('## About Laravel', $readme);

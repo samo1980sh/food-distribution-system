@@ -364,7 +364,7 @@
     <main class="sheet">
         <header class="receipt-header">
             <div class="brand">
-                <h1>FreshRoute</h1>
+                <h1>نظام التوزيع والمبيعات</h1>
                 <p>نظام إدارة توزيع المواد الغذائية والأسطول</p>
             </div>
 

@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: FreshRoute Mobile API
+  title: نظام التوزيع والمبيعات Mobile API
   version: 1.4.0
   description: >-
     Device-bound authentication, effective access scopes, scoped operational reads,

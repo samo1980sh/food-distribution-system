@@ -1,4 +1,4 @@
-# FreshRoute — Food Distribution System
+# نظام التوزيع والمبيعات — Food Distribution System
 
 نظام إدارة التوزيع والمبيعات والمخزون والتحصيلات والإقفال اليومي، مبني على Laravel + Filament ومتكامل مع تطبيق Flutter الميداني.
 

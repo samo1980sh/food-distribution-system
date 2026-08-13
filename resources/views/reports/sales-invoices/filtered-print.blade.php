@@ -324,7 +324,7 @@
     <main class="sheet">
         <header class="report-header">
             <div class="brand">
-                <h1>FreshRoute</h1>
+                <h1>نظام التوزيع والمبيعات</h1>
                 <p>نظام إدارة توزيع المواد الغذائية والأسطول</p>
             </div>
 
@@ -484,7 +484,7 @@
                 {{ now()->format('Y-m-d H:i') }}
             </span>
 
-            <span>FreshRoute — تقرير المبيعات</span>
+            <span>نظام التوزيع والمبيعات — تقرير المبيعات</span>
         </footer>
     </main>
 </body>

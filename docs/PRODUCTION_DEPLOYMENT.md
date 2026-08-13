@@ -1,6 +1,6 @@
 # Production Deployment Runbook
 
-هذا الملف هو مرجع نشر وتشغيل **FreshRoute / Food Distribution System** على بيئة الإنتاج.
+هذا الملف هو مرجع نشر وتشغيل **نظام التوزيع والمبيعات / Food Distribution System** على بيئة الإنتاج.
 
 ## 1. متطلبات الخادم
 

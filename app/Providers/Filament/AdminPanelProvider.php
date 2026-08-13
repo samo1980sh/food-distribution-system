@@ -35,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('FreshRoute | نظام التوزيع')
+            ->brandName('نظام التوزيع والمبيعات')
             ->colors([
                 'primary' => Color::Teal,
                 'success' => Color::Green,
