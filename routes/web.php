@@ -27,9 +27,7 @@ use App\Http\Controllers\Reports\VehicleStockPrintController;
 use App\Http\Controllers\Reports\VehicleStockReportFilteredPrintController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::redirect('/', '/admin');
 
 Route::get(
     '/admin/reports/daily-closings/print-filtered',

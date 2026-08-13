@@ -114,4 +114,19 @@ return Application::configure(basePath: dirname(__DIR__))
                 $status,
             );
         });
+
+        $exceptions->render(function (
+            \Throwable $exception,
+            Request $request,
+        ) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return ApiResponse::error(
+                'حدث خطأ غير متوقع في الخادم.',
+                'server_error',
+                500,
+            );
+        });
     })->create();
