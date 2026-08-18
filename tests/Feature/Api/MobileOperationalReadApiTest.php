@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
 use App\Models\StockBalance;
+use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -62,6 +63,21 @@ class MobileOperationalReadApiTest extends TestCase
         $this->context('B');
         $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
         $first['driver']->update(['user_id' => $user->id]);
+        $first['load']->update(['status' => 'approved']);
+        StockMovement::query()->create([
+            'movement_number' => 'STM-SOURCE-A',
+            'movement_type' => 'vehicle_load_transfer',
+            'movement_date' => today(),
+            'reference_type' => VehicleLoad::class,
+            'reference_id' => $first['load']->id,
+            'from_warehouse_id' => $first['load']->from_warehouse_id,
+            'to_warehouse_id' => $first['warehouse']->id,
+            'product_id' => $first['product']->id,
+            'quantity' => 20,
+            'unit_cost' => 5,
+            'total_cost' => 100,
+        ]);
+
         $token = $user->createToken('test', [(string) config('mobile_api.token_ability')])->plainTextToken;
 
         $this->withToken($token)->getJson('/api/v1/operational/routes')
@@ -70,7 +86,16 @@ class MobileOperationalReadApiTest extends TestCase
             ->assertOk()->assertJsonCount(1, 'data.items');
         $this->withToken($token)->getJson('/api/v1/operational/stock-balances')
             ->assertOk()->assertJsonCount(1, 'data.items')
-            ->assertJsonPath('data.items.0.average_unit_cost', null);
+            ->assertJsonPath('data.items.0.average_unit_cost', null)
+            ->assertJsonPath('data.items.0.source_load.id', $first['load']->id)
+            ->assertJsonPath(
+                'data.items.0.source_load.load_number',
+                $first['load']->load_number,
+            )
+            ->assertJsonPath(
+                'data.items.0.source_load.load_date',
+                today()->toDateString(),
+            );
         $this->withToken($token)->getJson('/api/v1/operational/vehicle-loads')
             ->assertOk()->assertJsonCount(1, 'data.items');
         $this->withToken($token)->getJson('/api/v1/operational/customers')

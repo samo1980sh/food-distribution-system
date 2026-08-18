@@ -278,6 +278,47 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('code', 'sales_visit_context_mismatch');
     }
 
+    public function test_document_date_must_match_the_active_visit_journey_date(): void
+    {
+        $context = $this->context(1);
+        $user = $this->salesUser($context['representative']);
+        $token = $this->tokenFor($user);
+
+        $opened = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated();
+        $journeyId = (int) $opened->json('data.id');
+        $visitId = (int) $opened->json('data.visits.0.id');
+        $customerId = (int) $opened->json('data.visits.0.customer.id');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->assertOk();
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
+            ->assertOk();
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', [
+                'client_reference' => 'sales-date-mismatch-0001',
+                'sales_visit_id' => $visitId,
+                'customer_id' => $customerId,
+                'vehicle_id' => $context['vehicle']->id,
+                'route_id' => $context['route']->id,
+                'warehouse_id' => $context['warehouse']->id,
+                'sales_representative_id' => $context['representative']->id,
+                'invoice_date' => today()->subDay()->toDateString(),
+                'payment_type' => 'cash',
+                'items' => [[
+                    'product_id' => $context['product']->id,
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                ]],
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'sales_visit_document_date_mismatch');
+    }
+
     /** @return array<string, mixed> */
     private function context(int $customerCount): array
     {

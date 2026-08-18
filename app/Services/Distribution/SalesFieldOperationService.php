@@ -11,6 +11,7 @@ use App\Models\SalesVisit;
 use App\Models\User;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -271,6 +272,23 @@ class SalesFieldOperationService
             throw new OperationalApiException(
                 'بيانات المستند لا تطابق العميل والسياق التشغيلي للزيارة.',
                 'sales_visit_context_mismatch',
+                422,
+            );
+        }
+
+        $documentDate = collect(['invoice_date', 'payment_date', 'return_date'])
+            ->map(fn (string $field): mixed => $document->getAttribute($field))
+            ->first(fn (mixed $value): bool => filled($value));
+        $journeyDate = $visit->journey?->journey_date;
+
+        if (
+            $documentDate !== null
+            && $journeyDate !== null
+            && Carbon::parse($documentDate)->toDateString() !== $journeyDate->toDateString()
+        ) {
+            throw new OperationalApiException(
+                'تاريخ المستند يجب أن يطابق تاريخ رحلة الزيارة.',
+                'sales_visit_document_date_mismatch',
                 422,
             );
         }

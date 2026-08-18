@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
 use App\Http\Resources\Api\V1\Operational\SalesInvoiceResource;
 use App\Models\SalesInvoice;
+use App\Models\SalesVisit;
 use App\Services\Api\MobileOperationalWriteService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Support\Api\ApiResponse;
@@ -142,11 +143,56 @@ class SalesInvoiceController extends Controller
     ): JsonResponse {
         $invoice->loadMissing(self::RELATIONS);
 
+        if ($invoice->status === 'draft' && $invoice->sales_visit_id === null) {
+            $resolvedVisitId = $this->resolveLegacyDraftSalesVisitId($invoice);
+
+            if ($resolvedVisitId !== null) {
+                $invoice->setAttribute('sales_visit_id', $resolvedVisitId);
+            }
+        }
+
         return ApiResponse::success(
             SalesInvoiceResource::make($invoice)->resolve($request),
             $message,
             $status,
             $meta,
         );
+    }
+
+    private function resolveLegacyDraftSalesVisitId(SalesInvoice $invoice): ?int
+    {
+        if (
+            $invoice->customer_id === null
+            || $invoice->route_id === null
+            || $invoice->warehouse_id === null
+            || $invoice->invoice_date === null
+        ) {
+            return null;
+        }
+
+        $query = SalesVisit::withoutGlobalScopes()
+            ->where('customer_id', (int) $invoice->customer_id)
+            ->where('route_id', (int) $invoice->route_id)
+            ->where('warehouse_id', (int) $invoice->warehouse_id)
+            ->whereHas('journey', fn ($journeyQuery) => $journeyQuery
+                ->whereDate('journey_date', $invoice->invoice_date->toDateString()));
+
+        if ($invoice->sales_representative_id === null) {
+            $query->whereNull('sales_representative_id');
+        } else {
+            $query->where(
+                'sales_representative_id',
+                (int) $invoice->sales_representative_id,
+            );
+        }
+
+        $candidateIds = $query
+            ->orderByDesc('id')
+            ->limit(2)
+            ->pluck('id');
+
+        return $candidateIds->count() === 1
+            ? (int) $candidateIds->first()
+            : null;
     }
 }
