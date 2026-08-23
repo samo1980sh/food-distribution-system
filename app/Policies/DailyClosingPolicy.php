@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 class DailyClosingPolicy extends PermissionPolicy
 {
     protected const VIEW_ANY = PermissionName::DAILY_CLOSINGS_VIEW;
+
     protected const CREATE = PermissionName::DAILY_CLOSINGS_CREATE;
+
     protected const UPDATE = PermissionName::DAILY_CLOSINGS_UPDATE;
+
     protected const DELETE = PermissionName::DAILY_CLOSINGS_DELETE;
 
     public function create(User $user): bool
@@ -48,12 +51,16 @@ class DailyClosingPolicy extends PermissionPolicy
     public function submitInventory(User $user, DailyClosing $record): bool
     {
         $employeeId = $user->employee()->value('id');
+        $ownsAsRepresentative = $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
+            && (int) $record->sales_representative_id === (int) $employeeId;
+        $ownsAsDriver = $user->hasRole(User::ROLE_DRIVER)
+            && (int) $record->driver_id === (int) $employeeId;
 
         return $employeeId !== null
             && $record->isFieldWorkflow()
             && $record->isDraft()
             && ! $record->inventorySubmitted()
-            && (int) $record->driver_id === (int) $employeeId
+            && ($ownsAsRepresentative || $ownsAsDriver)
             && $this->allowsMutation(
                 $user,
                 $record,
@@ -66,6 +73,7 @@ class DailyClosingPolicy extends PermissionPolicy
         $employeeId = $user->employee()->value('id');
 
         return $employeeId !== null
+            && $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
             && $record->isFieldWorkflow()
             && $record->isDraft()
             && ! $record->cashSubmitted()

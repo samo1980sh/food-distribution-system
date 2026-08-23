@@ -5,17 +5,17 @@ namespace Tests\Feature\Api;
 use App\Models\Area;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
-use App\Models\StockMovement;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Filament\Notifications\DatabaseNotification;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class VehicleLoadHandoverApiTest extends TestCase
@@ -69,6 +69,53 @@ class VehicleLoadHandoverApiTest extends TestCase
             'handover_note' => null,
         ]);
         $this->assertSame($movementCount, StockMovement::query()->count());
+    }
+
+    public function test_representative_acknowledges_discrepant_load_without_driver_assignment(): void
+    {
+        $context = $this->handoverContext('REPRESENTATIVE');
+        $context['route']->update(['driver_id' => null]);
+        $context['load']->update(['driver_id' => null]);
+        $sales = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+        $context['representative']->update(['user_id' => $sales->id]);
+        $manager = User::factory()->create([
+            'role' => User::ROLE_MANAGER,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->withToken($this->tokenFor($sales))
+            ->postJson(
+                '/api/v1/operational/vehicle-loads/'.$context['load']->id.'/acknowledge',
+                [
+                    'handover_status' => 'discrepancy',
+                    'notes' => 'تم توثيق فرق الاستلام من المندوب.',
+                    'items' => [[
+                        'id' => $context['item']->id,
+                        'received_quantity' => '11.500',
+                        'note' => 'نقص عبوة عند الاستلام.',
+                    ]],
+                ],
+            )
+            ->assertOk()
+            ->assertJsonPath('data.driver', null)
+            ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
+            ->assertJsonPath('data.handover_status', 'discrepancy')
+            ->assertJsonPath('data.different_items_count', 1);
+
+        $this->assertDatabaseHas('vehicle_loads', [
+            'id' => $context['load']->id,
+            'driver_id' => null,
+            'sales_representative_id' => $context['representative']->id,
+            'handover_by' => $sales->id,
+            'handover_status' => 'discrepancy',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_type' => User::class,
+            'notifiable_id' => $manager->id,
+            'type' => DatabaseNotification::class,
+        ]);
     }
 
     public function test_quantity_difference_requires_item_and_general_notes(): void

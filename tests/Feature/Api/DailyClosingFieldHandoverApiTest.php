@@ -26,37 +26,36 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_driver_and_sales_representative_open_one_shared_closing_with_separated_capabilities(): void
+    public function test_sales_representative_opens_closing_with_both_handover_capabilities_without_driver(): void
     {
         $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
+        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
 
-        $driverToken = $this->tokenFor($driver);
         $salesToken = $this->tokenFor($sales);
 
-        $this->withFreshToken($driverToken)
+        $this->withFreshToken($salesToken)
             ->getJson('/api/v1/operational/bootstrap')
             ->assertOk()
             ->assertJsonPath('data.modules.daily_closings', true)
             ->assertJsonPath('data.write.daily_closings.open_today', true)
             ->assertJsonPath('data.write.daily_closings.submit_inventory', true)
-            ->assertJsonPath('data.write.daily_closings.submit_cash', false)
+            ->assertJsonPath('data.write.daily_closings.submit_cash', true)
             ->assertJsonPath('data.write.daily_closings.create', false);
 
-        $created = $this->withFreshToken($driverToken)
+        $created = $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/open-today', [
                 'route_id' => $context['route']->id,
             ])
             ->assertCreated()
             ->assertJsonPath('data.field_workflow', true)
-            ->assertJsonPath('data.driver.id', $context['driver']->id)
+            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.actions.can_submit_inventory', true)
-            ->assertJsonPath('data.actions.can_submit_cash', false)
+            ->assertJsonPath('data.actions.can_submit_cash', true)
             ->assertJsonPath('data.field_handover.inventory.submitted', false);
 
-        $this->assertNull($created->json('data.financial'));
+        $this->assertSame('0.00', $created->json('data.financial.expected_cash_amount'));
         $this->assertMatchesRegularExpression(
             '/^c:[1-9][0-9]*$/',
             (string) $created->json('data.sync_version'),
@@ -64,40 +63,29 @@ class DailyClosingFieldHandoverApiTest extends TestCase
 
         $closingId = (int) $created->json('data.id');
 
-        $this->withFreshToken($salesToken)
-            ->postJson('/api/v1/operational/daily-closings/open-today', [
-                'route_id' => $context['route']->id,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.id', $closingId)
-            ->assertJsonPath('data.actions.can_submit_inventory', false)
-            ->assertJsonPath('data.actions.can_submit_cash', true)
-            ->assertJsonPath('data.financial.expected_cash_amount', '0.00');
-
         $this->assertDatabaseCount('daily_closings', 1);
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
             'field_workflow' => true,
-            'driver_id' => $context['driver']->id,
+            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
         ]);
 
-        $this->withFreshToken($driverToken)
+        $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings', [
                 'client_reference' => 'forbidden-general-create',
             ])
             ->assertForbidden();
     }
 
-    public function test_each_field_role_can_submit_only_its_section_and_differences_require_notes(): void
+    public function test_representative_submits_both_sections_and_differences_require_notes(): void
     {
         $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
+        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
-        $driverToken = $this->tokenFor($driver);
         $salesToken = $this->tokenFor($sales);
 
-        $opened = $this->withFreshToken($driverToken)
+        $opened = $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/open-today', [
                 'route_id' => $context['route']->id,
             ])
@@ -110,28 +98,13 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-inventory', [
                 'items' => [[
                     'product_id' => $context['product']->id,
-                    'actual_quantity' => $expected,
-                ]],
-            ])
-            ->assertForbidden();
-
-        $this->withFreshToken($driverToken)
-            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-cash', [
-                'actual_cash_amount' => 0,
-            ])
-            ->assertForbidden();
-
-        $this->withFreshToken($driverToken)
-            ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-inventory', [
-                'items' => [[
-                    'product_id' => $context['product']->id,
                     'actual_quantity' => $expected - 1,
                 ]],
             ])
             ->assertConflict()
             ->assertJsonPath('code', 'business_rule_violation');
 
-        $this->withFreshToken($driverToken)
+        $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-inventory', [
                 'items' => [[
                     'product_id' => $context['product']->id,
@@ -145,7 +118,7 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertJsonPath('data.actions.can_submit_inventory', false)
             ->assertJsonStructure(['data' => ['sync_version']]);
 
-        $this->withFreshToken($driverToken)
+        $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/'.$closingId.'/submit-inventory', [
                 'items' => [[
                     'product_id' => $context['product']->id,
@@ -180,11 +153,61 @@ class DailyClosingFieldHandoverApiTest extends TestCase
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
-            'inventory_submitted_by' => $driver->id,
+            'inventory_submitted_by' => $sales->id,
             'cash_submitted_by' => $sales->id,
             'cash_notes' => 'زيادة نقدية قيد المراجعة',
             'status' => 'draft',
         ]);
+    }
+
+    public function test_representative_cannot_open_closing_for_another_route_and_vehicle(): void
+    {
+        $context = $this->context();
+        $sales = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $otherArea = Area::query()->create([
+            'code' => 'FIELD-CLOSE-OTHER-AREA',
+            'name_ar' => 'منطقة إغلاق أخرى',
+            'status' => 'active',
+        ]);
+        $otherVehicle = Vehicle::query()->create([
+            'code' => 'FIELD-CLOSE-OTHER-VEH',
+            'plate_number' => 'FIELD-CLOSE-OTHER-PLATE',
+            'status' => 'active',
+        ]);
+        Warehouse::query()->create([
+            'vehicle_id' => $otherVehicle->id,
+            'code' => 'FIELD-CLOSE-OTHER-WH',
+            'name' => 'مستودع سيارة آخر',
+            'type' => 'vehicle',
+            'status' => 'active',
+        ]);
+        $otherRepresentative = Employee::query()->create([
+            'employee_code' => 'FIELD-CLOSE-OTHER-REP',
+            'name' => 'مندوب إغلاق آخر',
+            'type' => 'sales_representative',
+            'status' => 'active',
+        ]);
+        $otherRoute = DistributionRoute::query()->create([
+            'area_id' => $otherArea->id,
+            'vehicle_id' => $otherVehicle->id,
+            'driver_id' => null,
+            'sales_representative_id' => $otherRepresentative->id,
+            'code' => 'FIELD-CLOSE-OTHER-ROUTE',
+            'name' => 'خط إغلاق آخر',
+            'status' => 'active',
+        ]);
+
+        $this->withFreshToken($this->tokenFor($sales))
+            ->postJson('/api/v1/operational/daily-closings/open-today', [
+                'route_id' => $otherRoute->id,
+            ])
+            ->assertConflict()
+            ->assertJsonPath('code', 'business_rule_violation');
+
+        $this->assertDatabaseCount('daily_closings', 0);
     }
 
     public function test_negative_net_cash_submits_zero_without_a_false_cash_difference(): void
@@ -199,11 +222,12 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'route_id' => $context['route']->id,
-            'driver_id' => $context['driver']->id,
+            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'expense_type' => 'fuel',
             'amount' => 40000,
             'payment_method' => 'cash',
+            'operation_source' => 'mobile_sales',
             'status' => 'approved',
             'approved_at' => now(),
         ]));

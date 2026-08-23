@@ -151,6 +151,7 @@ final class RolePermissionMap
                 P::CUSTOMER_PAYMENTS_UPDATE,
                 P::DAILY_CLOSINGS_VIEW,
                 P::DAILY_CLOSINGS_OPEN_FIELD,
+                P::DAILY_CLOSINGS_SUBMIT_INVENTORY,
                 P::DAILY_CLOSINGS_SUBMIT_CASH,
                 P::VEHICLE_EXPENSES_VIEW,
                 P::VEHICLE_EXPENSES_CREATE,
@@ -191,7 +192,7 @@ final class RolePermissionMap
     }
 
     /** @param list<P> $permissions
-     *  @return list<string>
+     * @return list<string>
      */
     private static function values(array $permissions): array
     {

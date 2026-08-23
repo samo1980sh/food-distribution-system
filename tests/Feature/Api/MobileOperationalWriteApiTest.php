@@ -282,7 +282,7 @@ class MobileOperationalWriteApiTest extends TestCase
         $this->withToken($token)
             ->patchJson('/api/v1/operational/sales-invoices/'.$invoiceId, [
                 'notes' => 'Updated from field app',
-            'items' => [[
+                'items' => [[
                     'product_id' => $context['product']->id,
                     'quantity' => 3,
                     'unit_price' => 10,
@@ -494,6 +494,64 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
+    public function test_representative_owns_scoped_vehicle_expense_with_mobile_sales_semantics(): void
+    {
+        $first = $this->context('EXP-REP-A');
+        $second = $this->context('EXP-REP-B');
+        $first['route']->update(['driver_id' => null]);
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $first['representative'],
+        );
+        $token = $this->tokenFor($user);
+        $payload = [
+            'client_reference' => 'representative-expense-0001',
+            'expense_date' => today()->toDateString(),
+            'vehicle_id' => $first['vehicle']->id,
+            'warehouse_id' => $first['warehouse']->id,
+            'route_id' => $first['route']->id,
+            'expense_type' => 'fuel',
+            'amount' => 15,
+            'payment_method' => 'cash',
+        ];
+
+        $this->withToken($token)
+            ->postJson('/api/v1/operational/vehicle-expenses', [
+                ...$payload,
+                'vehicle_id' => $second['vehicle']->id,
+                'warehouse_id' => $second['warehouse']->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'field_context_mismatch');
+
+        $created = $this->withToken($token)
+            ->postJson('/api/v1/operational/vehicle-expenses', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.driver', null)
+            ->assertJsonPath('data.sales_representative.id', $first['representative']->id)
+            ->assertJsonPath('data.payment_method', 'cash')
+            ->assertJsonPath('data.operation_source', 'mobile_sales');
+
+        $expenseId = (int) $created->json('data.id');
+
+        $this->withToken($token)
+            ->postJson('/api/v1/operational/vehicle-expenses', $payload)
+            ->assertOk()
+            ->assertJsonPath('meta.idempotency.replayed', true)
+            ->assertJsonPath('data.id', $expenseId);
+
+        $this->assertDatabaseHas('vehicle_expenses', [
+            'id' => $expenseId,
+            'route_id' => $first['route']->id,
+            'vehicle_id' => $first['vehicle']->id,
+            'warehouse_id' => $first['warehouse']->id,
+            'driver_id' => null,
+            'sales_representative_id' => $first['representative']->id,
+            'payment_method' => 'cash',
+            'operation_source' => 'mobile_sales',
+        ]);
+    }
+
     public function test_field_user_cannot_create_daily_closing(): void
     {
         $context = $this->context('A');
@@ -628,7 +686,7 @@ class MobileOperationalWriteApiTest extends TestCase
     }
 
     /** @param array<string, mixed> $context
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function invoicePayload(
         array $context,

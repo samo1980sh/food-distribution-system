@@ -6,17 +6,19 @@ use App\Enums\OperationSource;
 use App\Exceptions\Api\OperationalApiException;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
-use App\Models\DistributionRoute;
 use App\Models\DailyClosing;
+use App\Models\DistributionRoute;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
+use App\Models\User;
 use App\Models\VehicleExpense;
 use App\Services\Distribution\DailyClosingService;
+use App\Services\Distribution\FieldRouteAssignmentResolver;
 use App\Services\Distribution\SalesFieldOperationService;
-use App\Services\Support\DocumentNumberService;
-use App\Services\Support\VehicleExpenseReceiptService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
+use App\Services\Support\DocumentNumberService;
+use App\Services\Support\VehicleExpenseReceiptService;
 use App\Support\Api\MobileWriteResult;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
@@ -34,10 +36,10 @@ class MobileOperationalWriteService
         private readonly SalesReturnService $salesReturnService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly SalesFieldOperationService $salesFieldOperationService,
+        private readonly FieldRouteAssignmentResolver $fieldRouteAssignmentResolver,
         private readonly DocumentNumberService $documentNumberService,
         private readonly VehicleExpenseReceiptService $vehicleExpenseReceipts,
-    ) {
-    }
+    ) {}
 
     public function createCustomer(array $data): MobileWriteResult
     {
@@ -222,6 +224,7 @@ class MobileOperationalWriteService
         ?UploadedFile $receipt = null,
     ): MobileWriteResult {
         unset($data['receipt'], $data['remove_receipt']);
+        $data = $this->representativeExpenseData($data);
 
         return $this->idempotentCreate(
             VehicleExpense::class,
@@ -235,7 +238,7 @@ class MobileOperationalWriteService
                         'receipt_path' => $receiptPath,
                         'created_by' => Auth::id(),
                         'client_payload_hash' => $payloadHash,
-                        'operation_source' => OperationSource::MOBILE_DRIVER,
+                        'operation_source' => $this->vehicleExpenseOperationSource($data),
                     ]);
                 } catch (Throwable $exception) {
                     if ($receiptPath) {
@@ -254,6 +257,7 @@ class MobileOperationalWriteService
         ?UploadedFile $receipt = null,
     ): VehicleExpense {
         unset($data['receipt']);
+        $data = $this->representativeExpenseUpdateData($expense, $data);
         $removeReceipt = filter_var(
             Arr::pull($data, 'remove_receipt', false),
             FILTER_VALIDATE_BOOLEAN,
@@ -363,9 +367,10 @@ class MobileOperationalWriteService
 
     /**
      * @template TModel of Model
-     * @param class-string<TModel> $modelClass
-     * @param array<string, mixed> $payload
-     * @param Closure(string): TModel $creator
+     *
+     * @param  class-string<TModel>  $modelClass
+     * @param  array<string, mixed>  $payload
+     * @param  Closure(string): TModel  $creator
      */
     private function idempotentCreate(
         string $modelClass,
@@ -430,6 +435,169 @@ class MobileOperationalWriteService
         return new MobileWriteResult($existing, true);
     }
 
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function representativeExpenseData(array $data): array
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User || ! $this->usesRepresentativeExpenseOwnership($user, $data)) {
+            return $data;
+        }
+
+        $employeeId = $user->employee()->value('id');
+
+        if ($employeeId === null) {
+            throw new OperationalApiException(
+                'يجب ربط حساب المندوب بموظف فعال قبل تسجيل مصروف المركبة.',
+                'field_employee_missing',
+                422,
+            );
+        }
+
+        $routeId = isset($data['route_id']) ? (int) $data['route_id'] : null;
+        $resolution = $this->fieldRouteAssignmentResolver->resolveRole(
+            $user,
+            User::ROLE_SALES_REPRESENTATIVE,
+            $routeId,
+        );
+        $route = $resolution['route'];
+
+        if (
+            ! $route instanceof DistributionRoute
+            || (int) $route->sales_representative_id !== (int) $employeeId
+        ) {
+            throw new OperationalApiException(
+                'يجب تحديد خط توزيع فعال مخصص للمندوب لتسجيل مصروف المركبة.',
+                'field_route_assignment_required',
+                422,
+            );
+        }
+
+        $vehicle = $route->vehicle;
+        $warehouse = $vehicle?->warehouse;
+
+        if ($vehicle === null || $vehicle->status !== 'active') {
+            throw new OperationalApiException(
+                'خط التوزيع لا يرتبط بسيارة فعالة.',
+                'field_vehicle_missing',
+                422,
+            );
+        }
+
+        if (
+            $warehouse === null
+            || $warehouse->type !== 'vehicle'
+            || $warehouse->status !== 'active'
+        ) {
+            throw new OperationalApiException(
+                'السيارة المخصصة للمندوب لا تملك مستودع سيارة فعالاً.',
+                'field_vehicle_warehouse_missing',
+                422,
+            );
+        }
+
+        foreach ([
+            'vehicle_id' => (int) $vehicle->getKey(),
+            'warehouse_id' => (int) $warehouse->getKey(),
+            'sales_representative_id' => (int) $employeeId,
+        ] as $field => $expectedId) {
+            if (
+                array_key_exists($field, $data)
+                && $data[$field] !== null
+                && (int) $data[$field] !== $expectedId
+            ) {
+                throw new OperationalApiException(
+                    'سياق مصروف المركبة لا يطابق خط وسيارة ومستودع المندوب.',
+                    'field_context_mismatch',
+                    422,
+                );
+            }
+        }
+
+        return [
+            ...$data,
+            'route_id' => (int) $route->getKey(),
+            'vehicle_id' => (int) $vehicle->getKey(),
+            'warehouse_id' => (int) $warehouse->getKey(),
+            'driver_id' => null,
+            'sales_representative_id' => (int) $employeeId,
+        ];
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function representativeExpenseUpdateData(
+        VehicleExpense $expense,
+        array $data,
+    ): array {
+        $user = Auth::user();
+        $employeeId = $user instanceof User
+            ? $user->employee()->value('id')
+            : null;
+
+        if (
+            ! $user instanceof User
+            || ! $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
+            || $expense->operation_source !== OperationSource::MOBILE_SALES
+            || $employeeId === null
+            || (int) $expense->sales_representative_id !== (int) $employeeId
+        ) {
+            return $data;
+        }
+
+        $context = $this->representativeExpenseData([
+            'route_id' => $data['route_id'] ?? $expense->route_id,
+            'vehicle_id' => $data['vehicle_id'] ?? $expense->vehicle_id,
+            'warehouse_id' => $data['warehouse_id'] ?? $expense->warehouse_id,
+            'sales_representative_id' => $data['sales_representative_id']
+                ?? $expense->sales_representative_id,
+            'driver_id' => $data['driver_id'] ?? $expense->driver_id,
+        ]);
+
+        return [
+            ...$data,
+            ...Arr::only($context, [
+                'route_id',
+                'vehicle_id',
+                'warehouse_id',
+                'driver_id',
+                'sales_representative_id',
+            ]),
+        ];
+    }
+
+    /** @param array<string, mixed> $data */
+    private function usesRepresentativeExpenseOwnership(User $user, array $data): bool
+    {
+        if (! $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)) {
+            return false;
+        }
+
+        if (! $user->hasRole(User::ROLE_DRIVER) || empty($data['route_id'])) {
+            return true;
+        }
+
+        $employeeId = $user->employee()->value('id');
+
+        return DistributionRoute::withoutGlobalScopes()
+            ->whereKey((int) $data['route_id'])
+            ->where('sales_representative_id', $employeeId)
+            ->exists();
+    }
+
+    /** @param array<string, mixed> $data */
+    private function vehicleExpenseOperationSource(array $data): OperationSource
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $this->usesRepresentativeExpenseOwnership($user, $data)
+            ? OperationSource::MOBILE_SALES
+            : OperationSource::MOBILE_DRIVER;
+    }
+
     /** @param array<string, mixed> $payload */
     private function payloadHash(array $payload): string
     {
@@ -443,7 +611,7 @@ class MobileOperationalWriteService
     }
 
     /** @param array<string, mixed> $payload
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function payloadWithFileFingerprint(
         array $payload,

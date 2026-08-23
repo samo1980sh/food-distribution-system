@@ -10,8 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 class VehicleLoadPolicy extends PermissionPolicy
 {
     protected const VIEW_ANY = PermissionName::VEHICLE_LOADS_VIEW;
+
     protected const CREATE = PermissionName::VEHICLE_LOADS_CREATE;
+
     protected const UPDATE = PermissionName::VEHICLE_LOADS_UPDATE;
+
     protected const DELETE = PermissionName::VEHICLE_LOADS_DELETE;
 
     public function update(User $user, Model $record): bool
@@ -43,12 +46,16 @@ class VehicleLoadPolicy extends PermissionPolicy
     public function acknowledge(User $user, VehicleLoad $record): bool
     {
         $employeeId = $user->employee()->value('id');
+        $ownsAsRepresentative = $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
+            && (
+                (int) $record->sales_representative_id === (int) $employeeId
+                || (int) $record->route?->sales_representative_id === (int) $employeeId
+            );
+        $ownsAsDriver = $user->hasRole(User::ROLE_DRIVER)
+            && (int) $record->driver_id === (int) $employeeId;
 
         return $employeeId !== null
-            && in_array((int) $employeeId, array_filter([
-                (int) $record->driver_id,
-                (int) $record->sales_representative_id,
-            ]), true)
+            && ($ownsAsRepresentative || $ownsAsDriver)
             && $record->isApproved()
             && $record->isHandoverPending()
             && $this->allowsRecord($user, $record, PermissionName::VEHICLE_LOADS_VIEW);

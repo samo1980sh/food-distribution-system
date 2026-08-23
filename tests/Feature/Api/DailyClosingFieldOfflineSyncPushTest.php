@@ -19,20 +19,18 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_driver_inventory_and_sales_cash_merge_from_the_same_base_version(): void
+    public function test_representative_inventory_and_cash_merge_from_the_same_base_version(): void
     {
         $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
+        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
         );
-        $driverToken = $this->tokenFor($driver, 'closing-driver-device');
         $salesToken = $this->tokenFor($sales, 'closing-sales-device');
-        $driverContextKey = $this->contextKey($driverToken);
         $salesContextKey = $this->contextKey($salesToken);
 
-        $opened = $this->withFreshToken($driverToken)
+        $opened = $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/open-today', [
                 'route_id' => $context['route']->id,
             ])
@@ -43,8 +41,8 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
         $expectedQuantity = (float) $opened->json('data.items.0.expected_quantity');
 
         $inventory = $this->push(
-            $driverToken,
-            $driverContextKey,
+            $salesToken,
+            $salesContextKey,
             'batch-closing-inventory-0001',
             [[
                 'operation_id' => 'operation-closing-inventory-0001',
@@ -84,7 +82,7 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
                 'entity' => 'daily_closings',
                 'action' => 'submit_cash',
                 'record_id' => $closingId,
-                // The driver's inventory submission changed the whole-record
+                // The inventory submission changed the whole-record
                 // version, but the independent cash section remains mergeable.
                 'base_version' => $baseVersion,
                 'payload' => [
@@ -114,7 +112,7 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
-            'inventory_submitted_by' => $driver->id,
+            'inventory_submitted_by' => $sales->id,
             'cash_submitted_by' => $sales->id,
             'status' => 'draft',
         ]);

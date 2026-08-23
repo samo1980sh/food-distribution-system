@@ -13,8 +13,8 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
@@ -30,8 +30,7 @@ class MobileSyncScopeService
 {
     public function __construct(
         private readonly AccessScopeService $accessScopeService,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function snapshot(Model $model): array
@@ -85,8 +84,13 @@ class MobileSyncScopeService
         }
 
         if ($model instanceof StockBalance) {
+            $vehicleId = Warehouse::withoutGlobalScopes()
+                ->whereKey($model->warehouse_id)
+                ->value('vehicle_id');
+
             return $this->clean([
                 'warehouse_id' => $model->warehouse_id,
+                'vehicle_id' => $vehicleId,
             ]);
         }
 
@@ -157,7 +161,7 @@ class MobileSyncScopeService
             'product_categories', 'units', 'products' => true,
             'customers' => $this->contains($scope->routeIds, $snapshot['route_id'] ?? null)
                 || $this->contains($scope->areaIds, $snapshot['area_id'] ?? null),
-            'stock_balances' => $this->contains($scope->warehouseIds, $snapshot['warehouse_id'] ?? null),
+            'stock_balances' => $this->allowsStockBalance($user, $scope, $snapshot),
             'vehicle_loads' => $scope->role === UserRole::WAREHOUSE_KEEPER
                 ? $this->intersects($scope->warehouseIds, $snapshot['warehouse_ids'] ?? [])
                 : $this->matchesOperationalScope($scope, $snapshot),
@@ -179,6 +183,30 @@ class MobileSyncScopeService
             || $this->contains($scope->areaIds, $snapshot['customer_area_id'] ?? null);
     }
 
+    /** @param array<string, mixed> $snapshot */
+    private function allowsStockBalance(User $user, object $scope, array $snapshot): bool
+    {
+        if (! $user->hasAnyRole([
+            User::ROLE_DRIVER,
+            User::ROLE_SALES_REPRESENTATIVE,
+        ])) {
+            return $this->contains(
+                $scope->warehouseIds,
+                $snapshot['warehouse_id'] ?? null,
+            );
+        }
+
+        $vehicleId = $snapshot['vehicle_id'] ?? null;
+
+        if ($vehicleId === null && isset($snapshot['warehouse_id'])) {
+            $vehicleId = Warehouse::withoutGlobalScopes()
+                ->whereKey((int) $snapshot['warehouse_id'])
+                ->value('vehicle_id');
+        }
+
+        return $this->contains($scope->vehicleIds, $vehicleId);
+    }
+
     /** @param list<int> $allowed */
     private function contains(array $allowed, mixed $value): bool
     {
@@ -198,7 +226,7 @@ class MobileSyncScopeService
     }
 
     /** @param array<string, mixed> $snapshot
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function clean(array $snapshot): array
     {

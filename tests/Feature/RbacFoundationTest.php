@@ -157,7 +157,7 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
         );
-        $this->assertFalse(
+        $this->assertTrue(
             $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
         );
     }
@@ -173,7 +173,6 @@ class RbacFoundationTest extends TestCase
             $superAdmin->can(PermissionName::USERS_VIEW->value),
         );
     }
-
 
     public function test_last_active_super_admin_cannot_be_disabled(): void
     {

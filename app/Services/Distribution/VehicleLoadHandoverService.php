@@ -3,9 +3,9 @@
 namespace App\Services\Distribution;
 
 use App\Enums\PermissionName;
+use App\Models\User;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
-use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Arr;
@@ -131,7 +131,8 @@ class VehicleLoadHandoverService
                     ->body(collect([
                         $vehicleLoad->load_number,
                         $vehicleLoad->vehicle?->name,
-                        $vehicleLoad->driver?->name,
+                        $vehicleLoad->salesRepresentative?->name
+                            ?? $vehicleLoad->driver?->name,
                     ])->filter(fn (mixed $value): bool => filled($value))->implode(' - '))
                     ->actions([
                         Action::make('view')
@@ -145,6 +146,7 @@ class VehicleLoadHandoverService
                         'vehicle_load_number' => $vehicleLoad->load_number,
                         'vehicle_name' => $vehicleLoad->vehicle?->name,
                         'driver_name' => $vehicleLoad->driver?->name,
+                        'sales_representative_name' => $vehicleLoad->salesRepresentative?->name,
                         'notification_type' => 'vehicle_load_handover_discrepancy',
                     ])
                     ->sendToDatabase($user, true);

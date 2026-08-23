@@ -26,14 +26,14 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
     public function test_field_handover_remains_draft_until_existing_admin_confirmation(): void
     {
         $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
+        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
         $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
         $handover = app(DailyClosingFieldHandoverService::class);
 
-        $this->actingAs($driver);
-        $closing = $handover->openToday($driver, $context['route']->id);
-        $closing = $handover->submitInventory($closing, $driver, [
+        $this->actingAs($sales);
+        $closing = $handover->openToday($sales, $context['route']->id);
+        $closing = $handover->submitInventory($closing, $sales, [
             'items' => [[
                 'product_id' => $context['product']->id,
                 'actual_quantity' => 20,

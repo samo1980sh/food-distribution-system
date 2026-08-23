@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
+use App\Services\Api\MobileSyncScopeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -150,6 +151,63 @@ class MobileOperationalReadApiTest extends TestCase
             ->getJson('/api/v1/operational/stock-balances/'.$mainStock->id)
             ->assertNotFound();
     }
+
+    public function test_representative_resolves_route_vehicle_and_vehicle_stock_without_driver_access(): void
+    {
+        $first = $this->context('REP-A');
+        $second = $this->context('REP-B');
+        $first['route']->update(['driver_id' => null]);
+        $first['load']->update(['driver_id' => null]);
+
+        $mainStock = StockBalance::query()->create([
+            'warehouse_id' => $first['load']->from_warehouse_id,
+            'product_id' => $first['product']->id,
+            'quantity' => 999,
+            'average_unit_cost' => 5,
+        ]);
+        $user = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+        $first['representative']->update(['user_id' => $user->id]);
+        $token = $user->createToken(
+            'representative-context-test',
+            [(string) config('mobile_api.token_ability')],
+        )->plainTextToken;
+
+        $this->withToken($token)->getJson('/api/v1/operational/routes')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $first['route']->id);
+        $this->withToken($token)->getJson('/api/v1/operational/vehicles')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $first['vehicle']->id);
+        $this->withToken($token)->getJson('/api/v1/operational/stock-balances')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $first['stock']->id)
+            ->assertJsonPath('data.items.0.warehouse.id', $first['warehouse']->id);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/stock-balances/'.$mainStock->id)
+            ->assertNotFound();
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/vehicles/'.$second['vehicle']->id)
+            ->assertNotFound();
+
+        $syncScopes = app(MobileSyncScopeService::class);
+        $this->assertTrue($syncScopes->allows(
+            $user,
+            'stock_balances',
+            $syncScopes->snapshot($first['stock']),
+        ));
+        $this->assertFalse($syncScopes->allows(
+            $user,
+            'stock_balances',
+            $syncScopes->snapshot($mainStock),
+        ));
+    }
+
     public function test_out_of_scope_detail_is_hidden_as_not_found(): void
     {
         $first = $this->context('A');
@@ -192,20 +250,21 @@ class MobileOperationalReadApiTest extends TestCase
     /** @return array<string, mixed> */
     private function context(string $suffix): array
     {
-        $area = Area::query()->create(['code'=>'AREA-'.$suffix,'name_ar'=>'منطقة '.$suffix,'status'=>'active']);
-        $vehicle = Vehicle::query()->create(['code'=>'VEH-'.$suffix,'plate_number'=>'PLATE-'.$suffix,'status'=>'active']);
-        $warehouse = Warehouse::query()->create(['vehicle_id'=>$vehicle->id,'code'=>'WH-'.$suffix,'name'=>'مستودع '.$suffix,'type'=>'vehicle','status'=>'active']);
-        $sourceWarehouse = Warehouse::query()->create(['code'=>'SOURCE-WH-'.$suffix,'name'=>'مستودع مصدر '.$suffix,'type'=>'main','status'=>'active']);
-        $driver = Employee::query()->create(['employee_code'=>'DRV-'.$suffix,'name'=>'سائق '.$suffix,'type'=>'driver','status'=>'active']);
-        $representative = Employee::query()->create(['employee_code'=>'REP-'.$suffix,'name'=>'مندوب '.$suffix,'type'=>'sales_representative','status'=>'active']);
-        $route = DistributionRoute::query()->create(['area_id'=>$area->id,'vehicle_id'=>$vehicle->id,'driver_id'=>$driver->id,'sales_representative_id'=>$representative->id,'code'=>'ROUTE-'.$suffix,'name'=>'خط '.$suffix,'status'=>'active']);
-        $customer = Customer::query()->create(['code'=>'CUS-'.$suffix,'name'=>'عميل '.$suffix,'area_id'=>$area->id,'route_id'=>$route->id,'status'=>'active']);
-        $category = ProductCategory::query()->create(['code'=>'CAT-'.$suffix,'name_ar'=>'تصنيف '.$suffix,'status'=>'active']);
-        $unit = Unit::query()->create(['code'=>'UNIT-'.$suffix,'name_ar'=>'وحدة '.$suffix,'symbol'=>'U','status'=>'active']);
-        $product = Product::query()->create(['sku'=>'SKU-'.$suffix,'name_ar'=>'منتج '.$suffix,'category_id'=>$category->id,'unit_id'=>$unit->id,'purchase_price'=>5,'sale_price'=>10,'wholesale_price'=>9,'status'=>'active']);
-        $stock = StockBalance::query()->create(['warehouse_id'=>$warehouse->id,'product_id'=>$product->id,'quantity'=>20,'average_unit_cost'=>5]);
-        $invoice = SalesInvoice::query()->create(['invoice_number'=>'INV-'.$suffix,'customer_id'=>$customer->id,'vehicle_id'=>$vehicle->id,'route_id'=>$route->id,'warehouse_id'=>$warehouse->id,'sales_representative_id'=>$representative->id,'invoice_date'=>today(),'status'=>'draft','payment_type'=>'cash','total_amount'=>10]);
-        $load = VehicleLoad::query()->create(['load_number'=>'LOAD-'.$suffix,'vehicle_id'=>$vehicle->id,'route_id'=>$route->id,'driver_id'=>$driver->id,'sales_representative_id'=>$representative->id,'from_warehouse_id'=>$sourceWarehouse->id,'to_warehouse_id'=>$warehouse->id,'load_date'=>today(),'status'=>'draft']);
-        return compact('area','vehicle','warehouse','driver','representative','route','customer','product','stock','invoice','load');
+        $area = Area::query()->create(['code' => 'AREA-'.$suffix, 'name_ar' => 'منطقة '.$suffix, 'status' => 'active']);
+        $vehicle = Vehicle::query()->create(['code' => 'VEH-'.$suffix, 'plate_number' => 'PLATE-'.$suffix, 'status' => 'active']);
+        $warehouse = Warehouse::query()->create(['vehicle_id' => $vehicle->id, 'code' => 'WH-'.$suffix, 'name' => 'مستودع '.$suffix, 'type' => 'vehicle', 'status' => 'active']);
+        $sourceWarehouse = Warehouse::query()->create(['code' => 'SOURCE-WH-'.$suffix, 'name' => 'مستودع مصدر '.$suffix, 'type' => 'main', 'status' => 'active']);
+        $driver = Employee::query()->create(['employee_code' => 'DRV-'.$suffix, 'name' => 'سائق '.$suffix, 'type' => 'driver', 'status' => 'active']);
+        $representative = Employee::query()->create(['employee_code' => 'REP-'.$suffix, 'name' => 'مندوب '.$suffix, 'type' => 'sales_representative', 'status' => 'active']);
+        $route = DistributionRoute::query()->create(['area_id' => $area->id, 'vehicle_id' => $vehicle->id, 'driver_id' => $driver->id, 'sales_representative_id' => $representative->id, 'code' => 'ROUTE-'.$suffix, 'name' => 'خط '.$suffix, 'status' => 'active']);
+        $customer = Customer::query()->create(['code' => 'CUS-'.$suffix, 'name' => 'عميل '.$suffix, 'area_id' => $area->id, 'route_id' => $route->id, 'status' => 'active']);
+        $category = ProductCategory::query()->create(['code' => 'CAT-'.$suffix, 'name_ar' => 'تصنيف '.$suffix, 'status' => 'active']);
+        $unit = Unit::query()->create(['code' => 'UNIT-'.$suffix, 'name_ar' => 'وحدة '.$suffix, 'symbol' => 'U', 'status' => 'active']);
+        $product = Product::query()->create(['sku' => 'SKU-'.$suffix, 'name_ar' => 'منتج '.$suffix, 'category_id' => $category->id, 'unit_id' => $unit->id, 'purchase_price' => 5, 'sale_price' => 10, 'wholesale_price' => 9, 'status' => 'active']);
+        $stock = StockBalance::query()->create(['warehouse_id' => $warehouse->id, 'product_id' => $product->id, 'quantity' => 20, 'average_unit_cost' => 5]);
+        $invoice = SalesInvoice::query()->create(['invoice_number' => 'INV-'.$suffix, 'customer_id' => $customer->id, 'vehicle_id' => $vehicle->id, 'route_id' => $route->id, 'warehouse_id' => $warehouse->id, 'sales_representative_id' => $representative->id, 'invoice_date' => today(), 'status' => 'draft', 'payment_type' => 'cash', 'total_amount' => 10]);
+        $load = VehicleLoad::query()->create(['load_number' => 'LOAD-'.$suffix, 'vehicle_id' => $vehicle->id, 'route_id' => $route->id, 'driver_id' => $driver->id, 'sales_representative_id' => $representative->id, 'from_warehouse_id' => $sourceWarehouse->id, 'to_warehouse_id' => $warehouse->id, 'load_date' => today(), 'status' => 'draft']);
+
+        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'customer', 'product', 'stock', 'invoice', 'load');
     }
 }
