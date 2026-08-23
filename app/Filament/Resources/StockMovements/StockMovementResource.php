@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockMovements;
 
+use App\Filament\Clusters\InventoryCluster;
 use App\Filament\Resources\StockMovements\Pages\ManageStockMovements;
 use App\Filament\Resources\StockMovements\Schemas\StockMovementForm;
 use App\Filament\Resources\StockMovements\Tables\StockMovementsTable;
@@ -15,18 +16,15 @@ class StockMovementResource extends Resource
 {
     protected static ?string $model = StockMovement::class;
 
+    protected static ?string $cluster = InventoryCluster::class;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
 
     protected static ?string $recordTitleAttribute = 'movement_number';
 
-    public static function getNavigationGroup(): string|\UnitEnum|null
-    {
-        return 'المخزون';
-    }
-
     public static function getNavigationLabel(): string
     {
-        return 'سجل وتسويات المخزون';
+        return 'الحركات والتسويات';
     }
 
     public static function getModelLabel(): string

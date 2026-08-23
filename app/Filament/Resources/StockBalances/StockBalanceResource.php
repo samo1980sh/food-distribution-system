@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\StockBalances;
 
+use App\Filament\Clusters\InventoryCluster;
 use App\Filament\Resources\StockBalances\Pages\ManageStockBalances;
 use App\Filament\Resources\StockBalances\Tables\StockBalancesTable;
 use App\Models\StockBalance;
@@ -14,18 +15,15 @@ class StockBalanceResource extends Resource
 {
     protected static ?string $model = StockBalance::class;
 
+    protected static ?string $cluster = InventoryCluster::class;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
 
     protected static ?string $recordTitleAttribute = 'id';
 
-    public static function getNavigationGroup(): string|\UnitEnum|null
-    {
-        return 'المخزون';
-    }
-
     public static function getNavigationLabel(): string
     {
-        return 'أرصدة المخزون';
+        return 'المخزون الحالي';
     }
 
     public static function getModelLabel(): string

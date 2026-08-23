@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\StockBalances\Tables;
 
 use App\Models\StockBalance;
+use App\Support\Formatting\QuantityFormatter;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -58,10 +59,13 @@ class StockBalancesTable
 
                 TextColumn::make('quantity')
                     ->label('الكمية')
-                    ->numeric(decimalPlaces: 3)
+                    ->state(fn (StockBalance $record): string => QuantityFormatter::formatWithUnit(
+                        (float) $record->quantity,
+                        $record->product?->unit,
+                    ))
                     ->sortable()
                     ->badge()
-                    ->color(fn ($state): string => ((float) $state) > 0 ? 'success' : 'gray'),
+                    ->color(fn (StockBalance $record): string => ((float) $record->quantity) > 0 ? 'success' : 'gray'),
 
                 TextColumn::make('average_unit_cost')
                     ->label('متوسط تكلفة الوحدة')

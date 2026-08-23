@@ -83,7 +83,7 @@ class StockMovementForm
                     ->helperText('تُدخل في الرصيد الافتتاحي فقط؛ الإخراج والتحويل يستخدمان متوسط تكلفة الرصيد تلقائيًا.'),
 
                 Textarea::make('notes')
-                    ->label('سبب التسوية / التحويل الإداري')
+                    ->label('سبب الحركة الإدارية')
                     ->required()
                     ->minLength(10)
                     ->maxLength(2000)
