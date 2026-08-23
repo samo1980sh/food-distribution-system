@@ -4,7 +4,6 @@ namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\Actions\SalesInvoiceActions;
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
-use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
 class ViewSalesInvoice extends ViewRecord
@@ -24,9 +23,6 @@ class ViewSalesInvoice extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            EditAction::make()
-                ->label('تعديل المسودة')
-                ->visible(fn (): bool => auth()->user()?->can('update', $this->record) === true),
             SalesInvoiceActions::confirm(),
             SalesInvoiceActions::cancel(),
             SalesInvoiceActions::print(),

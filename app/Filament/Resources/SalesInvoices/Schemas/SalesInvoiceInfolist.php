@@ -44,7 +44,7 @@ class SalesInvoiceInfolist
                                 'partial' => 'جزئي',
                                 default => $state ?? '-',
                             }),
-                        TextEntry::make('vehicle.plate_number')->label('السيارة')->placeholder('-'),
+                        TextEntry::make('vehicle.name')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
                         TextEntry::make('warehouse.name')->label('مستودع البيع'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),

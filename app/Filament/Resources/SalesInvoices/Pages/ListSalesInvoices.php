@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\SalesInvoices\Pages;
 
 use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListSalesInvoices extends ListRecords
@@ -22,11 +21,6 @@ class ListSalesInvoices extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            CreateAction::make()
-                ->label('فاتورة إدارية استثنائية')
-                ->icon('heroicon-o-plus')
-                ->visible(fn (): bool => SalesInvoiceResource::canCreate()),
-        ];
+        return [];
     }
 }

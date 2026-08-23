@@ -4,12 +4,10 @@ namespace App\Filament\Resources\SalesInvoices\Tables;
 
 use App\Enums\OperationSource;
 use App\Filament\Resources\SalesInvoices\Actions\SalesInvoiceActions;
-use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
+use App\Filament\Resources\SalesInvoices\Schemas\SalesInvoiceInfolist;
 use App\Models\SalesInvoice;
-use Filament\Actions\ActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -19,7 +17,7 @@ class SalesInvoicesTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->recordUrl(fn (SalesInvoice $record): string => SalesInvoiceResource::getUrl('view', ['record' => $record]))
+            ->recordUrl(null)
             ->columns([
                 TextColumn::make('invoice_number')
                     ->label('رقم الفاتورة')
@@ -103,7 +101,7 @@ class SalesInvoicesTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->placeholder('-')
@@ -162,7 +160,7 @@ class SalesInvoicesTable
 
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
 
@@ -173,21 +171,11 @@ class SalesInvoicesTable
                     ->preload(),
             ])
             ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make()->label('عرض التفاصيل'),
-                    EditAction::make()
-                        ->label('تعديل')
-                        ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('update', $record) === true),
-                    SalesInvoiceActions::confirm(),
-                    SalesInvoiceActions::cancel(),
-                    SalesInvoiceActions::print(),
-                    DeleteAction::make()
-                        ->label('حذف المسودة')
-                        ->visible(fn (SalesInvoice $record): bool => auth()->user()?->can('delete', $record) === true),
-                ])
-                    ->label('الإجراءات')
-                    ->icon('heroicon-m-ellipsis-vertical')
-                    ->button(),
+                Action::make('details')
+                    ->label('عرض التفاصيل')
+                    ->icon('heroicon-o-eye')
+                    ->slideOver()
+                    ->schema(fn (Schema $schema): Schema => SalesInvoiceInfolist::configure($schema))
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc')

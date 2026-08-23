@@ -132,11 +132,11 @@ class OperationalResponsibilitySeparationTest extends TestCase
         $stockPage = file_get_contents(app_path('Filament/Resources/StockMovements/Pages/ManageStockMovements.php'));
         $stockForm = file_get_contents(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
 
-        $this->assertStringContainsString('فاتورة إدارية استثنائية', $invoicePage);
+        $this->assertStringContainsString('return [];', $invoicePage);
         $this->assertStringContainsString('تسجيل تحصيل مكتبي', $paymentPage);
         $this->assertStringContainsString('مصروف إداري استثنائي', $expensePage);
-        $this->assertStringContainsString('تسوية مخزون إدارية', $stockPage);
-        $this->assertStringContainsString('سبب التسوية / التحويل الإداري', $stockForm);
+        $this->assertStringContainsString('حركة مخزون إدارية', $stockPage);
+        $this->assertStringContainsString('سبب الحركة الإدارية', $stockForm);
         $this->assertStringContainsString('->required()', $stockForm);
     }
 
@@ -166,8 +166,7 @@ class OperationalResponsibilitySeparationTest extends TestCase
 
         Livewire::test(ListSalesInvoices::class)
             ->assertOk()
-            ->assertActionVisible('create')
-            ->assertActionHasLabel('create', 'فاتورة إدارية استثنائية');
+            ->assertActionDoesNotExist('create');
 
         Livewire::test(ListSalesReturns::class)
             ->assertOk()

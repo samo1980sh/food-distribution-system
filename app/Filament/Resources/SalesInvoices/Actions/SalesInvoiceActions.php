@@ -9,6 +9,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
+use Livewire\Component;
 
 final class SalesInvoiceActions
 {
@@ -41,6 +42,9 @@ final class SalesInvoiceActions
                         ->persistent()
                         ->send();
                 }
+            })
+            ->after(function (Component $livewire): void {
+                $livewire->dispatch('$refresh');
             });
     }
 
