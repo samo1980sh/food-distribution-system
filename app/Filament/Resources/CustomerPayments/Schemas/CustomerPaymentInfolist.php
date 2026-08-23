@@ -63,7 +63,7 @@ class CustomerPaymentInfolist
                     ->columns(4)
                     ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('vehicle.plate_number')->label('السيارة')->placeholder('-'),
+                        TextEntry::make('vehicle.name')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
                         TextEntry::make('warehouse.name')->label('المستودع')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب التحصيل')->placeholder('-'),

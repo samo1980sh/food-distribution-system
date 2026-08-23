@@ -462,7 +462,7 @@
                                 <td class="number">{{ $closing->closing_date?->format('Y-m-d') ?? '-' }}</td>
                                 <td class="number">{{ $closing->closing_number }}</td>
                                 <td>{{ $closing->warehouse?->name ?? '-' }}</td>
-                                <td class="number">{{ $closing->vehicle?->plate_number ?? '-' }}</td>
+                                <td class="number">{{ $closing->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $closing->route?->name ?? '-' }}</td>
                                 <td>{{ $closing->salesRepresentative?->name ?? '-' }}</td>
 

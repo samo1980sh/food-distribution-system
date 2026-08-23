@@ -430,7 +430,7 @@
                                 <td class="number">{{ $invoice->invoice_number }}</td>
                                 <td>{{ $invoice->customer?->name ?? '-' }}</td>
                                 <td>{{ $invoice->warehouse?->name ?? '-' }}</td>
-                                <td class="number">{{ $invoice->vehicle?->plate_number ?? '-' }}</td>
+                                <td class="number">{{ $invoice->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $invoice->salesRepresentative?->name ?? '-' }}</td>
                                 <td>{{ $paymentLabels[$invoice->payment_type] ?? $invoice->payment_type }}</td>
 

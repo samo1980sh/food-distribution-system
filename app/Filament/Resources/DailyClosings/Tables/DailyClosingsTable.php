@@ -48,7 +48,7 @@ class DailyClosingsTable
                     ->label('المستودع')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (DailyClosing $record): ?string => $record->vehicle?->plate_number),
+                    ->description(fn (DailyClosing $record): ?string => $record->vehicle?->name),
 
                 TextColumn::make('total_expected_quantity')
                     ->label('الرصيد المتوقع')
@@ -206,7 +206,7 @@ class DailyClosingsTable
 
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
 

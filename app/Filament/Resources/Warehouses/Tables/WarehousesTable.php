@@ -44,7 +44,7 @@ class WarehousesTable
                         'vehicle' => 'warning',
                         default => 'gray',
                     }),
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة المرتبطة')
                     ->searchable()
                     ->placeholder('-'),
@@ -69,7 +69,7 @@ class WarehousesTable
                     ]),
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة المرتبطة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('status')

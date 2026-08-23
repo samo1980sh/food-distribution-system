@@ -115,7 +115,7 @@ class DailyClosingReportFilamentWorkspaceTest extends TestCase
 
         foreach ([
             'closing_date',
-            'vehicle.plate_number',
+            'vehicle.name',
             'route.name',
             'salesRepresentative.name',
             'total_opening_quantity',

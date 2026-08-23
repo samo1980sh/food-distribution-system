@@ -28,7 +28,7 @@ class DistributionRoutesTable
                     ->searchable()
                     ->sortable()
                     ->description(fn (DistributionRoute $record): ?string => $record->area?->name_ar),
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->placeholder('-'),
@@ -65,7 +65,7 @@ class DistributionRoutesTable
                     ->preload(),
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('driver_id')

@@ -105,7 +105,7 @@ class SalesReturnForm
                     ->schema([
                         Select::make('vehicle_id')
                             ->label('السيارة')
-                            ->relationship('vehicle', 'plate_number', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
+                            ->relationship('vehicle', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'))
                             ->searchable()
                             ->preload()
                             ->live()

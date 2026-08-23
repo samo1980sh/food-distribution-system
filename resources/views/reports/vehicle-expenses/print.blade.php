@@ -220,7 +220,7 @@
             <div class="grid">
                 <div class="field">
                     <span>السيارة</span>
-                    <strong>{{ $expense->vehicle?->plate_number ?? '-' }}</strong>
+                    <strong>{{ $expense->vehicle?->name ?? '-' }}</strong>
                 </div>
                 <div class="field">
                     <span>المستودع</span>

@@ -74,7 +74,7 @@ class UserInfolist
                             ->state(fn (User $record): string => self::relationNames($record, 'accessRoutes', 'name')),
                         TextEntry::make('direct_vehicles')
                             ->label('السيارات المباشرة')
-                            ->state(fn (User $record): string => self::relationNames($record, 'accessVehicles', 'plate_number')),
+                            ->state(fn (User $record): string => self::relationNames($record, 'accessVehicles', 'name')),
                         TextEntry::make('direct_warehouses')
                             ->label('المستودعات المباشرة')
                             ->state(fn (User $record): string => self::relationNames($record, 'accessWarehouses', 'name')),
@@ -104,7 +104,7 @@ class UserInfolist
                             ->state(fn (User $record): string => self::effectiveNames($record, DistributionRoute::class, self::scope($record)->routeIds, 'name')),
                         TextEntry::make('effective_vehicles')
                             ->label('السيارات الفعلية')
-                            ->state(fn (User $record): string => self::effectiveNames($record, Vehicle::class, self::scope($record)->vehicleIds, 'plate_number')),
+                            ->state(fn (User $record): string => self::effectiveNames($record, Vehicle::class, self::scope($record)->vehicleIds, 'name')),
                         TextEntry::make('effective_warehouses')
                             ->label('المستودعات الفعلية')
                             ->state(fn (User $record): string => self::effectiveNames($record, Warehouse::class, self::scope($record)->warehouseIds, 'name')),

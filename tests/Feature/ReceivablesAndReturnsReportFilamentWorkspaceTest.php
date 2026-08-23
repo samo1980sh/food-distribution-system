@@ -118,7 +118,7 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
         $reports = [
             'Filament/Resources/CustomerPaymentReports/Tables/CustomerPaymentReportsTable.php' => [
                 'warehouse.name',
-                'vehicle.plate_number',
+                'vehicle.name',
                 'route.name',
                 'salesRepresentative.name',
                 'cash_amount',
@@ -128,7 +128,7 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
             ],
             'Filament/Resources/SalesReturnReports/Tables/SalesReturnReportsTable.php' => [
                 'warehouse.name',
-                'vehicle.plate_number',
+                'vehicle.name',
                 'route.name',
                 'salesRepresentative.name',
                 'subtotal',

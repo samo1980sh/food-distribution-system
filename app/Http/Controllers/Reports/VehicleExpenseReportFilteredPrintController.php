@@ -204,7 +204,7 @@ class VehicleExpenseReportFilteredPrintController
         $filterSummary = array_filter([
             'الفترة' => $period,
             'السيارة' => $vehicleId
-                ? Vehicle::query()->find($vehicleId)?->plate_number
+                ? Vehicle::query()->find($vehicleId)?->name
                 : null,
             'المستودع' => $warehouseId
                 ? Warehouse::query()->find($warehouseId)?->name

@@ -118,7 +118,7 @@ class DistributionRouteExcelTemplateService
             ['area_code', 'اسم المنطقة'],
         ], null, 'A1');
         $references->fromArray([
-            ['vehicle_code', 'رقم اللوحة', 'اسم / وصف السيارة'],
+            ['vehicle_code', 'اسم / وصف السيارة', 'رقم اللوحة'],
         ], null, 'D1');
         $references->fromArray([
             ['driver_code', 'اسم السائق', 'نوع سجل الموظف'],
@@ -163,8 +163,8 @@ class DistributionRouteExcelTemplateService
         foreach ($vehicles as $index => $vehicle) {
             $row = $index + 2;
             $references->setCellValueExplicit('D'.$row, (string) $vehicle->code, DataType::TYPE_STRING);
-            $references->setCellValueExplicit('E'.$row, (string) $vehicle->plate_number, DataType::TYPE_STRING);
-            $references->setCellValue('F'.$row, $vehicle->name);
+            $references->setCellValueExplicit('F'.$row, (string) $vehicle->plate_number, DataType::TYPE_STRING);
+            $references->setCellValue('E'.$row, $vehicle->name);
         }
 
         foreach ($drivers as $index => $driver) {

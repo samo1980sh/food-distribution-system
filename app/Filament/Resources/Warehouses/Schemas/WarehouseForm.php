@@ -71,7 +71,7 @@ class WarehouseForm
                             ->label('السيارة المرتبطة')
                             ->relationship(
                                 'vehicle',
-                                'plate_number',
+                                'name',
                                 modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'),
                             )
                             ->searchable()

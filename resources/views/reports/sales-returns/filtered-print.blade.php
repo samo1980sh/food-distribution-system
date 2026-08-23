@@ -433,7 +433,7 @@
                                 </td>
 
                                 <td class="number">
-                                    {{ $salesReturn->vehicle?->plate_number ?? '-' }}
+                                    {{ $salesReturn->vehicle?->name ?? '-' }}
                                 </td>
 
                                 <td>

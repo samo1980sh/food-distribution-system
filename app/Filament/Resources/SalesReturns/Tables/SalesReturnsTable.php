@@ -97,7 +97,7 @@ class SalesReturnsTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->placeholder('-')

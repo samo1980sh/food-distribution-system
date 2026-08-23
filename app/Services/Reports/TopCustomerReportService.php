@@ -190,7 +190,7 @@ class TopCustomerReportService
             ->whereDate('invoice_date', '<=', $settings['until'])
             ->with([
                 'items.product:id,sku,name_ar',
-                'vehicle:id,plate_number',
+                'vehicle:id,name,plate_number',
                 'route:id,name',
                 'salesRepresentative:id,name',
             ])
@@ -229,7 +229,7 @@ class TopCustomerReportService
                         'invoice_number' => $invoice->invoice_number,
                         'invoice_date' => $invoice->invoice_date?->toDateString(),
                         'payment_type' => $invoice->payment_type,
-                        'vehicle' => $invoice->vehicle?->plate_number,
+                        'vehicle' => $invoice->vehicle?->name,
                         'route' => $invoice->route?->name,
                         'representative' => $invoice->salesRepresentative?->name,
                         'items_count' => $invoice->items->count(),

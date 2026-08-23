@@ -56,7 +56,7 @@ class VehicleExpenseInfolist
                     ->columns(5)
                     ->columnSpanFull()
                     ->schema([
-                        TextEntry::make('vehicle.plate_number')->label('السيارة'),
+                        TextEntry::make('vehicle.name')->label('السيارة'),
                         TextEntry::make('warehouse.name')->label('مستودع السيارة'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
                         TextEntry::make('driver.name')->label('السائق')->placeholder('-'),

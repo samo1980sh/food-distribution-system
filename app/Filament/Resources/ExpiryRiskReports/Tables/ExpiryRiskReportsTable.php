@@ -41,7 +41,7 @@ class ExpiryRiskReportsTable
                     ->weight('medium')
                     ->description(
                         fn (StockBalance $record): ?string => match ($record->warehouse?->type) {
-                            'vehicle' => $record->warehouse?->vehicle?->plate_number,
+                            'vehicle' => $record->warehouse?->vehicle?->name,
                             null => null,
                             default => self::warehouseTypeLabel($record->warehouse?->type),
                         }
@@ -153,7 +153,7 @@ class ExpiryRiskReportsTable
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('warehouse.vehicle.plate_number')
+                TextColumn::make('warehouse.vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->placeholder('-')
@@ -246,8 +246,8 @@ class ExpiryRiskReportsTable
                     ->options(
                         fn (): array => Vehicle::query()
                             ->whereHas('warehouse')
-                            ->orderBy('plate_number')
-                            ->pluck('plate_number', 'id')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
                             ->all()
                     )
                     ->searchable()

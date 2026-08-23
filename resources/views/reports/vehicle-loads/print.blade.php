@@ -410,7 +410,7 @@
                 <div class="detail-item">
                     <span>السيارة</span>
                     <strong dir="ltr">
-                        {{ $vehicleLoad->vehicle?->plate_number ?? '-' }}
+                        {{ $vehicleLoad->vehicle?->name ?? '-' }}
                     </strong>
                 </div>
 

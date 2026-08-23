@@ -28,7 +28,7 @@ class VehicleStockReportsTable
     {
         return $table
             ->columns([
-                TextColumn::make('warehouse.vehicle.plate_number')
+                TextColumn::make('warehouse.vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->sortable()
@@ -125,8 +125,8 @@ class VehicleStockReportsTable
                                 fn (Builder $query): Builder => $query
                                     ->where('type', 'vehicle'),
                             )
-                            ->orderBy('plate_number')
-                            ->pluck('plate_number', 'id')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
                             ->all()
                     )
                     ->searchable()

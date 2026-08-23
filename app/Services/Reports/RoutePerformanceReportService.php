@@ -656,7 +656,7 @@ class RoutePerformanceReportService
                 'name' => $route->name,
                 'status' => $route->status,
                 'area' => $route->area?->name_ar,
-                'vehicle' => $route->vehicle?->plate_number,
+                'vehicle' => $route->vehicle?->name,
                 'driver' => $route->driver?->name,
                 'sales_representative' =>
                     $route->salesRepresentative?->name,

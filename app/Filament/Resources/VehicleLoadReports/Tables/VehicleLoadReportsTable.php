@@ -48,7 +48,7 @@ class VehicleLoadReportsTable
                             ->label('عدد أوامر التحميل')
                     ),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->sortable()
@@ -180,7 +180,7 @@ class VehicleLoadReportsTable
 
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
 

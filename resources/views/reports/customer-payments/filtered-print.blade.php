@@ -421,7 +421,7 @@
                                 <td>{{ $payment->customer?->name ?? '-' }}</td>
                                 <td class="number">{{ $payment->salesInvoice?->invoice_number ?? '-' }}</td>
                                 <td>{{ $payment->warehouse?->name ?? '-' }}</td>
-                                <td class="number">{{ $payment->vehicle?->plate_number ?? '-' }}</td>
+                                <td class="number">{{ $payment->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $payment->salesRepresentative?->name ?? '-' }}</td>
 
                                 <td>

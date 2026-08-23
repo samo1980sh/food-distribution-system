@@ -89,7 +89,7 @@ class WarehouseExcelTemplateService
         $references->setTitle('القوائم المرجعية');
         $references->setRightToLeft(true);
         $references->fromArray([
-            ['vehicle_code', 'رقم اللوحة', 'اسم / وصف السيارة'],
+            ['vehicle_code', 'اسم / وصف السيارة', 'رقم اللوحة'],
         ], null, 'A1');
         $references->freezePane('A2');
         $references->getStyle('A1:C1')->applyFromArray([
@@ -106,8 +106,8 @@ class WarehouseExcelTemplateService
         foreach ($vehicles as $index => $vehicle) {
             $row = $index + 2;
             $references->setCellValueExplicit('A'.$row, (string) $vehicle->code, DataType::TYPE_STRING);
-            $references->setCellValueExplicit('B'.$row, (string) $vehicle->plate_number, DataType::TYPE_STRING);
-            $references->setCellValue('C'.$row, $vehicle->name);
+            $references->setCellValueExplicit('C'.$row, (string) $vehicle->plate_number, DataType::TYPE_STRING);
+            $references->setCellValue('B'.$row, $vehicle->name);
         }
 
         $vehicleLastRow = max(2, $vehicles->count() + 1);

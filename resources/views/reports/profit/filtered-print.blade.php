@@ -427,7 +427,7 @@
                                 <td class="number">{{ $entry->entry_date?->format('Y-m-d') ?? '-' }}</td>
                                 <td>{{ $entry->customer?->name ?? '-' }}</td>
                                 <td>{{ $entry->warehouse?->name ?? '-' }}</td>
-                                <td class="number">{{ $entry->vehicle?->plate_number ?? '-' }}</td>
+                                <td class="number">{{ $entry->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $entry->route?->name ?? '-' }}</td>
                                 <td>{{ $entry->salesRepresentative?->name ?? '-' }}</td>
                                 <td class="number {{ (float) $entry->quantity < 0 ? 'negative' : '' }}">

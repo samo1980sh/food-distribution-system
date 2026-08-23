@@ -17,19 +17,25 @@ class VehiclesTable
     {
         return $table
             ->columns([
+
+                TextColumn::make('name')
+                    ->label('السيارة')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold')
+                    ->placeholder('-')
+                    ->description(fn (Vehicle $record): ?string => filled($record->plate_number) ? 'لوحة: '.$record->plate_number : null),
                 TextColumn::make('code')
                     ->label('الرمز')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold')
                     ->copyable(),
                 TextColumn::make('plate_number')
                     ->label('رقم اللوحة')
                     ->searchable()
                     ->sortable()
-                    ->weight('bold')
                     ->copyable()
-                    ->description(fn (Vehicle $record): ?string => $record->name),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('vehicle_type')
                     ->label('النوع')
                     ->searchable()

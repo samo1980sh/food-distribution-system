@@ -211,7 +211,7 @@ class VehicleLoadReportFilteredPrintController extends Controller
                 ? ($statusLabels[$status] ?? $status)
                 : null,
             'السيارة' => $vehicleId
-                ? Vehicle::query()->find($vehicleId)?->plate_number
+                ? Vehicle::query()->find($vehicleId)?->name
                 : null,
             'خط التوزيع' => $routeId
                 ? DistributionRoute::query()->find($routeId)?->name

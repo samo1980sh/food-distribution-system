@@ -67,7 +67,7 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
             "TextColumn::make('name')",
             "TextColumn::make('activity_report')",
             "TextColumn::make('area.name_ar')",
-            "TextColumn::make('vehicle.plate_number')",
+            "TextColumn::make('vehicle.name')",
             "TextColumn::make('driver.name')",
             "TextColumn::make('salesRepresentative.name')",
             "TextColumn::make('assigned_customers_report')",

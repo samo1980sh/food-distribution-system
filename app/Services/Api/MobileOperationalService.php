@@ -275,7 +275,7 @@ class MobileOperationalService
                 Vehicle::query()
                     ->with('warehouse')
                     ->where('status', 'active')
-                    ->orderBy('plate_number')
+                    ->orderBy('name')
                     ->limit(100)
                     ->get(),
             )->resolve($request)

@@ -443,7 +443,7 @@
 
                 <div class="meta-item">
                     <span>السيارة</span>
-                    <strong dir="ltr">{{ $salesInvoice->vehicle?->plate_number ?? '-' }}</strong>
+                    <strong>{{ $salesInvoice->vehicle?->name ?? '-' }}</strong>
                 </div>
 
                 <div class="meta-item">

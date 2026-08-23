@@ -173,7 +173,7 @@ class VehicleStockReportFilteredPrintController extends Controller
 
         $filterSummary = array_filter([
             'السيارة' => $vehicleId
-                ? Vehicle::query()->find($vehicleId)?->plate_number
+                ? Vehicle::query()->find($vehicleId)?->name
                 : null,
             'المنتج' => $productId
                 ? Product::query()->find($productId)?->name_ar

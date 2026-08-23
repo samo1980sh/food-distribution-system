@@ -43,7 +43,7 @@ class DailyClosingInfolist
                             ->color(fn (bool $state): string => $state ? 'info' : 'gray'),
                         TextEntry::make('snapshot_at')->label('تثبيت اللقطة')->dateTime('Y-m-d H:i')->placeholder('-'),
                         TextEntry::make('warehouse.name')->label('المستودع'),
-                        TextEntry::make('vehicle.plate_number')->label('السيارة')->placeholder('-'),
+                        TextEntry::make('vehicle.name')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
                         TextEntry::make('driver.name')->label('السائق')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),

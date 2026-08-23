@@ -168,7 +168,7 @@
                 </div>
                 <div class="field">
                     <span>السيارة</span>
-                    <strong>{{ $balance->warehouse?->vehicle?->plate_number ?? '-' }}</strong>
+                    <strong>{{ $balance->warehouse?->vehicle?->name ?? '-' }}</strong>
                 </div>
                 <div class="field">
                     <span>الكمية الحالية</span>

@@ -32,7 +32,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>
-        مخزون السيارة {{ $vehicle->plate_number }}
+        مخزون السيارة {{ $vehicle->name }}
     </title>
 
     <style>
@@ -403,7 +403,7 @@
 
             <div class="document-title">
                 <h2>كشف مخزون سيارة</h2>
-                <p dir="ltr">{{ $vehicle->plate_number }}</p>
+                <p>{{ $vehicle->name }}</p>
             </div>
         </header>
 
@@ -413,7 +413,7 @@
             <div class="details-grid">
                 <div class="detail-item">
                     <span>رقم السيارة</span>
-                    <strong dir="ltr">{{ $vehicle->plate_number }}</strong>
+                    <strong>{{ $vehicle->name }}</strong>
                 </div>
 
                 <div class="detail-item">

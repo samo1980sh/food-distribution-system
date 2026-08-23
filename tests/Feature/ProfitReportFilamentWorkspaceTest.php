@@ -100,7 +100,7 @@ class ProfitReportFilamentWorkspaceTest extends TestCase
         foreach ([
             'quantity',
             'warehouse.name',
-            'vehicle.plate_number',
+            'vehicle.name',
             'route.name',
             'salesRepresentative.name',
         ] as $column) {

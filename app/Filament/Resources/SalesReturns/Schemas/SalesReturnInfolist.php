@@ -39,7 +39,7 @@ class SalesReturnInfolist
                             ->color(fn (?string $state): string => self::reasonColor($state)),
                         TextEntry::make('customer.name')->label('العميل'),
                         TextEntry::make('salesInvoice.invoice_number')->label('الفاتورة الأصلية')->placeholder('-'),
-                        TextEntry::make('vehicle.plate_number')->label('السيارة')->placeholder('-'),
+                        TextEntry::make('vehicle.name')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
                         TextEntry::make('warehouse.name')->label('مستودع الاستلام'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),

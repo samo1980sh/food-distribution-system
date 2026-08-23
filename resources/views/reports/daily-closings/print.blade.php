@@ -378,7 +378,7 @@
 
                 <div class="meta-item">
                     <span>السيارة</span>
-                    <strong>{{ $dailyClosing->vehicle?->plate_number ?? '-' }}</strong>
+                    <strong>{{ $dailyClosing->vehicle?->name ?? '-' }}</strong>
                 </div>
 
                 <div class="meta-item">

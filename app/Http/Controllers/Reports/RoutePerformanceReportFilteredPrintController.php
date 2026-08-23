@@ -64,7 +64,7 @@ class RoutePerformanceReportFilteredPrintController extends Controller
                 ? Area::find($settings['area_id'])?->name_ar
                 : null,
             'السيارة' => $settings['vehicle_id']
-                ? Vehicle::find($settings['vehicle_id'])?->plate_number
+                ? Vehicle::find($settings['vehicle_id'])?->name
                 : null,
             'السائق' => $settings['driver_id']
                 ? Employee::find($settings['driver_id'])?->name

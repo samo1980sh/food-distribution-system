@@ -114,7 +114,7 @@ class ExpiryRiskReportFilamentWorkspaceTest extends TestCase
 
         foreach ([
             'warehouse.type',
-            'warehouse.vehicle.plate_number',
+            'warehouse.vehicle.name',
             'product.sku',
             'product.category.name_ar',
             'product.unit.name_ar',

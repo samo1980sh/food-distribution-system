@@ -75,7 +75,7 @@ class RoutePerformanceReportsTable
                     ->wrap()
                     ->visible(fn ($livewire): bool => self::isView($livewire, 'operations')),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->placeholder('-')
                     ->alignCenter()
@@ -442,8 +442,8 @@ class RoutePerformanceReportsTable
                                     ->label('السيارة')
                                     ->options(
                                         fn (): array => Vehicle::query()
-                                            ->orderBy('plate_number')
-                                            ->pluck('plate_number', 'id')
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id')
                                             ->all()
                                     )
                                     ->searchable()

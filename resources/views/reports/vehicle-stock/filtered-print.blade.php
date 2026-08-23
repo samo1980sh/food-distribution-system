@@ -456,7 +456,7 @@
 
                             <tr>
                                 <td class="number">
-                                    {{ $balance->warehouse?->vehicle?->plate_number ?? '-' }}
+                                    {{ $balance->warehouse?->vehicle?->name ?? '-' }}
                                 </td>
 
                                 <td>{{ $balance->warehouse?->name ?? '-' }}</td>

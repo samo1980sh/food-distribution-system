@@ -474,7 +474,7 @@
 
                         <th>السيارة</th>
                         <td class="number">
-                            {{ $customerPayment->vehicle?->plate_number ?? '-' }}
+                            {{ $customerPayment->vehicle?->name ?? '-' }}
                         </td>
                     </tr>
 

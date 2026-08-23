@@ -50,8 +50,8 @@ class DailyClosingReportsTable
                     ->weight('medium')
                     ->wrap()
                     ->description(
-                        fn (DailyClosing $record): ?string => $record->vehicle?->plate_number
-                            ? 'السيارة: '.$record->vehicle->plate_number
+                        fn (DailyClosing $record): ?string => $record->vehicle?->name
+                            ? 'السيارة: '.$record->vehicle->name
                             : null,
                     ),
 
@@ -155,7 +155,7 @@ class DailyClosingReportsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->placeholder('-')
@@ -345,7 +345,7 @@ class DailyClosingReportsTable
 
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
 

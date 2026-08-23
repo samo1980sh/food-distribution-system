@@ -210,7 +210,7 @@
                             <tr class="{{ $rowClass }}">
                                 <td>{{ $balance->warehouse?->name ?? '-' }}</td>
                                 <td>{{ ExpiryRiskReportsTable::warehouseTypeLabel($balance->warehouse?->type) }}</td>
-                                <td>{{ $balance->warehouse?->vehicle?->plate_number ?? '-' }}</td>
+                                <td>{{ $balance->warehouse?->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $balance->product?->sku ?? '-' }}</td>
                                 <td>{{ $balance->product?->name_ar ?? '-' }}</td>
                                 <td>{{ $balance->product?->category?->name_ar ?? '-' }}</td>

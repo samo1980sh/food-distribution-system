@@ -65,7 +65,7 @@ class DistributionRouteForm
                             ->label('السيارة')
                             ->relationship(
                                 'vehicle',
-                                'plate_number',
+                                'name',
                                 modifyQueryUsing: fn (Builder $query): Builder => $query->where('status', 'active'),
                             )
                             ->searchable()

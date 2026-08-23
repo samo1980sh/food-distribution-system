@@ -71,7 +71,7 @@ class SalesReportFilamentWorkspaceTest extends TestCase
         foreach ([
             'due_date',
             'warehouse.name',
-            'vehicle.plate_number',
+            'vehicle.name',
             'route.name',
             'salesRepresentative.name',
             'subtotal',

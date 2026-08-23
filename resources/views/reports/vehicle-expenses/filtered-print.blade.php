@@ -256,7 +256,7 @@
                             <tr>
                                 <td>{{ $expense->expense_number }}</td>
                                 <td class="number">{{ $expense->expense_date?->format('Y-m-d') ?? '-' }}</td>
-                                <td>{{ $expense->vehicle?->plate_number ?? '-' }}</td>
+                                <td>{{ $expense->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $expense->warehouse?->name ?? '-' }}</td>
                                 <td>{{ $expense->route?->name ?? '-' }}</td>
                                 <td>{{ $expense->driver?->name ?? '-' }}</td>
