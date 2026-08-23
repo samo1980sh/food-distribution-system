@@ -9,8 +9,12 @@ use App\Http\Resources\Api\V1\Operational\StockBalanceResource;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\VehicleLoad;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\Authorization\AccessScopeService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -22,6 +26,7 @@ class StockBalanceController extends Controller
     public function index(OperationalIndexRequest $request): JsonResponse
     {
         $query = StockBalance::query()->with(['warehouse.vehicle', 'product.category', 'product.unit']);
+        $this->restrictFieldStockToVehicleWarehouses($query, $request);
         $this->applySearch($query, $request, ['batch_number']);
         $this->applyIdFilters($query, $request, ['warehouse_id', 'product_id']);
         $query->where('quantity', '>', 0);
@@ -43,6 +48,10 @@ class StockBalanceController extends Controller
 
     public function show(Request $request, StockBalance $stockBalance): JsonResponse
     {
+        if (! $this->fieldCanReadStockBalance($request, $stockBalance)) {
+            abort(404);
+        }
+
         Gate::authorize('view', $stockBalance);
         $stockBalance->loadMissing(['warehouse.vehicle', 'product.category', 'product.unit']);
         $this->attachSourceLoads(collect([$stockBalance]));
@@ -53,6 +62,74 @@ class StockBalanceController extends Controller
         );
     }
 
+    private function restrictFieldStockToVehicleWarehouses(
+        Builder $query,
+        Request $request,
+    ): void {
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $this->isFieldUser($user)) {
+            return;
+        }
+
+        $vehicleIds = app(AccessScopeService::class)->for($user)->vehicleIds;
+
+        if ($vehicleIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $warehouseIds = Warehouse::withoutGlobalScopes()
+            ->where('type', 'vehicle')
+            ->whereIn('vehicle_id', $vehicleIds)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($warehouseIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereIn(
+            $query->getModel()->qualifyColumn('warehouse_id'),
+            $warehouseIds,
+        );
+    }
+
+    private function fieldCanReadStockBalance(
+        Request $request,
+        StockBalance $stockBalance,
+    ): bool {
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $this->isFieldUser($user)) {
+            return true;
+        }
+
+        $vehicleIds = app(AccessScopeService::class)->for($user)->vehicleIds;
+
+        if ($vehicleIds === []) {
+            return false;
+        }
+
+        $warehouseVehicleId = Warehouse::withoutGlobalScopes()
+            ->whereKey($stockBalance->warehouse_id)
+            ->value('vehicle_id');
+
+        return $warehouseVehicleId !== null
+            && in_array((int) $warehouseVehicleId, $vehicleIds, true);
+    }
+
+    private function isFieldUser(User $user): bool
+    {
+        return $user->hasAnyRole([
+            User::ROLE_DRIVER,
+            User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+    }
     /**
      * @param  Collection<int, StockBalance>  $balances
      */

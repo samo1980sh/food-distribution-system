@@ -99,7 +99,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.summary.applied', 1)
             ->assertJsonPath('data.results.0.status', 'applied')
             ->assertJsonPath('data.results.0.code', 'created')
-            ->assertJsonPath('data.results.0.record.status', 'draft');
+            ->assertJsonPath('data.results.0.record.status', 'confirmed');
 
         $invoiceId = (int) $first->json('data.results.0.record_id');
         $this->assertGreaterThan(0, $invoiceId);
@@ -367,12 +367,12 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         );
         $this->assertDatabaseHas('sales_invoices', [
             'id' => $invoiceId,
-            'status' => 'draft',
+            'status' => 'confirmed',
         ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 20,
+            'quantity' => 18,
         ]);
     }
 

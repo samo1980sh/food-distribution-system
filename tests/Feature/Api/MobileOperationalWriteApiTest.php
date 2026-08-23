@@ -63,7 +63,7 @@ class MobileOperationalWriteApiTest extends TestCase
             ->postJson('/api/v1/operational/sales-invoices', $payload)
             ->assertCreated()
             ->assertJsonPath('data.client_reference', 'mobile-invoice-A-0001')
-            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.status', 'confirmed')
             ->assertJsonPath('data.total_amount', '20.00')
             ->assertJsonPath('meta.idempotency.replayed', false);
 
@@ -153,7 +153,7 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_sales_representative_can_update_but_cannot_delete_a_draft_invoice(): void
+    public function test_sales_representative_cannot_update_or_delete_an_auto_confirmed_invoice(): void
     {
         $context = $this->context('A');
         $user = $this->userForEmployee(
@@ -174,16 +174,14 @@ class MobileOperationalWriteApiTest extends TestCase
         $this->withToken($token)
             ->patchJson('/api/v1/operational/sales-invoices/'.$invoiceId, [
                 'notes' => 'Updated from field app',
-                'items' => [[
+            'items' => [[
                     'product_id' => $context['product']->id,
                     'quantity' => 3,
                     'unit_price' => 10,
                     'discount_amount' => 0,
                 ]],
             ])
-            ->assertOk()
-            ->assertJsonPath('data.total_amount', '30.00')
-            ->assertJsonPath('data.notes', 'Updated from field app');
+            ->assertForbidden();
 
         $this->withToken($token)
             ->deleteJson('/api/v1/operational/sales-invoices/'.$invoiceId)
@@ -191,7 +189,7 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->assertDatabaseHas('sales_invoices', [
             'id' => $invoiceId,
-            'notes' => 'Updated from field app',
+            'status' => 'confirmed',
         ]);
     }
 
@@ -219,12 +217,12 @@ class MobileOperationalWriteApiTest extends TestCase
 
         $this->assertDatabaseHas('sales_invoices', [
             'id' => $invoiceId,
-            'status' => 'draft',
+            'status' => 'confirmed',
         ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 20,
+            'quantity' => 18,
         ]);
     }
 

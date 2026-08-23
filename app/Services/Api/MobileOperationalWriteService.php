@@ -86,28 +86,32 @@ class MobileOperationalWriteService
 
     public function createSalesInvoice(array $data): MobileWriteResult
     {
-        $items = Arr::pull($data, 'items', []);
+        // AUTO_CONFIRM_R1: field invoice create + confirm is one atomic server transaction.
+        return DB::transaction(function () use ($data): MobileWriteResult {
+            $items = Arr::pull($data, 'items', []);
 
-        return $this->idempotentCreate(
-            SalesInvoice::class,
-            [...$data, 'items' => $items],
-            function (string $payloadHash) use ($data, $items): SalesInvoice {
-                $invoice = new SalesInvoice([
-                    ...$data,
-                    'created_by' => Auth::id(),
-                    'client_payload_hash' => $payloadHash,
-                    'operation_source' => OperationSource::MOBILE_SALES,
-                ]);
-                $this->salesFieldOperationService->assertDocumentVisitContext($invoice);
-                $invoice->save();
+            return $this->idempotentCreate(
+                SalesInvoice::class,
+                [...$data, 'items' => $items],
+                function (string $payloadHash) use ($data, $items): SalesInvoice {
+                    $invoice = new SalesInvoice([
+                        ...$data,
+                        'created_by' => Auth::id(),
+                        'client_payload_hash' => $payloadHash,
+                        'operation_source' => OperationSource::MOBILE_SALES,
+                    ]);
+                    $this->salesFieldOperationService->assertDocumentVisitContext($invoice);
+                    $invoice->save();
 
-                $invoice->items()->createMany($items);
-                $this->salesInvoiceService->recalculateTotals($invoice);
-                $this->salesFieldOperationService->touchVisitForDocument($invoice);
+                    $invoice->items()->createMany($items);
+                    $this->salesInvoiceService->recalculateTotals($invoice);
+                    $this->salesFieldOperationService->touchVisitForDocument($invoice);
 
-                return $invoice->refresh();
-            },
-        );
+                    return $this->salesInvoiceService->confirm($invoice->refresh());
+                },
+            );
+
+        });
     }
 
     public function updateSalesInvoice(SalesInvoice $invoice, array $data): SalesInvoice

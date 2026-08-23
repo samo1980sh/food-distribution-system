@@ -105,6 +105,51 @@ class MobileOperationalReadApiTest extends TestCase
             ->assertJsonPath('meta.pagination.total', 1);
     }
 
+    public function test_driver_stock_read_hides_route_load_source_warehouse_inventory(): void
+    {
+        $context = $this->context('A');
+
+        $mainWarehouse = Warehouse::query()->create([
+            'code' => 'WH-MAIN-SOURCE',
+            'name' => 'المستودع الرئيسي',
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
+        $mainStock = StockBalance::query()->create([
+            'warehouse_id' => $mainWarehouse->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 999,
+            'average_unit_cost' => 5,
+        ]);
+
+        $context['load']->update([
+            'from_warehouse_id' => $mainWarehouse->id,
+            'to_warehouse_id' => $context['warehouse']->id,
+            'status' => 'approved',
+        ]);
+
+        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $context['driver']->update(['user_id' => $user->id]);
+
+        $token = $user
+            ->createToken('test', [(string) config('mobile_api.token_ability')])
+            ->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/stock-balances')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.id', $context['stock']->id)
+            ->assertJsonPath(
+                'data.items.0.warehouse.id',
+                $context['warehouse']->id,
+            );
+
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/stock-balances/'.$mainStock->id)
+            ->assertNotFound();
+    }
     public function test_out_of_scope_detail_is_hidden_as_not_found(): void
     {
         $first = $this->context('A');

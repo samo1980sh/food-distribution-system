@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
+use App\Models\StockBalance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -92,7 +93,7 @@ class SalesFieldOperationsApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.sales_visit_id', $visitId)
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'confirmed');
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/complete", [
@@ -367,6 +368,13 @@ class SalesFieldOperationsApiTest extends TestCase
             'category_id' => $category->id, 'unit_id' => $unit->id,
             'purchase_price' => 5, 'sale_price' => 10, 'wholesale_price' => 9,
             'status' => 'active',
+        ]);
+
+        StockBalance::query()->create([
+            'warehouse_id' => $warehouse->id,
+            'product_id' => $product->id,
+            'quantity' => 20,
+            'average_unit_cost' => 5,
         ]);
 
         return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'product');
