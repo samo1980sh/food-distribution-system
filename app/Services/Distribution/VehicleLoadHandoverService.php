@@ -2,8 +2,12 @@
 
 namespace App\Services\Distribution;
 
+use App\Enums\PermissionName;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +18,7 @@ class VehicleLoadHandoverService
     /** @param array<string, mixed> $data */
     public function acknowledge(VehicleLoad $vehicleLoad, array $data): VehicleLoad
     {
-        return DB::transaction(function () use ($vehicleLoad, $data): VehicleLoad {
+        $vehicleLoad = DB::transaction(function () use ($vehicleLoad, $data): VehicleLoad {
             $vehicleLoad = VehicleLoad::query()
                 ->with(['items.product'])
                 ->lockForUpdate()
@@ -93,5 +97,57 @@ class VehicleLoadHandoverService
 
             return $vehicleLoad->refresh();
         });
+
+        $this->sendDiscrepancyNotification($vehicleLoad);
+
+        return $vehicleLoad;
+    }
+
+    private function sendDiscrepancyNotification(VehicleLoad $vehicleLoad): void
+    {
+        if ($vehicleLoad->handover_status !== 'discrepancy') {
+            return;
+        }
+
+        User::query()
+            ->where('status', User::STATUS_ACTIVE)
+            ->get()
+            ->filter(fn (User $user): bool => $user->canManageDistribution()
+                || $user->canManageDailyClosings()
+                || $user->can(PermissionName::DASHBOARD_VIEW->value))
+            ->each(function (User $user) use ($vehicleLoad): void {
+                $alreadyNotified = $user->unreadNotifications()
+                    ->where('data->vehicle_load_id', $vehicleLoad->getKey())
+                    ->where('data->type', 'vehicle_load_handover_discrepancy')
+                    ->exists();
+
+                if ($alreadyNotified) {
+                    return;
+                }
+
+                Notification::make()
+                    ->warning()
+                    ->title('فروقات عند استلام العهدة')
+                    ->body(collect([
+                        $vehicleLoad->load_number,
+                        $vehicleLoad->vehicle?->name,
+                        $vehicleLoad->driver?->name,
+                    ])->filter(fn (mixed $value): bool => filled($value))->implode(' - '))
+                    ->actions([
+                        Action::make('view')
+                            ->label('عرض أمر التحميل')
+                            ->url(route('filament.admin.resources.vehicle-loads.view', [
+                                'record' => $vehicleLoad,
+                            ])),
+                    ])
+                    ->viewData([
+                        'vehicle_load_id' => $vehicleLoad->getKey(),
+                        'vehicle_load_number' => $vehicleLoad->load_number,
+                        'vehicle_name' => $vehicleLoad->vehicle?->name,
+                        'driver_name' => $vehicleLoad->driver?->name,
+                        'notification_type' => 'vehicle_load_handover_discrepancy',
+                    ])
+                    ->sendToDatabase($user, true);
+            });
     }
 }

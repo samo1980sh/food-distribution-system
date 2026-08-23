@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\VehicleLoads;
 
-use App\Filament\Resources\VehicleLoads\Pages\CreateVehicleLoad;
 use App\Filament\Resources\VehicleLoads\Pages\EditVehicleLoad;
 use App\Filament\Resources\VehicleLoads\Pages\ListVehicleLoads;
 use App\Filament\Resources\VehicleLoads\Pages\ViewVehicleLoad;
@@ -72,7 +71,6 @@ class VehicleLoadResource extends Resource
     {
         return [
             'index' => ListVehicleLoads::route('/'),
-            'create' => CreateVehicleLoad::route('/create'),
             'view' => ViewVehicleLoad::route('/{record}'),
             'edit' => EditVehicleLoad::route('/{record}/edit'),
         ];

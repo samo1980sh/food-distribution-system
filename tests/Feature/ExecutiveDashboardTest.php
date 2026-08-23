@@ -138,7 +138,7 @@ class ExecutiveDashboardTest extends TestCase
         );
 
         $this->assertTrue(
-            $followUp->pluck('title')->contains('DASH-001')
+            $followUp->pluck('title')->contains('سيارة الاختبار')
         );
     }
 
@@ -190,6 +190,64 @@ class ExecutiveDashboardTest extends TestCase
         $this->assertContains(
             'مصاريف سيارات بانتظار الاعتماد',
             $titles->all(),
+        );
+    }
+
+    public function test_alerts_include_vehicle_load_handover_discrepancies(): void
+    {
+        $this->insertDashboardData();
+
+        DB::table('vehicle_loads')->insert([
+            [
+                'id' => 801,
+                'load_number' => 'DASH-LOAD-DISCREPANCY',
+                'vehicle_id' => 1,
+                'route_id' => 101,
+                'driver_id' => null,
+                'sales_representative_id' => null,
+                'from_warehouse_id' => 1,
+                'to_warehouse_id' => 1,
+                'load_date' => today()->toDateString(),
+                'status' => 'approved',
+                'handover_status' => 'discrepancy',
+                'total_quantity' => 10,
+                'total_cost' => 50,
+                'notes' => null,
+                'handover_notes' => 'فروقات موثقة',
+                'created_by' => null,
+                'approved_by' => null,
+                'approved_at' => now(),
+                'handover_by' => null,
+                'handover_at' => now(),
+                'cancelled_by' => null,
+                'cancelled_at' => null,
+                'cancellation_reason' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $user = User::factory()->create([
+            'role' => User::ROLE_MANAGER,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($user);
+
+        ExecutiveDashboardService::forgetCache();
+
+        $alerts = collect(
+            app(ExecutiveDashboardService::class)
+                ->alerts($user)
+        );
+
+        $this->assertContains(
+            'فروقات عند استلام العهدة',
+            $alerts->pluck('title')->all(),
+        );
+        $this->assertContains(
+            'DASH-LOAD-DISCREPANCY',
+            $alerts->pluck('value')->all(),
         );
     }
 
@@ -271,7 +329,7 @@ class ExecutiveDashboardTest extends TestCase
 
         Livewire::test(OperationsFollowUpWidget::class)
             ->assertSee('متابعة السيارات والمستودعات')
-            ->assertSee('DASH-001');
+            ->assertSee('سيارة الاختبار');
     }
 
     public function test_dashboard_access_still_requires_dashboard_view_permission(): void

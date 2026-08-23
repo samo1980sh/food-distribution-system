@@ -15,6 +15,7 @@ use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Filament\Notifications\DatabaseNotification;
 use Tests\TestCase;
 
 class VehicleLoadHandoverApiTest extends TestCase
@@ -115,6 +116,10 @@ class VehicleLoadHandoverApiTest extends TestCase
     {
         $context = $this->handoverContext('DAMAGE');
         $token = $this->tokenFor($context['user']);
+        $manager = User::factory()->create([
+            'role' => User::ROLE_MANAGER,
+            'status' => User::STATUS_ACTIVE,
+        ]);
 
         $this->withToken($token)
             ->postJson(
@@ -136,6 +141,12 @@ class VehicleLoadHandoverApiTest extends TestCase
                 'data.items.0.handover_note',
                 'تالف: العبوة متضررة وتحتاج إلى مراجعة.',
             );
+
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_type' => User::class,
+            'notifiable_id' => $manager->id,
+            'type' => DatabaseNotification::class,
+        ]);
     }
 
     public function test_acknowledgement_is_hidden_after_the_handover_is_recorded(): void

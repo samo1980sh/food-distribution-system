@@ -3,6 +3,8 @@
 namespace App\Services\Dashboard;
 
 use App\Enums\PermissionName;
+use App\Filament\Resources\StockBalances\StockBalanceResource;
+use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
 
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
@@ -525,7 +527,7 @@ class ExecutiveDashboardService
             $activities = $activities
                 ->concat(
                     VehicleExpense::query()
-                        ->with(['vehicle:id,plate_number', 'route:id,name'])
+                        ->with(['vehicle:id,name,plate_number', 'route:id,name'])
                         ->where('status', 'approved')
                         ->latest('approved_at')
                         ->latest('id')
@@ -540,7 +542,7 @@ class ExecutiveDashboardService
                             'timestamp' => $expense->approved_at
                                 ?? $expense->created_at,
                             'description' => $this->activityDescription(
-                                $expense->vehicle?->plate_number,
+                                $expense->vehicle?->name,
                                 $expense->route?->name,
                             ),
                             'amount' => (float) $expense->amount,
@@ -554,7 +556,7 @@ class ExecutiveDashboardService
                 )
                 ->concat(
                     VehicleLoad::query()
-                        ->with(['vehicle:id,plate_number', 'route:id,name'])
+                        ->with(['vehicle:id,name,plate_number', 'route:id,name'])
                         ->where('status', 'approved')
                         ->latest('approved_at')
                         ->latest('id')
@@ -569,7 +571,7 @@ class ExecutiveDashboardService
                             'timestamp' => $load->approved_at
                                 ?? $load->created_at,
                             'description' => $this->activityDescription(
-                                $load->vehicle?->plate_number,
+                                $load->vehicle?->name,
                                 $load->route?->name,
                             ),
                             'amount' => (float) $load->total_cost,
@@ -725,7 +727,7 @@ class ExecutiveDashboardService
                         'level' => $nearest['days'] < 0
                             ? 'danger'
                             : 'warning',
-                        'title' => $vehicle->plate_number,
+                        'title' => $vehicle->name,
                         'value' => $nearest['days'] < 0
                             ? 'منتهي'
                             : $nearest['days'].' يوم',
@@ -1010,14 +1012,35 @@ class ExecutiveDashboardService
                     'value' => number_format($lowStock).' مادة',
                     'description' => 'الرصيد الكلي أقل من الحد الأدنى أو يساويه.',
                     'icon' => 'heroicon-o-archive-box-arrow-down',
-                    'url' => route(
-                        'filament.admin.resources.stock-balances.index'
-                    ),
+                    'url' => StockBalanceResource::getUrl('index'),
                 ];
             }
         }
 
         if ($user->canManageDistribution()) {
+            $vehicleLoadDiscrepancies = VehicleLoad::query()
+                ->with(['vehicle:id,name', 'driver:id,name'])
+                ->where('handover_status', 'discrepancy')
+                ->latest('handover_at')
+                ->latest('id')
+                ->limit(5)
+                ->get();
+
+            foreach ($vehicleLoadDiscrepancies as $vehicleLoad) {
+                $alerts[] = [
+                    'level' => 'warning',
+                    'title' => 'فروقات عند استلام العهدة',
+                    'value' => $vehicleLoad->load_number,
+                    'description' => collect([
+                        $vehicleLoad->vehicle?->name,
+                        $vehicleLoad->driver?->name,
+                        $vehicleLoad->handover_at?->format('Y-m-d H:i'),
+                    ])->filter(fn (mixed $value): bool => filled($value))->implode(' - '),
+                    'icon' => 'heroicon-o-exclamation-triangle',
+                    'url' => VehicleLoadResource::getUrl('view', ['record' => $vehicleLoad]),
+                ];
+            }
+
             $pendingExpenses = VehicleExpense::query()
                 ->where('status', 'pending');
 
@@ -1134,9 +1157,7 @@ class ExecutiveDashboardService
             $links[] = [
                 'label' => 'أرصدة المخزون',
                 'icon' => 'heroicon-o-archive-box',
-                'url' => route(
-                    'filament.admin.resources.stock-balances.index'
-                ),
+                'url' => StockBalanceResource::getUrl('index'),
             ];
         }
 

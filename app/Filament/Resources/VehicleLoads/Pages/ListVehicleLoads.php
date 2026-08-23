@@ -26,7 +26,8 @@ class ListVehicleLoads extends ListRecords
             CreateAction::make()
                 ->label('أمر تحميل جديد')
                 ->icon('heroicon-o-plus')
-                ->visible(fn (): bool => VehicleLoadResource::canCreate()),
+                ->visible(fn (): bool => VehicleLoadResource::canCreate())
+                ->slideOver(),
         ];
     }
 }

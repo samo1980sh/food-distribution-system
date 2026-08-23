@@ -5,6 +5,7 @@ namespace App\Filament\Resources\VehicleLoads\Tables;
 use App\Filament\Resources\VehicleLoads\Actions\VehicleLoadActions;
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
 use App\Models\VehicleLoad;
+use App\Support\Formatting\QuantityFormatter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -32,7 +33,7 @@ class VehicleLoadsTable
                     ->date('Y-m-d')
                     ->sortable(),
 
-                TextColumn::make('vehicle.plate_number')
+                TextColumn::make('vehicle.name')
                     ->label('السيارة')
                     ->searchable()
                     ->sortable()
@@ -48,7 +49,9 @@ class VehicleLoadsTable
 
                 TextColumn::make('total_quantity')
                     ->label('إجمالي الكمية')
-                    ->numeric(decimalPlaces: 3)
+                    ->state(fn (VehicleLoad $record): string => QuantityFormatter::format(
+                        (float) $record->total_quantity,
+                    ))
                     ->sortable()
                     ->weight('bold'),
 
@@ -57,6 +60,23 @@ class VehicleLoadsTable
                     ->money('SYP')
                     ->sortable()
                     ->toggleable(),
+
+                TextColumn::make('handover_status')
+                    ->label('استلام العهدة')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => match ($state) {
+                        'pending' => 'بانتظار الاستلام',
+                        'received' => 'مستلم مطابق',
+                        'discrepancy' => 'فروقات عند الاستلام',
+                        default => $state ?? '-',
+                    })
+                    ->color(fn (?string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'received' => 'success',
+                        'discrepancy' => 'danger',
+                        default => 'gray',
+                    })
+                    ->sortable(),
 
                 TextColumn::make('status')
                     ->label('الحالة')
@@ -106,7 +126,7 @@ class VehicleLoadsTable
 
                 SelectFilter::make('vehicle_id')
                     ->label('السيارة')
-                    ->relationship('vehicle', 'plate_number')
+                    ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
 
