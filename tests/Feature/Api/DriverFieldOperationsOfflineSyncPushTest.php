@@ -5,6 +5,8 @@ namespace Tests\Feature\Api;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -29,11 +31,14 @@ class DriverFieldOperationsOfflineSyncPushTest extends TestCase
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/driver-journeys/open-today')
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonCount(0, 'data.deliveries');
 
         $journeyId = (int) $opened->json('data.id');
-        $deliveryId = (int) $opened->json('data.deliveries.0.id');
-        $invoiceItemId = (int) $opened->json('data.deliveries.0.items.0.sales_invoice_item_id');
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $delivery = $this->legacyDelivery($journeyId, $context);
+        $deliveryId = $delivery->id;
+        $invoiceItemId = $delivery->items->firstOrFail()->sales_invoice_item_id;
 
         $started = $this->push($token, $contextKey, 'driver-start-batch', [[
             'operation_id' => 'driver-start-operation',
@@ -181,7 +186,48 @@ class DriverFieldOperationsOfflineSyncPushTest extends TestCase
             'line_total' => 50,
         ]);
 
-        return compact('driver');
+        return compact(
+            'vehicle',
+            'warehouse',
+            'driver',
+            'representative',
+            'route',
+            'customer',
+            'invoice',
+        );
+    }
+
+    /** @param array<string, mixed> $context */
+    private function legacyDelivery(int $journeyId, array $context): DriverDelivery
+    {
+        $journey = DriverJourney::query()->findOrFail($journeyId);
+        $invoiceItem = $context['invoice']->items()->firstOrFail();
+        $delivery = DriverDelivery::query()->create([
+            'driver_journey_id' => $journey->id,
+            'sales_invoice_id' => $context['invoice']->id,
+            'customer_id' => $context['customer']->id,
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'pending',
+            'expected_quantity' => $invoiceItem->quantity,
+            'delivered_quantity' => 0,
+            'returned_quantity' => 0,
+            'return_required' => false,
+        ]);
+        $delivery->items()->create([
+            'sales_invoice_item_id' => $invoiceItem->id,
+            'product_id' => $invoiceItem->product_id,
+            'batch_number' => $invoiceItem->batch_number,
+            'expiry_date' => $invoiceItem->expiry_date,
+            'expected_quantity' => $invoiceItem->quantity,
+            'delivered_quantity' => 0,
+            'returned_quantity' => 0,
+        ]);
+
+        return $delivery->load('items');
     }
 
     private function driverUser(Employee $driver): User

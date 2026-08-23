@@ -59,7 +59,8 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $this->assertSame(3, SalesJourney::query()->whereDate('journey_date', today())->count());
         $this->assertSame(16, DB::table('sales_visits')->count());
         $this->assertSame(3, DriverJourney::query()->whereDate('journey_date', today())->count());
-        $this->assertSame(3, DB::table('driver_deliveries')->count());
+        $this->assertSame(0, DB::table('driver_deliveries')->count());
+        $this->assertSame(0, DB::table('driver_delivery_items')->count());
     }
 
     public function test_demo_accounts_support_admin_sales_driver_and_dual_flutter_scenarios(): void
@@ -125,8 +126,7 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $this->assertSame(5, $salesJourney->visits()->where('status', 'pending')->count());
 
         $this->assertSame('ready', $driverJourney->status);
-        $this->assertSame(1, $driverJourney->deliveries()->count());
-        $this->assertSame(1, $driverJourney->deliveries()->where('status', 'pending')->count());
+        $this->assertSame(0, $driverJourney->deliveries()->count());
 
         $this->assertTrue(DB::table('vehicle_loads')
             ->whereDate('load_date', today())

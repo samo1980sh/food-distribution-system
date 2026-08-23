@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -76,6 +77,8 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonPath('meta.idempotency.replayed', true);
 
         $this->assertDatabaseCount('sales_invoices', 1);
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sales-invoices', [
@@ -95,6 +98,111 @@ class MobileOperationalWriteApiTest extends TestCase
         $this->assertDatabaseMissing('sales_invoices', [
             'client_reference' => 'mobile-invoice-B-0001',
         ]);
+    }
+
+    public function test_invoice_confirmation_does_not_depend_on_completed_legacy_driver_journey(): void
+    {
+        $context = $this->context('COMPLETED-JOURNEY');
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        DriverJourney::query()->create([
+            'journey_date' => today(),
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'completed',
+            'started_at' => now()->subHour(),
+            'finished_at' => now(),
+        ]);
+
+        $this->withToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-invoices', $this->invoicePayload(
+                $context,
+                'invoice-after-completed-driver-journey',
+            ))
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed');
+
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $context['warehouse']->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 18,
+        ]);
+    }
+
+    public function test_invoice_preserves_multi_batch_allocation_without_driver_delivery(): void
+    {
+        $context = $this->context('MULTI-BATCH');
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        foreach (['BATCH-A', 'BATCH-B'] as $batchNumber) {
+            StockBalance::query()->create([
+                'warehouse_id' => $context['warehouse']->id,
+                'product_id' => $context['product']->id,
+                'batch_number' => $batchNumber,
+                'batch_key' => $batchNumber,
+                'expiry_key' => '',
+                'quantity' => 20,
+                'average_unit_cost' => 5,
+            ]);
+        }
+        $payload = $this->invoicePayload(
+            $context,
+            'mobile-invoice-multi-batch-0001',
+        );
+        $payload['items'] = [
+            [
+                'product_id' => $context['product']->id,
+                'batch_number' => 'BATCH-A',
+                'quantity' => 20,
+                'unit_price' => 10,
+                'discount_amount' => 0,
+            ],
+            [
+                'product_id' => $context['product']->id,
+                'batch_number' => 'BATCH-B',
+                'quantity' => 20,
+                'unit_price' => 10,
+                'discount_amount' => 0,
+            ],
+        ];
+
+        $response = $this->withToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-invoices', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '400.00')
+            ->assertJsonCount(2, 'data.items');
+
+        $invoiceId = (int) $response->json('data.id');
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
+        $this->assertDatabaseHas('sales_invoice_items', [
+            'sales_invoice_id' => $invoiceId,
+            'batch_number' => 'BATCH-A',
+            'quantity' => 20,
+        ]);
+        $this->assertDatabaseHas('sales_invoice_items', [
+            'sales_invoice_id' => $invoiceId,
+            'batch_number' => 'BATCH-B',
+            'quantity' => 20,
+        ]);
+        foreach (['BATCH-A', 'BATCH-B'] as $batchNumber) {
+            $this->assertDatabaseHas('stock_balances', [
+                'warehouse_id' => $context['warehouse']->id,
+                'product_id' => $context['product']->id,
+                'batch_key' => $batchNumber,
+                'quantity' => 0,
+            ]);
+        }
     }
 
     public function test_api_rejects_internally_inconsistent_but_in_scope_context(): void

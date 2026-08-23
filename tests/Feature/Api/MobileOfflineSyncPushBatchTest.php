@@ -122,6 +122,8 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         );
         $this->assertSame(1, MobileSyncPushBatch::query()->count());
         $this->assertSame(1, MobileSyncPushOperation::query()->count());
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 
 

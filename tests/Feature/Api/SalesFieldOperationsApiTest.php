@@ -95,6 +95,9 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.sales_visit_id', $visitId)
             ->assertJsonPath('data.status', 'confirmed');
 
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
+
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/complete", [
                 'outcome' => 'invoice_created',

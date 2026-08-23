@@ -7,7 +7,6 @@ use App\Exceptions\Api\OperationalApiException;
 use App\Models\DistributionRoute;
 use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
-use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\VehicleLoad;
 use App\Services\Support\DocumentNumberService;
@@ -80,8 +79,6 @@ class DriverFieldOperationService
                 $created = true;
             }
 
-            $this->syncConfirmedInvoiceDeliveries($journey);
-
             $journey = $this->loadJourney($journey);
             $journey->wasRecentlyCreated = $created;
 
@@ -118,8 +115,6 @@ class DriverFieldOperationService
                     409,
                 );
             }
-
-            $this->syncConfirmedInvoiceDeliveries($journey);
 
             $journey->forceFill([
                 'status' => 'in_progress',
@@ -319,65 +314,6 @@ class DriverFieldOperationService
     public function generateJourneyNumber(): string
     {
         return app(DocumentNumberService::class)->next('driver_journey', 'JRN');
-    }
-
-    public function syncConfirmedInvoiceDeliveries(DriverJourney $journey): void
-    {
-        if ($journey->isCompleted()) {
-            return;
-        }
-
-        $invoices = SalesInvoice::withoutGlobalScopes()
-            ->with(['items.product'])
-            ->whereDate('invoice_date', $journey->journey_date)
-            ->where('route_id', $journey->route_id)
-            ->where('vehicle_id', $journey->vehicle_id)
-            ->where('warehouse_id', $journey->warehouse_id)
-            ->where('status', 'confirmed')
-            ->orderBy('id')
-            ->get();
-
-        $journeyChanged = false;
-
-        foreach ($invoices as $invoice) {
-            $delivery = DriverDelivery::withoutGlobalScopes()->firstOrCreate(
-                ['sales_invoice_id' => $invoice->getKey()],
-                [
-                    'driver_journey_id' => $journey->getKey(),
-                    'customer_id' => $invoice->customer_id,
-                    'route_id' => $journey->route_id,
-                    'vehicle_id' => $journey->vehicle_id,
-                    'warehouse_id' => $journey->warehouse_id,
-                    'driver_id' => $journey->driver_id,
-                    'sales_representative_id' => $journey->sales_representative_id,
-                    'status' => 'pending',
-                    'expected_quantity' => round((float) $invoice->items->sum('quantity'), 3),
-                ],
-            );
-
-            if ((int) $delivery->driver_journey_id !== (int) $journey->getKey()) {
-                continue;
-            }
-
-            $journeyChanged = $journeyChanged || $delivery->wasRecentlyCreated;
-
-            foreach ($invoice->items as $invoiceItem) {
-                $deliveryItem = $delivery->items()->firstOrCreate(
-                    ['sales_invoice_item_id' => $invoiceItem->getKey()],
-                    [
-                        'product_id' => $invoiceItem->product_id,
-                        'batch_number' => $invoiceItem->batch_number,
-                        'expiry_date' => $invoiceItem->expiry_date?->toDateString(),
-                        'expected_quantity' => $invoiceItem->quantity,
-                    ],
-                );
-                $journeyChanged = $journeyChanged || $deliveryItem->wasRecentlyCreated;
-            }
-        }
-
-        if ($journeyChanged && $journey->exists) {
-            $journey->touch();
-        }
     }
 
     private function assertDeliveredOutcome(float $delivered, float $returned, float $expected): void

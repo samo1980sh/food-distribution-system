@@ -5,6 +5,8 @@ namespace Tests\Feature\Api;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -40,16 +42,18 @@ class DriverFieldOperationsApiTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.status', 'ready')
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
-            ->assertJsonCount(1, 'data.deliveries');
+            ->assertJsonCount(0, 'data.deliveries');
 
         $journeyId = (int) $open->json('data.id');
+        $delivery = $this->legacyDelivery($journeyId, $context);
 
         $this->withFreshToken($token)
             ->postJson('/api/v1/operational/driver-journeys/open-today')
             ->assertOk()
-            ->assertJsonPath('data.id', $journeyId);
-        $deliveryId = (int) $open->json('data.deliveries.0.id');
-        $invoiceItemId = (int) $open->json('data.deliveries.0.items.0.sales_invoice_item_id');
+            ->assertJsonPath('data.id', $journeyId)
+            ->assertJsonCount(1, 'data.deliveries');
+        $deliveryId = $delivery->id;
+        $invoiceItemId = $delivery->items->firstOrFail()->sales_invoice_item_id;
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/driver-journeys/{$journeyId}/start", [
@@ -90,8 +94,9 @@ class DriverFieldOperationsApiTest extends TestCase
 
         $open = $this->withFreshToken($token)->postJson('/api/v1/operational/driver-journeys/open-today')->assertCreated();
         $journeyId = (int) $open->json('data.id');
-        $deliveryId = (int) $open->json('data.deliveries.0.id');
-        $invoiceItemId = (int) $open->json('data.deliveries.0.items.0.sales_invoice_item_id');
+        $delivery = $this->legacyDelivery($journeyId, $context);
+        $deliveryId = $delivery->id;
+        $invoiceItemId = $delivery->items->firstOrFail()->sales_invoice_item_id;
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/driver-journeys/{$journeyId}/start", [
@@ -128,6 +133,7 @@ class DriverFieldOperationsApiTest extends TestCase
 
         $open = $this->withFreshToken($token)->postJson('/api/v1/operational/driver-journeys/open-today')->assertCreated();
         $journeyId = (int) $open->json('data.id');
+        $this->legacyDelivery($journeyId, $context);
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/driver-journeys/{$journeyId}/start", [
@@ -141,6 +147,31 @@ class DriverFieldOperationsApiTest extends TestCase
             ])
             ->assertConflict()
             ->assertJsonPath('code', 'pending_deliveries_exist');
+    }
+
+    public function test_opening_and_starting_journey_do_not_backfill_confirmed_invoices(): void
+    {
+        $context = $this->context();
+        $user = $this->driverUser($context['driver']);
+        $token = $this->tokenFor($user);
+
+        $open = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/driver-journeys/open-today')
+            ->assertCreated()
+            ->assertJsonCount(0, 'data.deliveries');
+
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/driver-journeys/'.$open->json('data.id').'/start', [
+                'start_odometer' => 10,
+            ])
+            ->assertOk()
+            ->assertJsonCount(0, 'data.deliveries');
+
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 
     /** @return array<string, mixed> */
@@ -243,6 +274,39 @@ class DriverFieldOperationsApiTest extends TestCase
             'product',
             'invoice',
         );
+    }
+
+    /** @param array<string, mixed> $context */
+    private function legacyDelivery(int $journeyId, array $context): DriverDelivery
+    {
+        $journey = DriverJourney::query()->findOrFail($journeyId);
+        $invoiceItem = $context['invoice']->items()->firstOrFail();
+        $delivery = DriverDelivery::query()->create([
+            'driver_journey_id' => $journey->id,
+            'sales_invoice_id' => $context['invoice']->id,
+            'customer_id' => $context['customer']->id,
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'pending',
+            'expected_quantity' => $invoiceItem->quantity,
+            'delivered_quantity' => 0,
+            'returned_quantity' => 0,
+            'return_required' => false,
+        ]);
+        $delivery->items()->create([
+            'sales_invoice_item_id' => $invoiceItem->id,
+            'product_id' => $invoiceItem->product_id,
+            'batch_number' => $invoiceItem->batch_number,
+            'expiry_date' => $invoiceItem->expiry_date,
+            'expected_quantity' => $invoiceItem->quantity,
+            'delivered_quantity' => 0,
+            'returned_quantity' => 0,
+        ]);
+
+        return $delivery->load('items');
     }
 
     private function driverUser(Employee $driver): User
