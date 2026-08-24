@@ -15,8 +15,8 @@ use App\Http\Resources\Api\V1\Operational\ProductResource;
 use App\Http\Resources\Api\V1\Operational\RouteResource;
 use App\Http\Resources\Api\V1\Operational\SalesInvoiceResource;
 use App\Http\Resources\Api\V1\Operational\SalesJourneyResource;
-use App\Http\Resources\Api\V1\Operational\SalesVisitResource;
 use App\Http\Resources\Api\V1\Operational\SalesReturnResource;
+use App\Http\Resources\Api\V1\Operational\SalesVisitResource;
 use App\Http\Resources\Api\V1\Operational\StockBalanceResource;
 use App\Http\Resources\Api\V1\Operational\UnitResource;
 use App\Http\Resources\Api\V1\Operational\VehicleExpenseResource;
@@ -35,10 +35,11 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\Unit;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
@@ -49,7 +50,12 @@ use InvalidArgumentException;
 
 final class MobileSyncEntityRegistry
 {
-    public const VERSION = 7;
+    public const VERSION = 8;
+
+    private const LEGACY_DRIVER_ENTITIES = [
+        'driver_journeys',
+        'driver_deliveries',
+    ];
 
     /**
      * @return array<string, array{
@@ -300,6 +306,24 @@ final class MobileSyncEntityRegistry
     public static function entities(): array
     {
         return array_keys(self::definitions());
+    }
+
+    /** @return list<string> */
+    public static function entitiesFor(User $user): array
+    {
+        if (! MobileAppAccess::usesUnifiedRepresentativeWorkspace($user)) {
+            return self::entities();
+        }
+
+        return array_values(array_diff(
+            self::entities(),
+            self::LEGACY_DRIVER_ENTITIES,
+        ));
+    }
+
+    public static function isActiveFor(User $user, string $entity): bool
+    {
+        return in_array($entity, self::entitiesFor($user), true);
     }
 
     /** @return list<class-string<Model>> */

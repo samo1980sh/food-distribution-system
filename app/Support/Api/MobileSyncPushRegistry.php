@@ -2,16 +2,15 @@
 
 namespace App\Support\Api;
 
-use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\CustomerPaymentWriteRequest;
 use App\Http\Requests\Api\V1\Operational\CustomerWriteRequest;
 use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
-use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
-use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
+use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
+use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
-use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
+use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\Customer;
@@ -21,8 +20,9 @@ use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
+use App\Models\User;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use Illuminate\Database\Eloquent\Model;
@@ -32,6 +32,11 @@ use InvalidArgumentException;
 final class MobileSyncPushRegistry
 {
     public const VERSION = 5;
+
+    private const LEGACY_DRIVER_ENTITIES = [
+        'driver_journeys',
+        'driver_deliveries',
+    ];
 
     /**
      * @return array<string, array{
@@ -154,5 +159,17 @@ final class MobileSyncPushRegistry
         $definition = self::definitions()[$entity] ?? null;
 
         return $definition !== null && in_array($action, $definition['actions'], true);
+    }
+
+    public static function supportsFor(User $user, string $entity, string $action): bool
+    {
+        if (
+            MobileAppAccess::usesUnifiedRepresentativeWorkspace($user)
+            && in_array($entity, self::LEGACY_DRIVER_ENTITIES, true)
+        ) {
+            return false;
+        }
+
+        return self::supports($entity, $action);
     }
 }

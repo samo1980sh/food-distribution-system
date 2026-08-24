@@ -15,18 +15,19 @@ use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
-use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\Api\MobileOfflineSyncService;
 use App\Services\Api\MobileSyncContextService;
-use App\Support\Api\MobileSyncEntityRegistry;
 use App\Support\Api\ApiResponse;
+use App\Support\Api\MobileAppAccess;
+use App\Support\Api\MobileSyncEntityRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,13 +36,13 @@ class OperationalBootstrapController extends Controller
     public function __construct(
         private readonly MobileSyncContextService $syncContextService,
         private readonly MobileOfflineSyncService $offlineSyncService,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user();
         $today = today()->toDateString();
+        $legacyDriverWorkspace = MobileAppAccess::usesLegacyDriverWorkspace($user);
 
         $modules = [
             'routes' => $user->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
@@ -56,8 +57,10 @@ class OperationalBootstrapController extends Controller
             'sales_returns' => $user->can(PermissionName::SALES_RETURNS_VIEW->value),
             'vehicle_expenses' => $user->can(PermissionName::VEHICLE_EXPENSES_VIEW->value),
             'daily_closings' => $user->can(PermissionName::DAILY_CLOSINGS_VIEW->value),
-            'driver_journeys' => $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value),
-            'driver_deliveries' => $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value),
+            'driver_journeys' => $legacyDriverWorkspace
+                && $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value),
+            'driver_deliveries' => $legacyDriverWorkspace
+                && $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value),
             'sales_journeys' => $user->can(PermissionName::SALES_JOURNEYS_VIEW->value),
             'sales_visits' => $user->can(PermissionName::SALES_VISITS_VIEW->value),
         ];
@@ -79,6 +82,7 @@ class OperationalBootstrapController extends Controller
         return ApiResponse::success([
             'date' => $today,
             'server_time' => now()->toIso8601String(),
+            'field_workspace' => MobileAppAccess::fieldWorkspace($user),
             'modules' => $modules,
             'context' => [
                 'routes' => RouteResource::collection($routes)->resolve($request),
@@ -121,12 +125,16 @@ class OperationalBootstrapController extends Controller
                     'reject' => PermissionName::VEHICLE_EXPENSES_REJECT,
                 ]),
                 'driver_journeys' => [
-                    'open_today' => $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
-                    'start' => $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
-                    'finish' => $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
+                    'open_today' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
+                    'start' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
+                    'finish' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
                 ],
                 'driver_deliveries' => [
-                    'submit_outcome' => $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
+                    'submit_outcome' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
                 ],
                 'daily_closings' => [
                     ...$this->writeCapabilities($user, DailyClosing::class, [
@@ -180,8 +188,8 @@ class OperationalBootstrapController extends Controller
     }
 
     /**
-     * @param class-string $modelClass
-     * @param array<string, PermissionName> $actions
+     * @param  class-string  $modelClass
+     * @param  array<string, PermissionName>  $actions
      * @return array<string, bool>
      */
     private function writeCapabilities(

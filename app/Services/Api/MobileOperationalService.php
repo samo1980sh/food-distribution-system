@@ -14,8 +14,8 @@ use App\Models\DriverDelivery;
 use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -23,6 +23,7 @@ use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use App\Services\Authorization\AccessScopeService;
+use App\Support\Api\MobileAppAccess;
 use App\Support\Api\MobileSyncEntityRegistry;
 use Illuminate\Http\Request;
 
@@ -33,14 +34,14 @@ class MobileOperationalService
         private readonly AccessScopeService $accessScopeService,
         private readonly MobileSyncContextService $syncContextService,
         private readonly MobileOfflineSyncService $offlineSyncService,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function bootstrap(User $user, Request $request): array
     {
         return [
             'auth' => $this->mobileBootstrapService->build($user, $request),
+            'field_workspace' => MobileAppAccess::fieldWorkspace($user),
             'capabilities' => $this->capabilities($user),
             'assignments' => $this->assignments($user, $request),
             'today' => $this->dashboard($user),
@@ -66,6 +67,7 @@ class MobileOperationalService
     {
         $today = today()->toDateString();
         $financial = $user->can(PermissionName::DASHBOARD_FINANCIAL->value);
+        $legacyDriverWorkspace = MobileAppAccess::usesLegacyDriverWorkspace($user);
 
         $invoiceQuery = SalesInvoice::query()->whereDate('invoice_date', $today);
         $paymentQuery = CustomerPayment::query()->whereDate('payment_date', $today);
@@ -145,7 +147,8 @@ class MobileOperationalService
                         : null,
                 ]
                 : null,
-            'driver_journeys' => $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value)
+            'driver_journeys' => $legacyDriverWorkspace
+                && $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value)
                 ? [
                     'total' => (clone $journeyQuery)->count(),
                     'ready' => (clone $journeyQuery)->where('status', 'ready')->count(),
@@ -153,7 +156,8 @@ class MobileOperationalService
                     'completed' => (clone $journeyQuery)->where('status', 'completed')->count(),
                 ]
                 : null,
-            'driver_deliveries' => $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value)
+            'driver_deliveries' => $legacyDriverWorkspace
+                && $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value)
                 ? [
                     'total' => (clone $deliveryQuery)->count(),
                     'pending' => (clone $deliveryQuery)->where('status', 'pending')->count(),
@@ -193,6 +197,7 @@ class MobileOperationalService
     /** @return array<string, mixed> */
     private function capabilities(User $user): array
     {
+        $legacyDriverWorkspace = MobileAppAccess::usesLegacyDriverWorkspace($user);
         $permissions = [
             'dashboard' => PermissionName::DASHBOARD_VIEW,
             'areas' => PermissionName::AREAS_VIEW,
@@ -216,7 +221,16 @@ class MobileOperationalService
 
         return [
             'read' => collect($permissions)
-                ->map(fn (PermissionName $permission): bool => $user->can($permission->value))
+                ->map(function (PermissionName $permission, string $module) use (
+                    $user,
+                    $legacyDriverWorkspace,
+                ): bool {
+                    if (in_array($module, ['driver_journeys', 'driver_deliveries'], true)) {
+                        return $legacyDriverWorkspace && $user->can($permission->value);
+                    }
+
+                    return $user->can($permission->value);
+                })
                 ->all(),
             'write' => [
                 'enabled' => false,
@@ -236,12 +250,16 @@ class MobileOperationalService
                     'complete' => $user->can(PermissionName::SALES_VISITS_COMPLETE->value),
                 ],
                 'driver_journeys' => [
-                    'open_today' => $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
-                    'start' => $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
-                    'finish' => $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
+                    'open_today' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
+                    'start' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
+                    'finish' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
                 ],
                 'driver_deliveries' => [
-                    'submit_outcome' => $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
+                    'submit_outcome' => $legacyDriverWorkspace
+                        && $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
                 ],
                 'daily_closings' => [
                     'open_today' => $user->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),

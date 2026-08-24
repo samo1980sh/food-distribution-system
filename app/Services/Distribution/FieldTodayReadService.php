@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
 use App\Services\Authorization\AccessScopeService;
+use App\Support\Api\MobileAppAccess;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
@@ -514,12 +515,9 @@ class FieldTodayReadService
     /** @return list<string> */
     private function availableRoles(User $user): array
     {
-        return collect([
-            User::ROLE_DRIVER,
-            User::ROLE_SALES_REPRESENTATIVE,
-        ])->filter(fn (string $role): bool => $user->hasRole($role))
-            ->values()
-            ->all();
+        $role = MobileAppAccess::activeFieldRole($user);
+
+        return $role === null ? [] : [$role];
     }
 
     private function scoped(Builder $query, User $user): Builder

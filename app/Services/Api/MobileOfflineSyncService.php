@@ -19,8 +19,7 @@ class MobileOfflineSyncService
         private readonly MobileSyncContextService $contextService,
         private readonly MobileSyncScopeService $scopeService,
         private readonly MobileSyncVersionService $versionService,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function status(User $user, Request $request): array
@@ -59,7 +58,7 @@ class MobileOfflineSyncService
                 'max_push_operation_kb' => (int) config('mobile_api.sync_max_push_operation_kb', 256),
                 'push_processing_timeout_seconds' => (int) config('mobile_api.sync_push_processing_timeout_seconds', 300),
             ],
-            'entities' => MobileSyncEntityRegistry::entities(),
+            'entities' => MobileSyncEntityRegistry::entitiesFor($user),
         ];
     }
 
@@ -150,7 +149,11 @@ class MobileOfflineSyncService
         $definitions = MobileSyncEntityRegistry::definitions();
         $definition = $definitions[$entity] ?? null;
 
-        if ($definition === null || ! $this->canReadEntity($user, $definition['permissions'])) {
+        if (
+            $definition === null
+            || ! MobileSyncEntityRegistry::isActiveFor($user, $entity)
+            || ! $this->canReadEntity($user, $definition['permissions'])
+        ) {
             return null;
         }
 

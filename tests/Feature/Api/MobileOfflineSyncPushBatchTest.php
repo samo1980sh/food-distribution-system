@@ -50,7 +50,6 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ->assertJsonPath('data.limits.max_push_operation_kb', 256);
     }
 
-
     public function test_context_mismatch_rejects_the_entire_batch(): void
     {
         $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
@@ -126,6 +125,55 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 
+    public function test_representative_obsolete_driver_operations_are_rejected_without_partial_state(): void
+    {
+        $context = $this->context('RETIRED-DRIVER-WORKFLOW');
+        $representative = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($representative, 'push-retired-driver-workflow');
+
+        $this->push(
+            $token,
+            $this->contextKey($token),
+            'batch-retired-driver-workflow-0001',
+            [
+                [
+                    'operation_id' => 'operation-retired-driver-journey-0001',
+                    'entity' => 'driver_journeys',
+                    'action' => 'start',
+                    'record_id' => 999001,
+                    'base_version' => 'c:1',
+                    'payload' => [],
+                ],
+                [
+                    'operation_id' => 'operation-retired-driver-delivery-0001',
+                    'entity' => 'driver_deliveries',
+                    'action' => 'submit_outcome',
+                    'record_id' => 999002,
+                    'base_version' => 'c:1',
+                    'payload' => ['status' => 'delivered'],
+                ],
+            ],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.summary.applied', 0)
+            ->assertJsonPath('data.summary.failed', 2)
+            ->assertJsonPath('data.results.0.status', 'failed')
+            ->assertJsonPath(
+                'data.results.0.code',
+                'representative_driver_workflow_retired',
+            )
+            ->assertJsonPath('data.results.0.http_status', 403)
+            ->assertJsonPath('data.results.1.status', 'failed')
+            ->assertJsonPath(
+                'data.results.1.code',
+                'representative_driver_workflow_retired',
+            )
+            ->assertJsonPath('data.results.1.http_status', 403);
+
+        $this->assertDatabaseCount('driver_journeys', 0);
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
+    }
 
     public function test_stale_processing_batch_is_resumed_using_operation_idempotency(): void
     {
@@ -477,7 +525,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
     }
 
     /** @param array<string, mixed> $context
-     *  @return array<string, mixed>
+     * @return array<string, mixed>
      */
     private function invoicePayload(array $context, string $clientReference): array
     {
@@ -501,7 +549,6 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             ]],
         ];
     }
-
 
     /** @param array<string, mixed> $payload */
     /** @param array<string, mixed> $context */

@@ -6,10 +6,11 @@ use App\Models\Area;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\MobileSyncChange;
 use App\Models\MobileSyncCheckpoint;
-use App\Models\MobileSyncState;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
@@ -19,6 +20,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
+use App\Services\Api\MobileSyncScopeService;
 use App\Services\Authorization\AccessScopeService;
 use App\Services\Sales\CustomerPaymentService;
 use Illuminate\Database\QueryException;
@@ -83,9 +85,103 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->getJson('/api/v1/operational/sync/status')
             ->assertOk()
             ->assertJsonPath('data.context_key', $contextKey)
-            ->assertJsonPath('data.registry_version', 7)
+            ->assertJsonPath('data.registry_version', 8)
             ->assertJsonPath('data.device.device_id', 'sync-device-bootstrap')
             ->assertJsonPath('data.reset_required', false);
+    }
+
+    public function test_representative_pull_excludes_legacy_driver_entities_while_driver_pull_retains_them(): void
+    {
+        $context = $this->context('UNIFIED');
+        $journey = DriverJourney::query()->create([
+            'journey_number' => 'LEGACY-SYNC-JOURNEY',
+            'journey_date' => today(),
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'ready',
+        ]);
+        $delivery = DriverDelivery::query()->create([
+            'driver_journey_id' => $journey->id,
+            'sales_invoice_id' => $context['invoice']->id,
+            'customer_id' => $context['customer']->id,
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'pending',
+            'expected_quantity' => 1,
+            'delivered_quantity' => 0,
+            'returned_quantity' => 0,
+            'return_required' => false,
+        ]);
+
+        $representative = User::factory()->create([
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
+        ]);
+        $context['representative']->update(['user_id' => $representative->id]);
+        $representativeToken = $this->tokenFor(
+            $representative,
+            'sync-unified-representative',
+        );
+
+        $representativeEntities = $this->withToken($representativeToken)
+            ->getJson('/api/v1/operational/sync/status')
+            ->assertOk()
+            ->json('data.entities');
+        $this->assertContains('sales_journeys', $representativeEntities);
+        $this->assertContains('sales_visits', $representativeEntities);
+        $this->assertNotContains('driver_journeys', $representativeEntities);
+        $this->assertNotContains('driver_deliveries', $representativeEntities);
+
+        $scopeService = app(MobileSyncScopeService::class);
+        $this->assertFalse($scopeService->allows(
+            $representative,
+            'driver_journeys',
+            $scopeService->snapshot($journey),
+        ));
+        $this->assertFalse($scopeService->allows(
+            $representative,
+            'driver_deliveries',
+            $scopeService->snapshot($delivery),
+        ));
+
+        $representativePull = $this->withToken($representativeToken)
+            ->postJson('/api/v1/operational/sync/pull', [
+                'cursor' => 0,
+                'limit' => 500,
+                'context_key' => $this->contextKey($representativeToken),
+            ])
+            ->assertOk();
+        $representativeChanges = collect($representativePull->json('data.changes'));
+        $this->assertFalse($representativeChanges->contains('entity', 'driver_journeys'));
+        $this->assertFalse($representativeChanges->contains('entity', 'driver_deliveries'));
+
+        $driver = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $context['driver']->update(['user_id' => $driver->id]);
+        $driverToken = $this->tokenFor($driver, 'sync-legacy-driver');
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+        $driverEntities = $this->withToken($driverToken)
+            ->getJson('/api/v1/operational/sync/status')
+            ->assertOk()
+            ->json('data.entities');
+        $this->assertContains('driver_journeys', $driverEntities);
+        $this->assertContains('driver_deliveries', $driverEntities);
+
+        $driverPull = $this->withToken($driverToken)
+            ->postJson('/api/v1/operational/sync/pull', [
+                'cursor' => 0,
+                'limit' => 500,
+                'context_key' => $this->contextKey($driverToken),
+            ])
+            ->assertOk();
+        $driverChanges = collect($driverPull->json('data.changes'));
+        $this->assertTrue($driverChanges->contains('entity', 'driver_journeys'));
+        $this->assertTrue($driverChanges->contains('entity', 'driver_deliveries'));
     }
 
     public function test_initial_pull_returns_only_permitted_scoped_records(): void
@@ -158,8 +254,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->assertOk();
 
         $customerChange = collect($updated->json('data.changes'))
-            ->first(fn (array $change): bool =>
-                $change['entity'] === 'customers'
+            ->first(fn (array $change): bool => $change['entity'] === 'customers'
                 && (int) $change['record_id'] === (int) $context['customer']->id
                 && $change['operation'] === 'upsert');
 
@@ -178,8 +273,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->assertOk();
 
         $tombstone = collect($deleted->json('data.changes'))
-            ->first(fn (array $change): bool =>
-                $change['entity'] === 'sales_invoices'
+            ->first(fn (array $change): bool => $change['entity'] === 'sales_invoices'
                 && (int) $change['record_id'] === $invoiceId
                 && $change['operation'] === 'delete');
 
@@ -280,14 +374,12 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->get();
 
         $this->assertFalse($changes->contains(
-            fn (MobileSyncChange $change): bool =>
-                $change->entity === 'areas'
+            fn (MobileSyncChange $change): bool => $change->entity === 'areas'
                 && (int) $change->record_id === $areaId
                 && $change->operation === 'delete',
         ));
         $this->assertFalse($changes->contains(
-            fn (MobileSyncChange $change): bool =>
-                $change->entity === 'routes'
+            fn (MobileSyncChange $change): bool => $change->entity === 'routes'
                 && (int) $change->record_id === $routeId
                 && $change->operation === 'delete',
         ));

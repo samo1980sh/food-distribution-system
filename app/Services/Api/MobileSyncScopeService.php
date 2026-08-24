@@ -142,6 +142,10 @@ class MobileSyncScopeService
     /** @param array<string, mixed> $snapshot */
     public function allows(User $user, string $entity, array $snapshot): bool
     {
+        if (! MobileSyncEntityRegistry::isActiveFor($user, $entity)) {
+            return false;
+        }
+
         $scope = $this->accessScopeService->for($user);
 
         if ($scope->unrestricted) {

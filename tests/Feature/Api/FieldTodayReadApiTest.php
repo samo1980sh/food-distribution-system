@@ -132,7 +132,7 @@ class FieldTodayReadApiTest extends TestCase
             ->assertJsonPath('data.contexts.driver.summary.expenses.approved_amount', '45.00');
     }
 
-    public function test_dual_role_user_receives_both_role_contexts(): void
+    public function test_unified_representative_workspace_takes_priority_for_dual_role_user(): void
     {
         $context = $this->context('DUAL', ['monday']);
         $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
@@ -152,20 +152,9 @@ class FieldTodayReadApiTest extends TestCase
         $this->withToken($this->tokenFor($user))
             ->getJson('/api/v1/operational/today')
             ->assertOk()
-            ->assertJsonCount(2, 'data.available_roles')
-            ->assertJsonPath('data.contexts.driver.route.id', $context['route']->id)
-            ->assertJsonPath(
-                'data.contexts.driver.route.driver.type',
-                User::ROLE_SALES_REPRESENTATIVE,
-            )
-            ->assertJsonPath(
-                'data.contexts.driver.route.driver.assignment_role',
-                User::ROLE_DRIVER,
-            )
-            ->assertJsonPath(
-                'data.contexts.driver.route.sales_representative.assignment_role',
-                User::ROLE_SALES_REPRESENTATIVE,
-            )
+            ->assertJsonCount(1, 'data.available_roles')
+            ->assertJsonPath('data.available_roles.0', User::ROLE_SALES_REPRESENTATIVE)
+            ->assertJsonPath('data.contexts.driver', null)
             ->assertJsonPath('data.contexts.sales_representative.route.id', $context['route']->id)
             ->assertJsonPath(
                 'data.contexts.sales_representative.route.driver.assignment_role',

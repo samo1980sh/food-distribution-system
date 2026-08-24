@@ -11,16 +11,16 @@ use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
-use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingInventoryRequest;
+use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseRejectRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\MobileSyncPushOperation;
 use App\Models\User;
 use App\Services\Distribution\DailyClosingFieldHandoverService;
+use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\DriverFieldOperationService;
 use App\Services\Distribution\SalesFieldOperationService;
-use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\VehicleExpenseService;
 use App\Services\Distribution\VehicleLoadHandoverService;
 use App\Services\Sales\CustomerPaymentService;
@@ -37,7 +37,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Throwable;
 
 class MobileSyncPushOperationService
 {
@@ -54,11 +53,10 @@ class MobileSyncPushOperationService
         private readonly SalesFieldOperationService $salesFieldOperationService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly MobileSyncVersionService $versionService,
-    ) {
-    }
+    ) {}
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     public function process(
@@ -125,7 +123,7 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function execute(User $user, Request $request, array $operation): array
@@ -134,6 +132,14 @@ class MobileSyncPushOperationService
             $entity = (string) $operation['entity'];
             $action = (string) $operation['action'];
             $payload = (array) ($operation['payload'] ?? []);
+
+            if (! MobileSyncPushRegistry::supportsFor($user, $entity, $action)) {
+                throw new OperationalApiException(
+                    'عملية السائق القديمة غير متاحة ضمن مساحة عمل المندوب الموحدة.',
+                    'representative_driver_workflow_retired',
+                    403,
+                );
+            }
 
             if ($entity === 'vehicle_expenses'
                 && (array_key_exists('receipt', $payload) || array_key_exists('remove_receipt', $payload))) {
@@ -178,8 +184,8 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $payload
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function create(
@@ -224,8 +230,8 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $payload
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function update(
@@ -261,7 +267,7 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function delete(
@@ -296,8 +302,8 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $payload
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function action(
@@ -505,7 +511,7 @@ class MobileSyncPushOperationService
         $record = $modelClass::query()->find($recordId);
 
         if (! $record instanceof Model) {
-            throw (new ModelNotFoundException())->setModel($modelClass, [$recordId]);
+            throw (new ModelNotFoundException)->setModel($modelClass, [$recordId]);
         }
 
         return $record;
@@ -546,7 +552,7 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function success(
@@ -593,10 +599,9 @@ class MobileSyncPushOperationService
         ];
     }
 
-
     /**
-     * @param array<string, mixed> $operation
-     * @param array<string, mixed>|null $errors
+     * @param  array<string, mixed>  $operation
+     * @param  array<string, mixed>|null  $errors
      * @return array<string, mixed>
      */
     private function failure(
@@ -634,7 +639,7 @@ class MobileSyncPushOperationService
     }
 
     /**
-     * @param array<string, mixed> $operation
+     * @param  array<string, mixed>  $operation
      * @return array<string, mixed>
      */
     private function replayOrConflict(

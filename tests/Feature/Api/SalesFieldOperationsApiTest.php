@@ -28,11 +28,22 @@ class SalesFieldOperationsApiTest extends TestCase
 
         $this->withFreshToken($token)->getJson('/api/v1/operational/bootstrap')
             ->assertOk()
+            ->assertJsonPath('data.field_workspace.role', User::ROLE_SALES_REPRESENTATIVE)
+            ->assertJsonPath('data.field_workspace.unified', true)
+            ->assertJsonPath('data.field_workspace.legacy', false)
             ->assertJsonPath('data.modules.sales_journeys', true)
             ->assertJsonPath('data.modules.sales_visits', true)
+            ->assertJsonPath('data.modules.driver_journeys', false)
+            ->assertJsonPath('data.modules.driver_deliveries', false)
             ->assertJsonPath('data.write.customers.create', true)
             ->assertJsonPath('data.write.sales_journeys.open_today', true)
-            ->assertJsonPath('data.write.sales_visits.complete', true);
+            ->assertJsonPath('data.write.sales_journeys.start', true)
+            ->assertJsonPath('data.write.sales_journeys.finish', true)
+            ->assertJsonPath('data.write.sales_visits.complete', true)
+            ->assertJsonPath('data.write.driver_journeys.open_today', false)
+            ->assertJsonPath('data.write.driver_journeys.start', false)
+            ->assertJsonPath('data.write.driver_journeys.finish', false)
+            ->assertJsonPath('data.write.driver_deliveries.submit_outcome', false);
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
