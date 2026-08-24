@@ -15,7 +15,9 @@ use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
+use App\Services\Sales\CustomerFinancialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class UnifiedRepresentativeJourneyApiTest extends TestCase
@@ -142,6 +144,404 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         ]);
         $this->assertDatabaseCount('driver_journeys', 0);
         $this->assertDatabaseCount('driver_deliveries', 0);
+    }
+
+    public function test_representative_runs_a_complete_unified_day_end_to_end(): void
+    {
+        $context = $this->context('COMPLETE-DAY', 1);
+        $customer = Customer::query()
+            ->where('route_id', $context['route']->id)
+            ->firstOrFail();
+        $customer->update([
+            'credit_limit' => 1000,
+            'credit_days' => 30,
+            'payment_type' => 'credit',
+        ]);
+        StockBalance::query()
+            ->where('warehouse_id', $context['warehouse']->id)
+            ->where('product_id', $context['product']->id)
+            ->update(['quantity' => 100]);
+
+        $batchProduct = Product::query()->create([
+            'sku' => 'UNIFIED-SKU-COMPLETE-DAY-BATCHED',
+            'name_ar' => 'Complete day batched product',
+            'category_id' => $context['product']->category_id,
+            'unit_id' => $context['product']->unit_id,
+            'purchase_price' => 5,
+            'sale_price' => 10,
+            'wholesale_price' => 9,
+            'status' => 'active',
+        ]);
+        foreach (['BATCH-A', 'BATCH-B'] as $batchNumber) {
+            StockBalance::query()->create([
+                'warehouse_id' => $context['warehouse']->id,
+                'product_id' => $batchProduct->id,
+                'batch_number' => $batchNumber,
+                'batch_key' => $batchNumber,
+                'expiry_key' => '',
+                'quantity' => 20,
+                'average_unit_cost' => 5,
+            ]);
+        }
+
+        $user = $this->representativeUser($context['representative']);
+        $user->assignRole(User::ROLE_DRIVER);
+        $load = $this->pendingLoad($context);
+
+        $login = $this->postJson('/api/v1/auth/login', [
+            'email' => $user->email,
+            'password' => 'password',
+            'device_id' => 'unified-complete-day-device',
+            'device_name' => 'Unified complete day test',
+            'platform' => 'android',
+            'app_version' => '1.0.0',
+        ])->assertOk()
+            ->assertJsonPath('data.bootstrap.user.role', User::ROLE_SALES_REPRESENTATIVE);
+        $token = (string) $login->json('data.token');
+
+        $this->withFreshToken($token)
+            ->getJson('/api/v1/operational/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('data.field_workspace.role', User::ROLE_SALES_REPRESENTATIVE)
+            ->assertJsonPath('data.field_workspace.unified', true)
+            ->assertJsonPath('data.field_workspace.legacy', false)
+            ->assertJsonPath('data.sync.registry_version', 8)
+            ->assertJsonPath('data.modules.driver_journeys', false)
+            ->assertJsonPath('data.modules.driver_deliveries', false)
+            ->assertJsonPath('data.write.driver_journeys.open_today', false)
+            ->assertJsonPath('data.write.driver_deliveries.submit_outcome', false);
+
+        $opened = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'ready')
+            ->assertJsonPath('data.driver', null)
+            ->assertJsonCount(1, 'data.visits');
+        $journeyId = (int) $opened->json('data.id');
+        $visitId = (int) $opened->json('data.visits.0.id');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->assertConflict()
+            ->assertJsonPath('code', 'vehicle_load_handover_pending');
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/vehicle-loads/'.$load->id.'/acknowledge', [
+                'handover_status' => 'received',
+                'items' => [[
+                    'id' => $load->items->first()->id,
+                    'received_quantity' => '10.000',
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.handover_status', 'received')
+            ->assertJsonPath('data.items.0.received_quantity', '10.000');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_progress')
+            ->assertJsonPath('data.driver', null);
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_progress');
+
+        $baseInvoice = [
+            'sales_visit_id' => $visitId,
+            'customer_id' => $customer->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'route_id' => $context['route']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'invoice_date' => today()->toDateString(),
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+        ];
+        $standardItem = [[
+            'product_id' => $context['product']->id,
+            'quantity' => 2,
+            'unit_price' => 10,
+            'discount_amount' => 0,
+        ]];
+
+        $cashPayload = [
+            ...$baseInvoice,
+            'client_reference' => 'unified-complete-cash',
+            'payment_type' => 'cash',
+            'items' => $standardItem,
+        ];
+        $cashInvoice = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', $cashPayload)
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '20.00')
+            ->assertJsonPath('data.paid_amount', '20.00')
+            ->assertJsonPath('data.remaining_amount', '0.00');
+        $cashInvoiceId = (int) $cashInvoice->json('data.id');
+
+        $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', $cashPayload)
+            ->assertOk()
+            ->assertJsonPath('data.id', $cashInvoiceId)
+            ->assertJsonPath('meta.idempotency.replayed', true);
+
+        $creditInvoice = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', [
+                ...$baseInvoice,
+                'client_reference' => 'unified-complete-credit',
+                'payment_type' => 'credit',
+                'paid_amount' => 0,
+                'items' => [[...$standardItem[0], 'quantity' => 1]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '10.00')
+            ->assertJsonPath('data.paid_amount', '0.00')
+            ->assertJsonPath('data.remaining_amount', '10.00');
+        $creditInvoiceId = (int) $creditInvoice->json('data.id');
+
+        $partialInvoice = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', [
+                ...$baseInvoice,
+                'client_reference' => 'unified-complete-partial',
+                'payment_type' => 'partial',
+                'paid_amount' => 4,
+                'items' => [[...$standardItem[0], 'quantity' => 1]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '10.00')
+            ->assertJsonPath('data.paid_amount', '4.00')
+            ->assertJsonPath('data.remaining_amount', '6.00');
+
+        $multiBatchInvoice = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-invoices', [
+                ...$baseInvoice,
+                'client_reference' => 'unified-complete-multi-batch',
+                'payment_type' => 'cash',
+                'items' => [
+                    [
+                        'product_id' => $batchProduct->id,
+                        'batch_number' => 'BATCH-A',
+                        'quantity' => 20,
+                        'unit_price' => 10,
+                        'discount_amount' => 0,
+                    ],
+                    [
+                        'product_id' => $batchProduct->id,
+                        'batch_number' => 'BATCH-B',
+                        'quantity' => 20,
+                        'unit_price' => 10,
+                        'discount_amount' => 0,
+                    ],
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '400.00')
+            ->assertJsonCount(2, 'data.items');
+        $multiBatchInvoiceId = (int) $multiBatchInvoice->json('data.id');
+
+        $invoiceList = $this->withFreshToken($token)
+            ->getJson('/api/v1/operational/sales-invoices?customer_id='.$customer->id.'&status=confirmed')
+            ->assertOk()
+            ->assertJsonCount(4, 'data.items');
+        $this->assertEqualsCanonicalizing(
+            [$cashInvoiceId, $creditInvoiceId, (int) $partialInvoice->json('data.id'), $multiBatchInvoiceId],
+            collect($invoiceList->json('data.items'))->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+        );
+
+        $payment = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/customer-payments', [
+                'client_reference' => 'unified-complete-payment',
+                'sales_visit_id' => $visitId,
+                'customer_id' => $customer->id,
+                'sales_invoice_id' => $creditInvoiceId,
+                'vehicle_id' => $context['vehicle']->id,
+                'route_id' => $context['route']->id,
+                'warehouse_id' => $context['warehouse']->id,
+                'sales_representative_id' => $context['representative']->id,
+                'payment_date' => today()->toDateString(),
+                'payment_method' => 'cash',
+                'amount' => 3,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'draft');
+
+        $salesReturn = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-returns', [
+                'client_reference' => 'unified-complete-return',
+                'sales_visit_id' => $visitId,
+                'customer_id' => $customer->id,
+                'sales_invoice_id' => $cashInvoiceId,
+                'vehicle_id' => $context['vehicle']->id,
+                'route_id' => $context['route']->id,
+                'warehouse_id' => $context['warehouse']->id,
+                'sales_representative_id' => $context['representative']->id,
+                'return_date' => today()->toDateString(),
+                'return_reason' => 'damaged',
+                'items' => [[
+                    'product_id' => $context['product']->id,
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                ]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'draft');
+
+        $expense = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/vehicle-expenses', [
+                'client_reference' => 'unified-complete-expense',
+                'expense_date' => today()->toDateString(),
+                'route_id' => $context['route']->id,
+                'vehicle_id' => $context['vehicle']->id,
+                'warehouse_id' => $context['warehouse']->id,
+                'expense_type' => 'fuel',
+                'amount' => 15,
+                'payment_method' => 'cash',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.driver', null)
+            ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.operation_source', 'mobile_sales');
+
+        $this->withFreshToken($token)
+            ->getJson('/api/v1/operational/today')
+            ->assertOk()
+            ->assertJsonPath('data.contexts.driver', null)
+            ->assertJsonPath('data.contexts.sales_representative.summary.journey.id', $journeyId)
+            ->assertJsonPath('data.contexts.sales_representative.summary.journey.status', 'in_progress')
+            ->assertJsonPath('data.contexts.sales_representative.summary.load_custody.status', 'received');
+
+        $closing = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/daily-closings/open-today', [
+                'route_id' => $context['route']->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.driver', null)
+            ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
+            ->assertJsonPath('data.expected_cash_amount', '424.00');
+        $closingId = (int) $closing->json('data.id');
+        $inventoryItems = collect($closing->json('data.items'))
+            ->map(fn (array $item): array => [
+                'product_id' => (int) $item['product']['id'],
+                'actual_quantity' => (float) $item['expected_quantity'],
+            ])
+            ->values()
+            ->all();
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-inventory", [
+                'items' => $inventoryItems,
+            ])
+            ->assertConflict();
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->assertConflict()
+            ->assertJsonPath('code', 'sales_visits_pending');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-visits/{$visitId}/complete", [
+                'outcome' => 'invoice_created',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.documents.invoices', 4)
+            ->assertJsonPath('data.documents.payments', 1)
+            ->assertJsonPath('data.documents.returns', 1);
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.driver', null);
+
+        $varianceItems = $inventoryItems;
+        $varianceItems[0]['actual_quantity']++;
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-inventory", [
+                'items' => $varianceItems,
+            ])
+            ->assertConflict()
+            ->assertJsonPath('code', 'business_rule_violation');
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-inventory", [
+                'items' => $inventoryItems,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.field_handover.inventory.submitted', true)
+            ->assertJsonPath('data.field_handover.complete', false);
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-cash", [
+                'actual_cash_amount' => 425,
+            ])
+            ->assertConflict()
+            ->assertJsonPath('code', 'business_rule_violation');
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-cash", [
+                'actual_cash_amount' => 424,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.expected_cash_amount', '424.00')
+            ->assertJsonPath('data.actual_cash_amount', '424.00')
+            ->assertJsonPath('data.cash_difference', '0.00')
+            ->assertJsonPath('data.field_handover.complete', true);
+
+        $this->assertDatabaseHas('daily_closings', [
+            'id' => $closingId,
+            'driver_id' => null,
+            'sales_representative_id' => $context['representative']->id,
+            'inventory_submitted_by' => $user->id,
+            'cash_submitted_by' => $user->id,
+            'expected_cash_amount' => 424,
+            'actual_cash_amount' => 424,
+        ]);
+        $this->assertDatabaseHas('customer_payments', [
+            'id' => (int) $payment->json('data.id'),
+            'status' => 'draft',
+        ]);
+        $this->assertDatabaseHas('sales_returns', [
+            'id' => (int) $salesReturn->json('data.id'),
+            'status' => 'draft',
+        ]);
+        $this->assertDatabaseHas('vehicle_expenses', [
+            'id' => (int) $expense->json('data.id'),
+            'driver_id' => null,
+            'sales_representative_id' => $context['representative']->id,
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $context['warehouse']->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 96,
+        ]);
+        foreach (['BATCH-A', 'BATCH-B'] as $batchNumber) {
+            $this->assertDatabaseHas('stock_balances', [
+                'warehouse_id' => $context['warehouse']->id,
+                'product_id' => $batchProduct->id,
+                'batch_key' => $batchNumber,
+                'quantity' => 0,
+            ]);
+            $this->assertDatabaseHas('sales_invoice_items', [
+                'sales_invoice_id' => $multiBatchInvoiceId,
+                'product_id' => $batchProduct->id,
+                'batch_number' => $batchNumber,
+                'quantity' => 20,
+            ]);
+        }
+        $invoiceIds = [$cashInvoiceId, $creditInvoiceId, (int) $partialInvoice->json('data.id'), $multiBatchInvoiceId];
+        $this->assertSame(5, DB::table('stock_movements')
+            ->where('movement_type', 'sales_invoice')
+            ->whereIn('reference_id', $invoiceIds)
+            ->count());
+        $this->assertSame(0, StockBalance::query()->where('quantity', '<', 0)->count());
+        $this->assertSame(16.0, app(CustomerFinancialService::class)->customerBalance($customer));
+        $this->assertDatabaseCount('sales_invoices', 4);
+        $this->assertDatabaseCount('driver_journeys', 0);
+        $this->assertDatabaseCount('driver_deliveries', 0);
+        $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 
     public function test_representative_cannot_start_a_conflicting_or_unauthorized_journey(): void
