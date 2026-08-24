@@ -27,7 +27,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_active_user_with_api_permission_can_login(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $response = $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
@@ -38,7 +38,7 @@ class MobileApiFoundationTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.token_type', 'Bearer')
-            ->assertJsonPath('data.bootstrap.user.role', UserRole::DRIVER->value)
+            ->assertJsonPath('data.bootstrap.user.role', UserRole::SALES_REPRESENTATIVE->value)
             ->assertJsonPath('data.bootstrap.api.version', 'v1')
             ->assertJsonPath('data.bootstrap.scope.unrestricted', false);
 
@@ -50,10 +50,25 @@ class MobileApiFoundationTest extends TestCase
         ]);
     }
 
-    public function test_user_with_driver_and_sales_roles_can_login(): void
+    public function test_driver_only_user_cannot_login_even_with_api_permission(): void
     {
         $user = $this->createUser(UserRole::DRIVER);
-        $user->assignRole(UserRole::SALES_REPRESENTATIVE->value);
+
+        $this->postJson('/api/v1/auth/login', $this->loginPayload(
+            $user->email,
+            'driver-only-device-0001',
+        ))
+            ->assertForbidden()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'mobile_role_denied');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_user_with_driver_and_sales_roles_can_login(): void
+    {
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
+        $user->assignRole(UserRole::DRIVER->value);
 
         $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
@@ -85,7 +100,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_existing_token_is_denied_after_field_roles_are_removed(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $token = $user->createToken(
             'mobile:android:field-role-change',
             [(string) config('mobile_api.token_ability')],
@@ -103,7 +118,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_invalid_credentials_use_standard_validation_response(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $this->postJson('/api/v1/auth/login', [
             ...$this->loginPayload($user->email, 'driver-device-0002'),
@@ -126,7 +141,7 @@ class MobileApiFoundationTest extends TestCase
     public function test_login_endpoint_is_rate_limited(): void
     {
         config()->set('mobile_api.login_rate_limit_per_minute', 2);
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $payload = [
             ...$this->loginPayload($user->email, 'rate-limit-device'),
             'password' => 'wrong-password',
@@ -142,7 +157,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_inactive_user_cannot_login(): void
     {
-        $user = $this->createUser(UserRole::DRIVER, User::STATUS_INACTIVE);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE, User::STATUS_INACTIVE);
 
         $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
@@ -156,8 +171,8 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_role_without_api_permission_cannot_login(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
-        Role::findByName(UserRole::DRIVER->value)
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
+        Role::findByName(UserRole::SALES_REPRESENTATIVE->value)
             ->revokePermissionTo(PermissionName::API_ACCESS->value);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $user->unsetRelation('roles')->unsetRelation('permissions');
@@ -172,7 +187,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_me_returns_permissions_and_effective_scope(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $token = $this->loginAndGetToken(
             $user,
@@ -185,7 +200,7 @@ class MobileApiFoundationTest extends TestCase
         $response
             ->assertOk()
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.role', UserRole::DRIVER->value)
+            ->assertJsonPath('data.user.role', UserRole::SALES_REPRESENTATIVE->value)
             ->assertJsonPath('data.scope.unrestricted', false)
             ->assertJsonPath('data.scope.has_assignments', false);
 
@@ -197,7 +212,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_logging_in_again_on_same_device_rotates_token(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $first = $this->loginAndGetToken($user, 'driver-device-rotate');
         $second = $this->loginAndGetToken($user, 'driver-device-rotate');
@@ -209,7 +224,7 @@ class MobileApiFoundationTest extends TestCase
     public function test_session_limit_removes_oldest_mobile_session(): void
     {
         config()->set('mobile_api.max_sessions', 2);
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $this->loginAndGetToken($user, 'driver-device-limit-1');
         $this->loginAndGetToken($user, 'driver-device-limit-2');
@@ -224,7 +239,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_user_can_list_and_revoke_only_their_own_sessions(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $other = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $currentToken = $this->loginAndGetToken($user, 'driver-device-session-1');
@@ -260,7 +275,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_logout_and_logout_all_revoke_mobile_tokens(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $first = $this->loginAndGetToken($user, 'driver-device-logout-1');
 
         $this->withToken($first)
@@ -282,7 +297,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_token_without_required_ability_is_rejected(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $token = $user->createToken('mobile:android:test', ['wrong:ability']);
 
         $this->withToken($token->plainTextToken)
@@ -293,7 +308,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_password_change_revokes_all_mobile_tokens(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $this->loginAndGetToken($user, 'driver-device-password-change-1');
         $this->loginAndGetToken($user, 'driver-device-password-change-2');
 
@@ -306,7 +321,7 @@ class MobileApiFoundationTest extends TestCase
 
     public function test_token_is_revoked_when_account_becomes_inactive(): void
     {
-        $user = $this->createUser(UserRole::DRIVER);
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $token = $this->loginAndGetToken($user, 'driver-device-inactive');
         $user->update(['status' => User::STATUS_INACTIVE]);
 

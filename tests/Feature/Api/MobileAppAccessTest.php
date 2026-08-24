@@ -35,5 +35,11 @@ class MobileAppAccessTest extends TestCase
         $this->assertTrue(MobileAppAccess::allows($dual));
         $this->assertFalse(MobileAppAccess::allows($manager));
         $this->assertFalse(MobileAppAccess::allows($mixed));
+
+        $this->assertFalse(MobileAppAccess::allowsLogin($driver));
+        $this->assertTrue(MobileAppAccess::allowsLogin($representative));
+        $this->assertTrue(MobileAppAccess::allowsLogin($dual));
+        $this->assertFalse(MobileAppAccess::allowsLogin($manager));
+        $this->assertFalse(MobileAppAccess::allowsLogin($mixed));
     }
 }

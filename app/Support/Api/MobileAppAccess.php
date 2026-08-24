@@ -23,6 +23,12 @@ final class MobileAppAccess
             && array_diff($assignedRoles, $roles) === [];
     }
 
+    public static function allowsLogin(User $user): bool
+    {
+        return self::allows($user)
+            && self::usesUnifiedRepresentativeWorkspace($user);
+    }
+
     public static function activeFieldRole(User $user): ?string
     {
         if ($user->hasRole(User::ROLE_SALES_REPRESENTATIVE)) {

@@ -52,9 +52,9 @@ class AuthController extends Controller
             );
         }
 
-        if (! MobileAppAccess::allows($user)) {
+        if (! MobileAppAccess::allowsLogin($user)) {
             return ApiResponse::error(
-                'هذا التطبيق مخصص لحسابات السائقين ومندوبي المبيعات فقط.',
+                'هذا التطبيق مخصص لحسابات مندوبي المبيعات فقط.',
                 'mobile_role_denied',
                 403,
             );
