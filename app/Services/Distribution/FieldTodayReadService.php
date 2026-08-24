@@ -23,8 +23,7 @@ class FieldTodayReadService
     public function __construct(
         private readonly FieldRouteAssignmentResolver $routeResolver,
         private readonly AccessScopeService $accessScopeService,
-    ) {
-    }
+    ) {}
 
     /** @return array<string, mixed> */
     public function build(
@@ -91,7 +90,7 @@ class FieldTodayReadService
     ): array {
         /** @var DistributionRoute|null $route */
         $route = $resolution['route'];
-        $readiness = $this->readiness($route);
+        $readiness = $this->readiness($route, $role);
         $status = $resolution['status'];
 
         if (
@@ -124,7 +123,7 @@ class FieldTodayReadService
     }
 
     /** @return array{ready: bool, issues: list<string>} */
-    private function readiness(?DistributionRoute $route): array
+    private function readiness(?DistributionRoute $route, string $role): array
     {
         if (! $route instanceof DistributionRoute) {
             return [
@@ -149,10 +148,12 @@ class FieldTodayReadService
             $issues[] = 'inactive_vehicle_warehouse';
         }
 
-        if ($route->driver === null) {
-            $issues[] = 'missing_driver';
-        } elseif ($route->driver->status !== 'active') {
-            $issues[] = 'inactive_driver';
+        if ($role === User::ROLE_DRIVER) {
+            if ($route->driver === null) {
+                $issues[] = 'missing_driver';
+            } elseif ($route->driver->status !== 'active') {
+                $issues[] = 'inactive_driver';
+            }
         }
 
         if ($route->salesRepresentative === null) {
@@ -222,6 +223,12 @@ class FieldTodayReadService
             ->where('route_id', $route->getKey())
             ->where('sales_representative_id', $representativeId);
         $returns = $this->scoped($returns, $user);
+        $vehicleOperations = $this->representativeVehicleOperations(
+            $user,
+            $route,
+            $date,
+            $representativeId,
+        );
 
         return [
             'journey' => $journey === null ? null : [
@@ -263,6 +270,97 @@ class FieldTodayReadService
                 'cancelled' => (clone $returns)->where('status', 'cancelled')->count(),
                 'confirmed_amount' => $this->decimal(
                     (clone $returns)->where('status', 'confirmed')->sum('total_amount'),
+                ),
+            ],
+            'load_custody' => $vehicleOperations['load_custody'],
+            'stock' => $vehicleOperations['stock'],
+            'expenses' => $vehicleOperations['expenses'],
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function representativeVehicleOperations(
+        User $user,
+        DistributionRoute $route,
+        string $date,
+        int $representativeId,
+    ): array {
+        $loads = VehicleLoad::withoutGlobalScopes()
+            ->withCount([
+                'items',
+                'items as different_items_count' => fn (Builder $query): Builder => $query
+                    ->whereNotNull('received_quantity')
+                    ->whereColumn('received_quantity', '!=', 'quantity'),
+            ])
+            ->whereDate('load_date', $date)
+            ->where('route_id', $route->getKey())
+            ->where('status', 'approved')
+            ->where(function (Builder $query) use ($representativeId): void {
+                $query->where('sales_representative_id', $representativeId)
+                    ->orWhereNull('sales_representative_id');
+            });
+        $loads = $this->scoped($loads, $user)
+            ->orderByRaw("CASE handover_status WHEN 'pending' THEN 0 WHEN 'discrepancy' THEN 1 ELSE 2 END")
+            ->orderBy('id')
+            ->get();
+
+        $warehouseId = $route->vehicle?->warehouse?->getKey();
+        $stock = null;
+
+        if ($warehouseId !== null) {
+            $balances = StockBalance::withoutGlobalScopes()
+                ->where('warehouse_id', $warehouseId)
+                ->where('quantity', '>', 0);
+            $balances = $this->scoped($balances, $user);
+
+            $stock = [
+                'batches_count' => (clone $balances)->count(),
+                'products_count' => (clone $balances)->distinct()->count('product_id'),
+                'total_quantity' => $this->decimal((clone $balances)->sum('quantity'), 3),
+            ];
+        }
+
+        $expenses = VehicleExpense::withoutGlobalScopes()
+            ->whereDate('expense_date', $date)
+            ->where('route_id', $route->getKey())
+            ->where('sales_representative_id', $representativeId);
+        $expenses = $this->scoped($expenses, $user);
+
+        $handoverStatuses = $loads->pluck('handover_status');
+        $loadCustodyStatus = match (true) {
+            $loads->isEmpty() => 'none',
+            $handoverStatuses->contains('discrepancy') => 'discrepancy',
+            $handoverStatuses->every(fn (mixed $status): bool => $status === 'received') => 'received',
+            default => 'pending',
+        };
+        $primaryLoad = $loads->first();
+
+        return [
+            'load_custody' => [
+                'status' => $loadCustodyStatus,
+                'loads_count' => $loads->count(),
+                'pending_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'pending')->count(),
+                'received_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'received')->count(),
+                'discrepancy_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'discrepancy')->count(),
+                'primary_load' => $primaryLoad === null ? null : [
+                    'id' => (int) $primaryLoad->getKey(),
+                    'load_number' => $primaryLoad->load_number,
+                    'status' => $primaryLoad->status,
+                    'handover_status' => $primaryLoad->handover_status,
+                    'items_count' => (int) $primaryLoad->items_count,
+                    'total_quantity' => $this->decimal($primaryLoad->total_quantity, 3),
+                    'different_items_count' => (int) $primaryLoad->different_items_count,
+                ],
+            ],
+            'stock' => $stock,
+            'expenses' => [
+                'total' => (clone $expenses)->count(),
+                'pending' => (clone $expenses)->where('status', 'pending')->count(),
+                'approved' => (clone $expenses)->where('status', 'approved')->count(),
+                'rejected' => (clone $expenses)->where('status', 'rejected')->count(),
+                'total_amount' => $this->decimal((clone $expenses)->sum('amount')),
+                'approved_amount' => $this->decimal(
+                    (clone $expenses)->where('status', 'approved')->sum('amount'),
                 ),
             ],
         ];

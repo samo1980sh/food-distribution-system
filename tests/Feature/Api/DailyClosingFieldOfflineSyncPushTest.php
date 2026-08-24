@@ -7,6 +7,7 @@ use App\Models\DistributionRoute;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\SalesJourney;
 use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
@@ -29,6 +30,7 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
         );
         $salesToken = $this->tokenFor($sales, 'closing-sales-device');
         $salesContextKey = $this->contextKey($salesToken);
+        $this->completedJourney($context, $sales);
 
         $opened = $this->withFreshToken($salesToken)
             ->postJson('/api/v1/operational/daily-closings/open-today', [
@@ -293,6 +295,25 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
         $employee->update(['user_id' => $user->id]);
 
         return $user;
+    }
+
+    /** @param array<string, mixed> $context */
+    private function completedJourney(array $context, User $user): SalesJourney
+    {
+        return SalesJourney::query()->create([
+            'journey_number' => 'FIELD-CLOSE-SYNC-JOURNEY',
+            'journey_date' => today(),
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'driver_id' => null,
+            'status' => 'completed',
+            'started_at' => now()->subHour(),
+            'finished_at' => now(),
+            'created_by' => $user->id,
+            'operation_source' => 'mobile_sales',
+        ]);
     }
 
     private function withFreshToken(string $token): static

@@ -52,6 +52,7 @@ class FieldTodayReadApiTest extends TestCase
     {
         $first = $this->context('A', ['monday']);
         $second = $this->context('B', ['monday']);
+        $first['route']->update(['driver_id' => null]);
         $user = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $first['representative']);
 
         $this->invoice($first, 'A-DRAFT', 'draft', 25);
@@ -67,6 +68,7 @@ class FieldTodayReadApiTest extends TestCase
             ->assertJsonPath('data.available_roles.0', User::ROLE_SALES_REPRESENTATIVE)
             ->assertJsonPath('data.contexts.driver', null)
             ->assertJsonPath('data.contexts.sales_representative.status', 'ready')
+            ->assertJsonPath('data.contexts.sales_representative.readiness.ready', true)
             ->assertJsonPath('data.contexts.sales_representative.route.id', $first['route']->id)
             ->assertJsonPath('data.contexts.sales_representative.summary.assigned_customers', 1)
             ->assertJsonPath('data.contexts.sales_representative.summary.invoices.total', 2)

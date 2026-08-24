@@ -137,7 +137,7 @@ class DailyClosingFieldHandoverService
             $ownerRole = $this->ensureResponsibleEmployee($closing, $user, 'inventory');
 
             if ($ownerRole === UserRole::SALES_REPRESENTATIVE) {
-                $this->ensureSalesJourneyCompletedWhenPresent($closing);
+                $this->ensureSalesJourneyCompleted($closing);
             } else {
                 $this->ensureDriverJourneyCompletedWhenPresent($closing);
             }
@@ -205,7 +205,7 @@ class DailyClosingFieldHandoverService
             $this->ensureFieldDraft($closing);
             $this->ensureResponsibleEmployee($closing, $user, 'cash');
 
-            $this->ensureSalesJourneyCompletedWhenPresent($closing);
+            $this->ensureSalesJourneyCompleted($closing);
 
             if ($closing->cashSubmitted()) {
                 throw new RuntimeException('تم تسليم النقد سابقاً ولا يمكن استبداله من التطبيق الميداني.');
@@ -314,7 +314,7 @@ class DailyClosingFieldHandoverService
         }
     }
 
-    private function ensureSalesJourneyCompletedWhenPresent(DailyClosing $closing): void
+    private function ensureSalesJourneyCompleted(DailyClosing $closing): void
     {
         $journey = SalesJourney::withoutGlobalScopes()
             ->whereDate('journey_date', $closing->closing_date)
@@ -322,6 +322,15 @@ class DailyClosingFieldHandoverService
             ->where('sales_representative_id', $closing->sales_representative_id)
             ->lockForUpdate()
             ->first();
+
+        $requiresUnifiedJourney = $closing->operation_source === OperationSource::MOBILE_SALES
+            || $closing->driver_id === null;
+
+        if ($journey === null && $requiresUnifiedJourney) {
+            throw new RuntimeException(
+                'يجب إكمال رحلة المندوب الموحدة قبل تسليم الجرد أو النقد.',
+            );
+        }
 
         if ($journey !== null && ! $journey->isCompleted()) {
             throw new RuntimeException(

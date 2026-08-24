@@ -8,11 +8,11 @@ use App\Models\DistributionRoute;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
-use App\Models\StockBalance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -38,6 +38,7 @@ class SalesFieldOperationsApiTest extends TestCase
             ->postJson('/api/v1/operational/sales-journeys/open-today')
             ->assertCreated()
             ->assertJsonPath('data.status', 'ready')
+            ->assertJsonPath('data.driver', null)
             ->assertJsonCount(2, 'data.visits');
 
         $journeyId = (int) $opened->json('data.id');
@@ -135,6 +136,8 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.summary.pending', 0)
             ->assertJsonPath('data.summary.in_progress', 0)
             ->assertJsonPath('data.summary.completed', 3);
+
+        $this->assertDatabaseCount('driver_journeys', 0);
     }
 
     public function test_existing_today_journey_keeps_its_visit_plan_frozen_unless_new_customer_is_explicitly_attached(): void
@@ -346,7 +349,7 @@ class SalesFieldOperationsApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
+            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'SLS-ROUTE',
             'name' => 'خط المبيعات',
@@ -388,6 +391,7 @@ class SalesFieldOperationsApiTest extends TestCase
         $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active']);
         $user->syncRoles([User::ROLE_SALES_REPRESENTATIVE]);
         $representative->update(['user_id' => $user->id]);
+
         return $user;
     }
 
@@ -399,6 +403,7 @@ class SalesFieldOperationsApiTest extends TestCase
     private function withFreshToken(string $token): static
     {
         $this->app['auth']->forgetGuards();
+
         return $this->withToken($token);
     }
 }

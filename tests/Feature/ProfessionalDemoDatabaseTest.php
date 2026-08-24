@@ -6,8 +6,8 @@ use App\Models\Customer;
 use App\Models\DistributionRoute;
 use App\Models\DriverJourney;
 use App\Models\Product;
-use App\Models\SalesJourney;
 use App\Models\SalesInvoice;
+use App\Models\SalesJourney;
 use App\Models\StockBalance;
 use App\Models\User;
 use App\Services\Authorization\AccessScopeService;
@@ -58,7 +58,7 @@ class ProfessionalDemoDatabaseTest extends TestCase
 
         $this->assertSame(3, SalesJourney::query()->whereDate('journey_date', today())->count());
         $this->assertSame(16, DB::table('sales_visits')->count());
-        $this->assertSame(3, DriverJourney::query()->whereDate('journey_date', today())->count());
+        $this->assertSame(0, DriverJourney::query()->whereDate('journey_date', today())->count());
         $this->assertSame(0, DB::table('driver_deliveries')->count());
         $this->assertSame(0, DB::table('driver_delivery_items')->count());
     }
@@ -116,17 +116,11 @@ class ProfessionalDemoDatabaseTest extends TestCase
             ->whereDate('journey_date', today())
             ->where('route_id', $centralRoute->id)
             ->firstOrFail();
-        $driverJourney = DriverJourney::query()
-            ->whereDate('journey_date', today())
-            ->where('route_id', $centralRoute->id)
-            ->firstOrFail();
-
         $this->assertSame('ready', $salesJourney->status);
+        $this->assertNull($salesJourney->driver_id);
         $this->assertSame(5, $salesJourney->visits()->count());
         $this->assertSame(5, $salesJourney->visits()->where('status', 'pending')->count());
-
-        $this->assertSame('ready', $driverJourney->status);
-        $this->assertSame(0, $driverJourney->deliveries()->count());
+        $this->assertSame(0, DriverJourney::query()->whereDate('journey_date', today())->count());
 
         $this->assertTrue(DB::table('vehicle_loads')
             ->whereDate('load_date', today())

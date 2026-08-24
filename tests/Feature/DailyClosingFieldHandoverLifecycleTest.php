@@ -7,6 +7,7 @@ use App\Models\DistributionRoute;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\SalesJourney;
 use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
@@ -30,6 +31,7 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
         $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
         $handover = app(DailyClosingFieldHandoverService::class);
+        $this->completedJourney($context, $sales);
 
         $this->actingAs($sales);
         $closing = $handover->openToday($sales, $context['route']->id);
@@ -185,5 +187,24 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         $employee->update(['user_id' => $user->id]);
 
         return $user;
+    }
+
+    /** @param array<string, mixed> $context */
+    private function completedJourney(array $context, User $user): SalesJourney
+    {
+        return SalesJourney::query()->create([
+            'journey_number' => 'FIELD-CLOSE-LIFECYCLE-JOURNEY',
+            'journey_date' => today(),
+            'route_id' => $context['route']->id,
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'driver_id' => null,
+            'status' => 'completed',
+            'started_at' => now()->subHour(),
+            'finished_at' => now(),
+            'created_by' => $user->id,
+            'operation_source' => 'mobile_sales',
+        ]);
     }
 }

@@ -9,6 +9,7 @@ use App\Models\DistributionRoute;
 use App\Models\SalesJourney;
 use App\Models\SalesVisit;
 use App\Models\User;
+use App\Models\VehicleLoad;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -20,8 +21,7 @@ class SalesFieldOperationService
 {
     public function __construct(
         private readonly FieldRouteAssignmentResolver $routeResolver,
-    ) {
-    }
+    ) {}
 
     public function openToday(User $user, ?int $routeId = null): SalesJourney
     {
@@ -76,7 +76,7 @@ class SalesFieldOperationService
                     'vehicle_id' => $vehicle->getKey(),
                     'warehouse_id' => $warehouse->getKey(),
                     'sales_representative_id' => $route->sales_representative_id,
-                    'driver_id' => $route->driver_id,
+                    'driver_id' => null,
                     'status' => 'ready',
                     'created_by' => Auth::id(),
                     'operation_source' => OperationSource::MOBILE_SALES,
@@ -104,10 +104,48 @@ class SalesFieldOperationService
                 throw new RuntimeException('لا يمكن بدء رحلة مبيعات ليست بحالة جاهزة.');
             }
 
+            $this->ensureActiveRepresentativeContext($journey);
+
             app(DailyClosingGuard::class)->ensureOpen(
                 $journey->journey_date,
                 (int) $journey->warehouse_id,
             );
+
+            $conflictingJourneyExists = SalesJourney::withoutGlobalScopes()
+                ->whereDate('journey_date', $journey->journey_date)
+                ->where($journey->getQualifiedKeyName(), '!=', $journey->getKey())
+                ->where('status', 'in_progress')
+                ->where(function ($query) use ($journey): void {
+                    $query->where('sales_representative_id', $journey->sales_representative_id)
+                        ->orWhere('vehicle_id', $journey->vehicle_id)
+                        ->orWhere('warehouse_id', $journey->warehouse_id);
+                })
+                ->exists();
+
+            if ($conflictingJourneyExists) {
+                throw new OperationalApiException(
+                    'توجد رحلة ميدانية أخرى قيد التنفيذ للمندوب أو السيارة المحددة.',
+                    'sales_journey_conflict',
+                    409,
+                );
+            }
+
+            $pendingLoadExists = VehicleLoad::withoutGlobalScopes()
+                ->whereDate('load_date', $journey->journey_date)
+                ->where('route_id', $journey->route_id)
+                ->where('vehicle_id', $journey->vehicle_id)
+                ->where('to_warehouse_id', $journey->warehouse_id)
+                ->where('status', 'approved')
+                ->where('handover_status', 'pending')
+                ->exists();
+
+            if ($pendingLoadExists) {
+                throw new OperationalApiException(
+                    'يجب استلام جميع أوامر التحميل المعتمدة قبل بدء الرحلة.',
+                    'vehicle_load_handover_pending',
+                    409,
+                );
+            }
 
             // The visit plan is frozen when the journey is first opened.
             // Customers created afterwards are attached only when the caller
@@ -211,6 +249,13 @@ class SalesFieldOperationService
             if (! $journey->isInProgress()) {
                 throw new RuntimeException('لا يمكن إنهاء رحلة مبيعات ليست قيد التنفيذ.');
             }
+
+            $this->ensureActiveRepresentativeContext($journey);
+
+            app(DailyClosingGuard::class)->ensureOpen(
+                $journey->journey_date,
+                (int) $journey->warehouse_id,
+            );
 
             // The visit plan is frozen once the journey starts. Customers
             // created during an active journey are attached only when the
@@ -364,6 +409,44 @@ class SalesFieldOperationService
     public function generateJourneyNumber(): string
     {
         return app(DocumentNumberService::class)->next('sales_journey', 'SJ');
+    }
+
+    private function ensureActiveRepresentativeContext(SalesJourney $journey): void
+    {
+        $user = Auth::user();
+        $employeeId = $user instanceof User
+            ? $user->employee()->value('id')
+            : null;
+
+        $journey->loadMissing([
+            'route.salesRepresentative',
+            'route.vehicle.warehouse',
+        ]);
+        $route = $journey->route;
+        $vehicle = $route?->vehicle;
+        $warehouse = $vehicle?->warehouse;
+
+        $valid = $user instanceof User
+            && $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
+            && $employeeId !== null
+            && (int) $employeeId === (int) $journey->sales_representative_id
+            && $journey->journey_date?->isToday()
+            && $route?->status === 'active'
+            && (int) $route?->sales_representative_id === (int) $journey->sales_representative_id
+            && $route?->salesRepresentative?->status === 'active'
+            && $vehicle?->status === 'active'
+            && (int) $vehicle?->getKey() === (int) $journey->vehicle_id
+            && $warehouse?->type === 'vehicle'
+            && $warehouse?->status === 'active'
+            && (int) $warehouse?->getKey() === (int) $journey->warehouse_id;
+
+        if (! $valid) {
+            throw new OperationalApiException(
+                'سياق رحلة المندوب لم يعد يطابق التعيين التشغيلي الفعال لليوم.',
+                'sales_journey_context_mismatch',
+                409,
+            );
+        }
     }
 
     private function syncRouteCustomers(SalesJourney $journey): void

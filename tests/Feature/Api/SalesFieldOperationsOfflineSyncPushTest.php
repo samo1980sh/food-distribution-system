@@ -25,18 +25,26 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.driver', null);
         $journeyId = (int) $opened->json('data.id');
 
-        $started = $this->push($token, $contextKey, 'sales-start-batch', [[
+        $startOperation = [[
             'operation_id' => 'sales-start-operation',
             'entity' => 'sales_journeys',
             'action' => 'start',
             'record_id' => $journeyId,
             'base_version' => (string) $opened->json('data.sync_version'),
             'payload' => [],
-        ]])->assertOk()
+        ]];
+        $started = $this->push($token, $contextKey, 'sales-start-batch', $startOperation)
+            ->assertOk()
             ->assertJsonPath('data.results.0.status', 'applied')
+            ->assertJsonPath('data.results.0.record.status', 'in_progress');
+
+        $this->push($token, $contextKey, 'sales-start-replay-batch', $startOperation)
+            ->assertOk()
+            ->assertJsonPath('data.results.0.status', 'replayed')
             ->assertJsonPath('data.results.0.record.status', 'in_progress');
 
         $customerCreate = [[
@@ -103,6 +111,8 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             ->assertJsonPath('data.results.0.record.status', 'completed');
 
         $this->assertDatabaseHas('sales_journeys', ['id' => $journeyId, 'status' => 'completed']);
+        $this->assertDatabaseCount('driver_journeys', 0);
+        $this->assertDatabaseCount('driver_deliveries', 0);
         $this->assertDatabaseCount('sales_visits', 1);
         $this->assertDatabaseCount('customers', 2);
     }
@@ -142,7 +152,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
         ]);
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id, 'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id, 'sales_representative_id' => $representative->id,
+            'driver_id' => null, 'sales_representative_id' => $representative->id,
             'code' => 'SLS-SYNC-ROUTE', 'name' => 'خط مزامنة المبيعات',
             'visit_days' => [], 'status' => 'active',
         ]);
@@ -150,6 +160,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'code' => 'SLS-SYNC-CUS', 'name' => 'عميل مزامنة المبيعات',
             'area_id' => $area->id, 'route_id' => $route->id, 'status' => 'active',
         ]);
+
         return compact('representative', 'route');
     }
 
@@ -158,6 +169,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
         $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active']);
         $user->syncRoles([User::ROLE_SALES_REPRESENTATIVE]);
         $representative->update(['user_id' => $user->id]);
+
         return $user;
     }
 
@@ -165,12 +177,14 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
     {
         $token = $user->createToken('sales-field-sync-test', [(string) config('mobile_api.token_ability')]);
         $token->accessToken->forceFill(['device_id' => $deviceId, 'device_name' => $deviceId])->save();
+
         return $token->plainTextToken;
     }
 
     private function withFreshToken(string $token): static
     {
         $this->app['auth']->forgetGuards();
+
         return $this->withToken($token);
     }
 }

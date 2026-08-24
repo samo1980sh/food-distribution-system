@@ -4,7 +4,6 @@ namespace Database\Seeders\Demo;
 
 use App\Models\DistributionRoute;
 use App\Models\User;
-use App\Services\Distribution\DriverFieldOperationService;
 use App\Services\Distribution\SalesFieldOperationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Auth;
@@ -20,16 +19,7 @@ class ProfessionalFieldWorkspacesSeeder extends Seeder
             ['email' => 'sales.rif@demo.local', 'route' => 'RT-RIF-E'],
         ];
 
-        $driverScenarios = [
-            ['email' => 'driver@demo.local', 'route' => 'RT-DAM-C'],
-            ['email' => 'field.team@demo.local', 'route' => 'RT-DAM-S'],
-            ['email' => 'driver.rif@demo.local', 'route' => 'RT-RIF-E'],
-        ];
-
-        $routes = $this->prepareTodayRoutes([
-            ...$salesScenarios,
-            ...$driverScenarios,
-        ]);
+        $routes = $this->prepareTodayRoutes($salesScenarios);
 
         try {
             foreach ($salesScenarios as $scenario) {
@@ -43,25 +33,13 @@ class ProfessionalFieldWorkspacesSeeder extends Seeder
                     },
                 );
             }
-
-            foreach ($driverScenarios as $scenario) {
-                $this->runAs(
-                    $scenario['email'],
-                    function (User $user) use ($scenario, $routes): void {
-                        app(DriverFieldOperationService::class)->openToday(
-                            $user,
-                            (int) $routes[$scenario['route']]->getKey(),
-                        );
-                    },
-                );
-            }
         } finally {
             Auth::logout();
         }
     }
 
     /**
-     * @param list<array{email: string, route: string}> $scenarios
+     * @param  list<array{email: string, route: string}>  $scenarios
      * @return array<string, DistributionRoute>
      */
     private function prepareTodayRoutes(array $scenarios): array
