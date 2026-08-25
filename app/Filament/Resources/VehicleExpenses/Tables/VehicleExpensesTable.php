@@ -6,7 +6,6 @@ use App\Enums\OperationSource;
 use App\Filament\Resources\VehicleExpenses\Actions\VehicleExpenseActions;
 use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
 use App\Models\VehicleExpense;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -106,12 +105,6 @@ class VehicleExpensesTable
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('salesRepresentative.name')
                     ->label('مندوب المبيعات')
                     ->searchable()
@@ -171,7 +164,6 @@ class VehicleExpensesTable
                 ActionGroup::make([
                     ViewAction::make()->label('عرض التفاصيل الكاملة'),
                     EditAction::make()
-                        ->mutateDataUsing(fn (array $data, VehicleExpense $record): array => AdminOperationalDriverGuard::sanitize($data, $record))
                         ->label('تعديل المصروف')
                         ->modalHeading('تعديل مصروف سيارة')
                         ->slideOver()

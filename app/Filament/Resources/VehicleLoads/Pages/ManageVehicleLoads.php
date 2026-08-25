@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\VehicleLoads\Pages;
 
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
@@ -15,7 +14,6 @@ class ManageVehicleLoads extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->mutateDataUsing(fn (array $data): array => AdminOperationalDriverGuard::sanitize($data))
                 ->visible(fn (): bool => VehicleLoadResource::canCreate())
                 ->label('إضافة أمر تحميل')
                 ->modalHeading('إضافة أمر تحميل سيارة')

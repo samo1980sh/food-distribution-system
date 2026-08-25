@@ -59,7 +59,7 @@ class OperationalBootstrapController extends Controller
 
         $routes = $modules['routes']
             ? DistributionRoute::query()
-                ->with(['area', 'vehicle.warehouse', 'driver', 'salesRepresentative'])
+                ->with(['area', 'vehicle.warehouse', 'salesRepresentative'])
                 ->where('status', 'active')
                 ->orderBy('name')
                 ->get()

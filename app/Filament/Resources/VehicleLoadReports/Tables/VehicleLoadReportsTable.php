@@ -108,12 +108,6 @@ class VehicleLoadReportsTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('salesRepresentative.name')
                     ->label('مندوب المبيعات')
                     ->searchable()
@@ -190,12 +184,6 @@ class VehicleLoadReportsTable
                     ->searchable()
                     ->preload(),
 
-                SelectFilter::make('driver_id')
-                    ->label('السائق')
-                    ->relationship('driver', 'name')
-                    ->searchable()
-                    ->preload(),
-
                 SelectFilter::make('sales_representative_id')
                     ->label('مندوب المبيعات')
                     ->relationship('salesRepresentative', 'name')
@@ -226,11 +214,10 @@ class VehicleLoadReportsTable
                     ->columnSpanFull(),
 
                 Section::make('السيارة وفريق التوزيع')
-                    ->description('ضيّق النتائج حسب السيارة وخط التوزيع والسائق ومندوب المبيعات.')
+                    ->description('ضيّق النتائج حسب السيارة وخط التوزيع ومندوب المبيعات.')
                     ->schema([
                         $filters['vehicle_id'],
                         $filters['route_id'],
-                        $filters['driver_id'],
                         $filters['sales_representative_id'],
                     ])
                     ->columns(2)

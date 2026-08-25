@@ -292,7 +292,6 @@ class DistributionRouteExcelImportService
                     DistributionRoute::query()->create([
                         'area_id' => $area->id,
                         'vehicle_id' => $vehicleId,
-                        'driver_id' => null,
                         'sales_representative_id' => $representativeId,
                         'code' => $row['code'],
                         'name' => $row['name'],

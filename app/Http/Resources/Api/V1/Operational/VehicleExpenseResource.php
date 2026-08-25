@@ -43,9 +43,6 @@ class VehicleExpenseResource extends OperationalResource
                 'code' => $this->route->code,
                 'name' => $this->route->name,
             ] : null),
-            'driver' => $this->whenLoaded('driver', fn () => $this->driver
-                ? EmployeeSummaryResource::make($this->driver)->resolve($request)
-                : null),
             'sales_representative' => $this->whenLoaded('salesRepresentative', fn () => $this->salesRepresentative
                 ? EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request)
                 : null),

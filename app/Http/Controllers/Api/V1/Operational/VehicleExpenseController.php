@@ -26,7 +26,6 @@ class VehicleExpenseController extends Controller
         'vehicle.warehouse',
         'warehouse.vehicle',
         'route',
-        'driver',
         'salesRepresentative',
     ];
 

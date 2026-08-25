@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('phone')->nullable();
             $table->string('job_title')->nullable();
-            $table->string('type')->default('driver');
+            $table->string('type')->default('sales_representative');
             $table->string('status')->default('active');
             $table->text('notes')->nullable();
             $table->timestamps();

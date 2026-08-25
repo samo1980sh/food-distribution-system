@@ -32,7 +32,6 @@ class EmployeesTable
                     ->label('النوع التشغيلي')
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'driver' => 'سائق',
                         'sales_representative' => 'مندوب مبيعات',
                         'warehouse_keeper' => 'أمين مستودع',
                         'accountant' => 'محاسب',
@@ -65,7 +64,6 @@ class EmployeesTable
                 SelectFilter::make('type')
                     ->label('نوع الموظف')
                     ->options([
-                        'driver' => 'سائق',
                         'sales_representative' => 'مندوب مبيعات',
                         'warehouse_keeper' => 'أمين مستودع',
                         'accountant' => 'محاسب',

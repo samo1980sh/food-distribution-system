@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PermissionName;
 use App\Enums\UserRole;
+use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,21 +19,27 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
     use HasRoles {
         hasPermissionTo as private hasPermissionToThroughRoles;
     }
 
     public const ROLE_SUPER_ADMIN = UserRole::SUPER_ADMIN->value;
+
     public const ROLE_MANAGER = UserRole::MANAGER->value;
+
     public const ROLE_SUPERVISOR = UserRole::SUPERVISOR->value;
+
     public const ROLE_WAREHOUSE_KEEPER = UserRole::WAREHOUSE_KEEPER->value;
+
     public const ROLE_ACCOUNTANT = UserRole::ACCOUNTANT->value;
+
     public const ROLE_SALES_REPRESENTATIVE = UserRole::SALES_REPRESENTATIVE->value;
-    public const ROLE_DRIVER = UserRole::DRIVER->value;
 
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
 
     /**

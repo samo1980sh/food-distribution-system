@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\SalesInvoice;
@@ -16,171 +14,59 @@ use App\Models\Vehicle;
 use App\Models\Warehouse;
 use App\Services\Sales\SalesInvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use RuntimeException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_historical_driver_journey_creation_preserves_numbering_and_relationships(): void
-    {
-        $firstContext = $this->context('NUMBER-A', 40);
-        $first = $this->legacyJourney($firstContext, 'ready');
-
-        $this->assertSame('JRN-'.today()->format('Ymd').'-00001', $first->journey_number);
-        $this->assertTrue($first->route->is($firstContext['route']));
-        $this->assertTrue($first->vehicle->is($firstContext['vehicle']));
-        $this->assertTrue($first->warehouse->is($firstContext['warehouse']));
-        $this->assertTrue($first->driver->is($firstContext['driver']));
-        $this->assertTrue(
-            $first->salesRepresentative->is($firstContext['representative']),
-        );
-
-        $this->app['auth']->forgetGuards();
-        $secondContext = $this->context('NUMBER-B', 40);
-        $second = $this->legacyJourney($secondContext, 'completed');
-
-        $this->assertSame('JRN-'.today()->format('Ymd').'-00002', $second->journey_number);
-    }
-
-    public function test_cash_invoice_confirms_without_driver_journey_or_delivery(): void
-    {
-        $context = $this->context('CASH', 40);
-        $invoice = $this->invoice($context, 'cash', 0, 2);
+    #[DataProvider('paymentCases')]
+    public function test_representative_invoice_confirms_immediately(
+        string $paymentType,
+        float $submittedPaid,
+        string $expectedPaid,
+        string $expectedRemaining,
+    ): void {
+        $context = $this->context(strtoupper($paymentType));
+        $invoice = $this->invoice($context, $paymentType, $submittedPaid, 2);
 
         $confirmed = app(SalesInvoiceService::class)->confirm($invoice);
 
         $this->assertSame('confirmed', $confirmed->status);
-        $this->assertSame('20.00', $confirmed->paid_amount);
-        $this->assertSame('20.00', $confirmed->invoice_cash_amount);
-        $this->assertSame('0.00', $confirmed->remaining_amount);
+        $this->assertSame($expectedPaid, $confirmed->paid_amount);
+        $this->assertSame($expectedPaid, $confirmed->invoice_cash_amount);
+        $this->assertSame($expectedRemaining, $confirmed->remaining_amount);
         $this->assertEqualsWithDelta(38, $this->stockQuantity($context), 0.0001);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDeliveryFree($confirmed);
     }
 
-    public function test_credit_invoice_confirms_without_driver_journey_or_delivery(): void
+    public static function paymentCases(): array
     {
-        $context = $this->context('CREDIT', 40);
-        $invoice = $this->invoice($context, 'credit', 9, 2);
-
-        $confirmed = app(SalesInvoiceService::class)->confirm($invoice);
-
-        $this->assertSame('confirmed', $confirmed->status);
-        $this->assertSame('0.00', $confirmed->paid_amount);
-        $this->assertSame('0.00', $confirmed->invoice_cash_amount);
-        $this->assertSame('20.00', $confirmed->remaining_amount);
-        $this->assertEqualsWithDelta(38, $this->stockQuantity($context), 0.0001);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDeliveryFree($confirmed);
+        return [
+            'cash' => ['cash', 0, '20.00', '0.00'],
+            'credit' => ['credit', 9, '0.00', '20.00'],
+            'partial' => ['partial', 5, '5.00', '15.00'],
+        ];
     }
 
-    public function test_partial_invoice_confirms_without_driver_journey_or_delivery(): void
+    public function test_representative_invoice_cancellation_restores_stock(): void
     {
-        $context = $this->context('PARTIAL', 40);
-        $invoice = $this->invoice($context, 'partial', 5, 2);
-
-        $confirmed = app(SalesInvoiceService::class)->confirm($invoice);
-
-        $this->assertSame('confirmed', $confirmed->status);
-        $this->assertSame('5.00', $confirmed->paid_amount);
-        $this->assertSame('5.00', $confirmed->invoice_cash_amount);
-        $this->assertSame('15.00', $confirmed->remaining_amount);
-        $this->assertEqualsWithDelta(38, $this->stockQuantity($context), 0.0001);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDeliveryFree($confirmed);
-    }
-
-    public function test_multiple_confirmed_representative_invoices_remain_delivery_free(): void
-    {
-        $context = $this->context('MULTIPLE', 40);
-        $first = $this->invoice($context, 'cash', 0, 2, 'A');
-        $second = $this->invoice($context, 'credit', 0, 3, 'B');
-
-        app(SalesInvoiceService::class)->confirm($first);
-        app(SalesInvoiceService::class)->confirm($second);
-
-        $this->assertEqualsWithDelta(35, $this->stockQuantity($context), 0.0001);
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-    }
-
-    public function test_invoice_cancellation_without_legacy_delivery_restores_stock(): void
-    {
-        $context = $this->context('CANCEL-NONE', 40);
+        $context = $this->context('CANCEL');
         $invoice = app(SalesInvoiceService::class)->confirm(
             $this->invoice($context, 'credit', 0, 2),
         );
 
         $cancelled = app(SalesInvoiceService::class)->cancel(
             $invoice,
-            'إلغاء فاتورة فورية دون تسليم سائق قديم.',
+            'إلغاء فاتورة المندوب وإعادة المخزون.',
         );
 
         $this->assertSame('cancelled', $cancelled->status);
         $this->assertEqualsWithDelta(40, $this->stockQuantity($context), 0.0001);
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-    }
-
-    public function test_cancellation_reconciles_pending_legacy_delivery_on_ready_journey(): void
-    {
-        $context = $this->context('CANCEL-READY', 40);
-        $invoice = app(SalesInvoiceService::class)->confirm(
-            $this->invoice($context, 'credit', 0, 2),
-        );
-        $journey = $this->legacyJourney($context, 'ready');
-        $delivery = $this->legacyDelivery($context, $journey, $invoice, 'pending');
-
-        $cancelled = app(SalesInvoiceService::class)->cancel(
-            $invoice,
-            'إلغاء فاتورة مرتبطة بتسليم سائق قديم جاهز.',
-        );
-
-        $this->assertSame('cancelled', $cancelled->status);
-        $this->assertDatabaseMissing('driver_deliveries', ['id' => $delivery->id]);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-        $this->assertDatabaseHas('driver_journeys', [
-            'id' => $journey->id,
-            'status' => 'ready',
-        ]);
-        $this->assertEqualsWithDelta(40, $this->stockQuantity($context), 0.0001);
-    }
-
-    public function test_cancellation_is_blocked_for_progressed_legacy_delivery(): void
-    {
-        $context = $this->context('CANCEL-PROGRESSED', 40);
-        $invoice = app(SalesInvoiceService::class)->confirm(
-            $this->invoice($context, 'credit', 0, 2),
-        );
-        $journey = $this->legacyJourney($context, 'in_progress');
-        $delivery = $this->legacyDelivery($context, $journey, $invoice, 'delivered');
-
-        try {
-            app(SalesInvoiceService::class)->cancel(
-                $invoice,
-                'محاولة إلغاء فاتورة بعد تقدم التسليم القديم.',
-            );
-            $this->fail('Progressed legacy delivery must block invoice cancellation.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('بعد بدء رحلة السائق', $exception->getMessage());
-        }
-
-        $this->assertDatabaseHas('sales_invoices', [
-            'id' => $invoice->id,
-            'status' => 'confirmed',
-        ]);
-        $this->assertDatabaseHas('driver_deliveries', [
-            'id' => $delivery->id,
-            'status' => 'delivered',
-        ]);
-        $this->assertDatabaseCount('driver_delivery_items', 1);
-        $this->assertEqualsWithDelta(38, $this->stockQuantity($context), 0.0001);
     }
 
     /** @return array<string, mixed> */
-    private function context(string $suffix, float $stock): array
+    private function context(string $suffix): array
     {
         $area = Area::query()->create([
             'code' => 'R1A-AREA-'.$suffix,
@@ -199,12 +85,6 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'R1A-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => User::ROLE_DRIVER,
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'R1A-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -214,7 +94,6 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'R1A-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -243,26 +122,15 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
             'product_id' => $product->id,
             'batch_key' => '',
             'expiry_key' => '',
-            'quantity' => $stock,
+            'quantity' => 40,
             'average_unit_cost' => 5,
         ]);
-        $user = User::factory()->create([
-            'role' => User::ROLE_SALES_REPRESENTATIVE,
-            'status' => User::STATUS_ACTIVE,
-        ]);
+        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
         $user->syncRoles([User::ROLE_SALES_REPRESENTATIVE]);
         $representative->update(['user_id' => $user->id]);
         $this->actingAs($user);
 
-        return compact(
-            'vehicle',
-            'warehouse',
-            'driver',
-            'representative',
-            'route',
-            'customer',
-            'product',
-        );
+        return compact('vehicle', 'warehouse', 'representative', 'route', 'customer', 'product');
     }
 
     /** @param array<string, mixed> $context */
@@ -271,10 +139,9 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
         string $paymentType,
         float $paidAmount,
         float $quantity,
-        string $suffix = 'A',
     ): SalesInvoice {
         $invoice = SalesInvoice::query()->create([
-            'invoice_number' => 'R1A-INV-'.$context['route']->id.'-'.$suffix,
+            'invoice_number' => 'R1A-INV-'.$context['route']->id,
             'customer_id' => $context['customer']->id,
             'vehicle_id' => $context['vehicle']->id,
             'route_id' => $context['route']->id,
@@ -296,54 +163,6 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
     }
 
     /** @param array<string, mixed> $context */
-    private function legacyJourney(array $context, string $status): DriverJourney
-    {
-        return DriverJourney::query()->create([
-            'journey_date' => today(),
-            'route_id' => $context['route']->id,
-            'vehicle_id' => $context['vehicle']->id,
-            'warehouse_id' => $context['warehouse']->id,
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['representative']->id,
-            'status' => $status,
-            'started_at' => $status === 'in_progress' ? now() : null,
-        ]);
-    }
-
-    /** @param array<string, mixed> $context */
-    private function legacyDelivery(
-        array $context,
-        DriverJourney $journey,
-        SalesInvoice $invoice,
-        string $status,
-    ): DriverDelivery {
-        $item = $invoice->items()->firstOrFail();
-        $delivery = DriverDelivery::query()->create([
-            'driver_journey_id' => $journey->id,
-            'sales_invoice_id' => $invoice->id,
-            'customer_id' => $context['customer']->id,
-            'route_id' => $context['route']->id,
-            'vehicle_id' => $context['vehicle']->id,
-            'warehouse_id' => $context['warehouse']->id,
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['representative']->id,
-            'status' => $status,
-            'expected_quantity' => $item->quantity,
-            'delivered_quantity' => $status === 'delivered' ? $item->quantity : 0,
-        ]);
-        $delivery->items()->create([
-            'sales_invoice_item_id' => $item->id,
-            'product_id' => $item->product_id,
-            'batch_number' => $item->batch_number,
-            'expiry_date' => $item->expiry_date,
-            'expected_quantity' => $item->quantity,
-            'delivered_quantity' => $status === 'delivered' ? $item->quantity : 0,
-        ]);
-
-        return $delivery;
-    }
-
-    /** @param array<string, mixed> $context */
     private function stockQuantity(array $context): float
     {
         return (float) StockBalance::query()
@@ -352,13 +171,5 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
             ->where('batch_key', '')
             ->where('expiry_key', '')
             ->value('quantity');
-    }
-
-    private function assertDeliveryFree(SalesInvoice $invoice): void
-    {
-        $this->assertDatabaseMissing('driver_deliveries', [
-            'sales_invoice_id' => $invoice->id,
-        ]);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 }

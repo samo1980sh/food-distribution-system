@@ -231,10 +231,6 @@
                     <strong>{{ $expense->route?->name ?? '-' }}</strong>
                 </div>
                 <div class="field">
-                    <span>السائق</span>
-                    <strong>{{ $expense->driver?->name ?? '-' }}</strong>
-                </div>
-                <div class="field">
                     <span>المندوب</span>
                     <strong>{{ $expense->salesRepresentative?->name ?? '-' }}</strong>
                 </div>
@@ -247,7 +243,7 @@
         </section>
 
         <div class="signatures">
-            <div class="signature">السائق / المندوب</div>
+            <div class="signature">مندوب المبيعات</div>
             <div class="signature">المشرف</div>
             <div class="signature">المحاسب</div>
         </div>

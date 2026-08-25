@@ -66,7 +66,6 @@ class VehicleOperationsReportFilamentWorkspaceTest extends TestCase
             "SelectFilter::make('status')",
             "SelectFilter::make('vehicle_id')",
             "SelectFilter::make('route_id')",
-            "SelectFilter::make('driver_id')",
             "SelectFilter::make('sales_representative_id')",
             "SelectFilter::make('from_warehouse_id')",
             "SelectFilter::make('to_warehouse_id')",
@@ -100,7 +99,6 @@ class VehicleOperationsReportFilamentWorkspaceTest extends TestCase
             "SelectFilter::make('vehicle_id')",
             "SelectFilter::make('warehouse_id')",
             "SelectFilter::make('route_id')",
-            "SelectFilter::make('driver_id')",
             "SelectFilter::make('sales_representative_id')",
             "SelectFilter::make('expense_type')",
             "SelectFilter::make('payment_method')",
@@ -122,7 +120,6 @@ class VehicleOperationsReportFilamentWorkspaceTest extends TestCase
     {
         $reports = [
             'Filament/Resources/VehicleLoadReports/Tables/VehicleLoadReportsTable.php' => [
-                'driver.name',
                 'salesRepresentative.name',
                 'toWarehouse.name',
                 'items_count',
@@ -130,7 +127,6 @@ class VehicleOperationsReportFilamentWorkspaceTest extends TestCase
             ],
             'Filament/Resources/VehicleExpenseReports/Tables/VehicleExpenseReportsTable.php' => [
                 'route.name',
-                'driver.name',
                 'salesRepresentative.name',
                 'approvedBy.name',
                 'approved_at',

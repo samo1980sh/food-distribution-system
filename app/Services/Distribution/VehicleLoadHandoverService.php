@@ -131,8 +131,7 @@ class VehicleLoadHandoverService
                     ->body(collect([
                         $vehicleLoad->load_number,
                         $vehicleLoad->vehicle?->name,
-                        $vehicleLoad->salesRepresentative?->name
-                            ?? $vehicleLoad->driver?->name,
+                        $vehicleLoad->salesRepresentative?->name,
                     ])->filter(fn (mixed $value): bool => filled($value))->implode(' - '))
                     ->actions([
                         Action::make('view')
@@ -145,7 +144,6 @@ class VehicleLoadHandoverService
                         'vehicle_load_id' => $vehicleLoad->getKey(),
                         'vehicle_load_number' => $vehicleLoad->load_number,
                         'vehicle_name' => $vehicleLoad->vehicle?->name,
-                        'driver_name' => $vehicleLoad->driver?->name,
                         'sales_representative_name' => $vehicleLoad->salesRepresentative?->name,
                         'notification_type' => 'vehicle_load_handover_discrepancy',
                     ])

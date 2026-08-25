@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('area_id')->constrained()->cascadeOnDelete();
             $table->foreignId('vehicle_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('driver_id')->nullable()->constrained('employees')->nullOnDelete();
             $table->foreignId('sales_representative_id')->nullable()->constrained('employees')->nullOnDelete();
             $table->string('code')->unique();
             $table->string('name');

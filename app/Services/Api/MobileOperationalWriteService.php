@@ -521,7 +521,6 @@ class MobileOperationalWriteService
             'route_id' => (int) $route->getKey(),
             'vehicle_id' => (int) $vehicle->getKey(),
             'warehouse_id' => (int) $warehouse->getKey(),
-            'driver_id' => null,
             'sales_representative_id' => (int) $employeeId,
         ];
     }
@@ -554,7 +553,6 @@ class MobileOperationalWriteService
             'warehouse_id' => $data['warehouse_id'] ?? $expense->warehouse_id,
             'sales_representative_id' => $data['sales_representative_id']
                 ?? $expense->sales_representative_id,
-            'driver_id' => $data['driver_id'] ?? $expense->driver_id,
         ]);
 
         return [
@@ -563,7 +561,6 @@ class MobileOperationalWriteService
                 'route_id',
                 'vehicle_id',
                 'warehouse_id',
-                'driver_id',
                 'sales_representative_id',
             ]),
         ];
@@ -576,16 +573,7 @@ class MobileOperationalWriteService
             return false;
         }
 
-        if (! $user->hasRole(User::ROLE_DRIVER) || empty($data['route_id'])) {
-            return true;
-        }
-
-        $employeeId = $user->employee()->value('id');
-
-        return DistributionRoute::withoutGlobalScopes()
-            ->whereKey((int) $data['route_id'])
-            ->where('sales_representative_id', $employeeId)
-            ->exists();
+        return true;
     }
 
     /** @param array<string, mixed> $data */
@@ -593,9 +581,7 @@ class MobileOperationalWriteService
     {
         $user = Auth::user();
 
-        return $user instanceof User && $this->usesRepresentativeExpenseOwnership($user, $data)
-            ? OperationSource::MOBILE_SALES
-            : OperationSource::MOBILE_DRIVER;
+        return OperationSource::MOBILE_SALES;
     }
 
     /** @param array<string, mixed> $payload */

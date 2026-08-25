@@ -39,7 +39,6 @@ class SecureVehicleExpenseReceiptTest extends TestCase
         Storage::fake('public');
 
         $context = $this->context('PRIVATE');
-        $context['route']->update(['driver_id' => null]);
         $representative = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
@@ -185,13 +184,6 @@ class SecureVehicleExpenseReceiptTest extends TestCase
             'status' => 'active',
         ]);
 
-        $driver = Employee::query()->create([
-            'employee_code' => 'RECEIPT-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
-
         $representative = Employee::query()->create([
             'employee_code' => 'RECEIPT-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -202,14 +194,13 @@ class SecureVehicleExpenseReceiptTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'RECEIPT-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
             'status' => 'active',
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route');
+        return compact('area', 'vehicle', 'warehouse', 'representative', 'route');
     }
 
     /** @param array<string, mixed> $context */
@@ -221,7 +212,7 @@ class SecureVehicleExpenseReceiptTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'route_id' => $context['route']->id,
-            'driver_id' => $context['driver']->id,
+            'sales_representative_id' => $context['representative']->id,
             'expense_type' => 'fuel',
             'amount' => 10,
             'payment_method' => 'cash',

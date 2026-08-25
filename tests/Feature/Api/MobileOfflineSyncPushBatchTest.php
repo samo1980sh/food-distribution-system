@@ -16,9 +16,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
-use App\Services\Api\MobileSyncPushRequestValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 class MobileOfflineSyncPushBatchTest extends TestCase
@@ -123,108 +121,6 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         );
         $this->assertSame(1, MobileSyncPushBatch::query()->count());
         $this->assertSame(1, MobileSyncPushOperation::query()->count());
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-    }
-
-    public function test_representative_obsolete_driver_operations_are_rejected_without_partial_state(): void
-    {
-        $context = $this->context('RETIRED-DRIVER-WORKFLOW');
-        $representative = $this->fieldUserForContext($context);
-        $token = $this->tokenFor($representative, 'push-retired-driver-workflow');
-        $contextKey = $this->contextKey($token);
-
-        $this->mock(
-            MobileSyncPushRequestValidator::class,
-            fn (MockInterface $mock) => $mock->shouldNotReceive('make'),
-        );
-
-        $this->push(
-            $token,
-            $contextKey,
-            'batch-retired-driver-workflow-0001',
-            [
-                [
-                    'operation_id' => 'operation-retired-driver-journey-0001',
-                    'entity' => 'driver_journeys',
-                    'action' => 'start',
-                    'record_id' => 999001,
-                    'base_version' => 'c:1',
-                    'payload' => [],
-                ],
-                [
-                    'operation_id' => 'operation-retired-driver-delivery-0001',
-                    'entity' => 'driver_deliveries',
-                    'action' => 'submit_outcome',
-                    'record_id' => 999002,
-                    'base_version' => 'c:1',
-                    'payload' => ['status' => 'delivered'],
-                ],
-            ],
-        )
-            ->assertOk()
-            ->assertJsonPath('data.summary.applied', 0)
-            ->assertJsonPath('data.summary.failed', 2)
-            ->assertJsonPath('data.results.0.status', 'failed')
-            ->assertJsonPath(
-                'data.results.0.code',
-                'representative_driver_workflow_retired',
-            )
-            ->assertJsonPath('data.results.0.http_status', 403)
-            ->assertJsonPath('data.results.1.status', 'failed')
-            ->assertJsonPath(
-                'data.results.1.code',
-                'representative_driver_workflow_retired',
-            )
-            ->assertJsonPath('data.results.1.http_status', 403);
-
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-    }
-
-    public function test_mixed_batch_applies_representative_operation_and_rejects_retired_driver_operation(): void
-    {
-        $context = $this->context('MIXED-RETIRED-DRIVER');
-        $representative = $this->fieldUserForContext($context);
-        $token = $this->tokenFor($representative, 'push-mixed-retired-driver');
-
-        $this->push(
-            $token,
-            $this->contextKey($token),
-            'batch-mixed-retired-driver-0001',
-            [
-                [
-                    'operation_id' => 'operation-mixed-invoice-0001',
-                    'entity' => 'sales_invoices',
-                    'action' => 'create',
-                    'payload' => $this->invoicePayload($context, 'push-mixed-invoice-0001'),
-                ],
-                [
-                    'operation_id' => 'operation-mixed-driver-0001',
-                    'entity' => 'driver_journeys',
-                    'action' => 'start',
-                    'record_id' => 999003,
-                    'base_version' => 'c:1',
-                    'payload' => [],
-                ],
-            ],
-        )
-            ->assertOk()
-            ->assertJsonPath('data.summary.applied', 1)
-            ->assertJsonPath('data.summary.failed', 1)
-            ->assertJsonPath('data.results.0.code', 'created')
-            ->assertJsonPath('data.results.0.record.status', 'confirmed')
-            ->assertJsonPath('data.results.1.status', 'failed')
-            ->assertJsonPath('data.results.1.code', 'representative_driver_workflow_retired')
-            ->assertJsonPath('data.results.1.http_status', 403);
-
-        $this->assertDatabaseHas('sales_invoices', [
-            'client_reference' => 'push-mixed-invoice-0001',
-            'status' => 'confirmed',
-        ]);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDatabaseCount('driver_deliveries', 0);
     }
 
     public function test_unknown_sync_entity_still_fails_request_validation(): void
@@ -239,7 +135,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
                 'batch_id' => 'batch-unknown-entity-0001',
                 'operations' => [[
                     'operation_id' => 'operation-unknown-entity-0001',
-                    'entity' => 'unknown_driver_runtime',
+                    'entity' => 'unknown_runtime',
                     'action' => 'start',
                     'record_id' => 999004,
                     'base_version' => 'c:1',
@@ -544,12 +440,6 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'PUSH-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'PUSH-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -559,7 +449,6 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'PUSH-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -600,7 +489,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             'average_unit_cost' => 5,
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'customer', 'product');
+        return compact('area', 'vehicle', 'warehouse', 'representative', 'route', 'customer', 'product');
     }
 
     /** @param array<string, mixed> $context

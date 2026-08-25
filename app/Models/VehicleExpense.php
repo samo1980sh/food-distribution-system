@@ -18,7 +18,6 @@ class VehicleExpense extends Model
         'vehicle_id',
         'warehouse_id',
         'route_id',
-        'driver_id',
         'sales_representative_id',
         'expense_type',
         'amount',
@@ -100,11 +99,6 @@ class VehicleExpense extends Model
     public function route(): BelongsTo
     {
         return $this->belongsTo(DistributionRoute::class, 'route_id');
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'driver_id');
     }
 
     public function salesRepresentative(): BelongsTo

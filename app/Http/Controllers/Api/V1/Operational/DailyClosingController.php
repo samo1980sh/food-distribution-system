@@ -25,14 +25,12 @@ class DailyClosingController extends Controller
 
     public function __construct(
         private readonly MobileSyncVersionService $versionService,
-    ) {
-    }
+    ) {}
 
     private const RELATIONS = [
         'vehicle.warehouse',
         'route',
         'warehouse.vehicle',
-        'driver',
         'salesRepresentative',
         'inventorySubmitter',
         'cashSubmitter',
@@ -46,7 +44,6 @@ class DailyClosingController extends Controller
             'vehicle.warehouse',
             'route',
             'warehouse.vehicle',
-            'driver',
             'salesRepresentative',
             'inventorySubmitter',
             'cashSubmitter',

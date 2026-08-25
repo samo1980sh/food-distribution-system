@@ -20,7 +20,6 @@ class FieldTodayResource extends OperationalResource
             'timezone' => $data['timezone'],
             'available_roles' => $data['available_roles'],
             'contexts' => [
-                'driver' => $this->context($data['contexts']['driver'] ?? null, $request),
                 'sales_representative' => $this->context(
                     $data['contexts']['sales_representative'] ?? null,
                     $request,
@@ -70,10 +69,6 @@ class FieldTodayResource extends OperationalResource
     /** @param array<string, mixed> $route */
     private function routeWithAssignmentRoles(array $route): array
     {
-        if (isset($route['driver']) && is_array($route['driver'])) {
-            $route['driver']['assignment_role'] = User::ROLE_DRIVER;
-        }
-
         if (
             isset($route['sales_representative'])
             && is_array($route['sales_representative'])

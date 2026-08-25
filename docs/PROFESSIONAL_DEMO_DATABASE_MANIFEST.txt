@@ -22,7 +22,6 @@ Commands:
 Flutter-ready reset guarantees:
 - Daily schedules for the three active field routes
 - Ready unified representative journeys and pending visits for all current field demo accounts
-- Legacy driver identities retained only for compatibility and denied current mobile runtime access
 - Approved current-day loads left pending for explicit handover testing
 
 Shared demo password:

@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\VehicleLoads\Pages;
 
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateVehicleLoad extends CreateRecord
@@ -18,11 +17,6 @@ class CreateVehicleLoad extends CreateRecord
     public function getSubheading(): ?string
     {
         return 'حدد السيارة والمستودع المصدر والمواد، ثم احفظ الأمر كمسودة لمراجعته قبل نقل المخزون.';
-    }
-
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        return AdminOperationalDriverGuard::sanitize($data);
     }
 
     protected function getRedirectUrl(): string

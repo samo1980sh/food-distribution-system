@@ -130,9 +130,9 @@ class MobileSyncPushOperationService
 
             if (! MobileSyncPushRegistry::supportsFor($user, $entity, $action)) {
                 throw new OperationalApiException(
-                    'عملية السائق القديمة غير متاحة ضمن مساحة عمل المندوب الموحدة.',
-                    'representative_driver_workflow_retired',
-                    403,
+                    'عملية المزامنة غير مدعومة.',
+                    'unsupported_sync_operation',
+                    422,
                 );
             }
 

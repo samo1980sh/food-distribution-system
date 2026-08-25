@@ -2,6 +2,7 @@
 
 namespace App\Services\Imports\Excel;
 
+use App\Enums\EmployeeType;
 use App\Models\Employee;
 use App\Models\User;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -88,7 +89,7 @@ class EmployeeExcelTemplateService
 
         $users = User::query()
             ->when($usedUserIds->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $usedUserIds))
-            ->whereHas('roles', fn ($query) => $query->whereIn('name', EmployeeExcelImportService::TYPES))
+            ->whereHas('roles', fn ($query) => $query->whereIn('name', EmployeeType::values()))
             ->with('roles:id,name')
             ->orderBy('email')
             ->get(['id', 'name', 'email']);
@@ -113,7 +114,7 @@ class EmployeeExcelTemplateService
         foreach ($users as $index => $user) {
             $row = $index + 2;
             $eligibleRoles = $user->getRoleNames()
-                ->filter(fn (string $role): bool => in_array($role, EmployeeExcelImportService::TYPES, true))
+                ->filter(fn (string $role): bool => in_array($role, EmployeeType::values(), true))
                 ->values()
                 ->implode(', ');
 
@@ -144,7 +145,7 @@ class EmployeeExcelTemplateService
         $typeValidation->setError('اختر نوع الموظف من القائمة فقط.');
         $typeValidation->setPromptTitle('نوع الموظف');
         $typeValidation->setPrompt('ترك الخلية فارغة يعني sales_representative.');
-        $typeValidation->setFormula1('"sales_representative,warehouse_keeper,accountant,supervisor"');
+        $typeValidation->setFormula1('"'.implode(',', EmployeeType::values()).'"');
         $sheet->setDataValidation('E2:E1000', $typeValidation);
 
         $userValidation = new DataValidation;

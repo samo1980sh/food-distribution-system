@@ -4,8 +4,6 @@ namespace App\Filament\Resources\VehicleExpenses\Pages;
 
 use App\Filament\Resources\VehicleExpenses\Actions\VehicleExpenseActions;
 use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
-use App\Models\VehicleExpense;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -27,7 +25,6 @@ class ViewVehicleExpense extends ViewRecord
     {
         return [
             EditAction::make()
-                ->mutateDataUsing(fn (array $data, VehicleExpense $record): array => AdminOperationalDriverGuard::sanitize($data, $record))
                 ->label('تعديل المصروف')
                 ->modalHeading('تعديل مصروف سيارة')
                 ->slideOver()

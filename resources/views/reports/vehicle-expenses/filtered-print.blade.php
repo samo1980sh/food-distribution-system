@@ -241,7 +241,6 @@
                             <th>السيارة</th>
                             <th>المستودع</th>
                             <th>الخط</th>
-                            <th>السائق</th>
                             <th>المندوب</th>
                             <th>النوع</th>
                             <th>الدفع</th>
@@ -259,7 +258,6 @@
                                 <td>{{ $expense->vehicle?->name ?? '-' }}</td>
                                 <td>{{ $expense->warehouse?->name ?? '-' }}</td>
                                 <td>{{ $expense->route?->name ?? '-' }}</td>
-                                <td>{{ $expense->driver?->name ?? '-' }}</td>
                                 <td>{{ $expense->salesRepresentative?->name ?? '-' }}</td>
                                 <td>
                                     <span class="badge">
@@ -276,13 +274,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="empty" colspan="13">لا توجد مصاريف معتمدة مطابقة للفلاتر الحالية.</td>
+                                <td class="empty" colspan="12">لا توجد مصاريف معتمدة مطابقة للفلاتر الحالية.</td>
                             </tr>
                         @endforelse
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="9">الإجمالي</td>
+                            <td colspan="8">الإجمالي</td>
                             <td class="number">{{ $money($totals['total_amount']) }}</td>
                             <td colspan="3"></td>
                         </tr>

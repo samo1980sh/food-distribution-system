@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\DistributionRoutes\Tables;
 
 use App\Models\DistributionRoute;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
@@ -31,10 +30,6 @@ class DistributionRoutesTable
                     ->description(fn (DistributionRoute $record): ?string => $record->area?->name_ar),
                 TextColumn::make('vehicle.name')
                     ->label('السيارة')
-                    ->searchable()
-                    ->placeholder('-'),
-                TextColumn::make('driver.name')
-                    ->label('السائق')
                     ->searchable()
                     ->placeholder('-'),
                 TextColumn::make('salesRepresentative.name')
@@ -69,11 +64,6 @@ class DistributionRoutesTable
                     ->relationship('vehicle', 'name')
                     ->searchable()
                     ->preload(),
-                SelectFilter::make('driver_id')
-                    ->label('السائق')
-                    ->relationship('driver', 'name')
-                    ->searchable()
-                    ->preload(),
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
@@ -84,7 +74,6 @@ class DistributionRoutesTable
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
-                        ->mutateDataUsing(fn (array $data, DistributionRoute $record): array => AdminOperationalDriverGuard::sanitize($data, $record))
                         ->label('تعديل الخط')
                         ->modalHeading('تعديل خط توزيع')
                         ->slideOver()

@@ -14,7 +14,6 @@ return new class extends Migration
         'warehouse_keeper',
         'accountant',
         'sales_representative',
-        'driver',
     ];
 
     private const USER_MODEL = 'App\\Models\\User';

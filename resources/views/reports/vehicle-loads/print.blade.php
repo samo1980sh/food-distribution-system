@@ -420,11 +420,6 @@
                 </div>
 
                 <div class="detail-item">
-                    <span>السائق</span>
-                    <strong>{{ $vehicleLoad->driver?->name ?? '-' }}</strong>
-                </div>
-
-                <div class="detail-item">
                     <span>مندوب المبيعات</span>
                     <strong>
                         {{ $vehicleLoad->salesRepresentative?->name ?? '-' }}
@@ -548,7 +543,7 @@
 
         <section class="signatures">
             <div class="signature">توقيع أمين المستودع</div>
-            <div class="signature">توقيع السائق</div>
+            <div class="signature">توقيع مندوب المبيعات</div>
             <div class="signature">اعتماد الإدارة</div>
         </section>
 

@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
-use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
 use App\Models\SalesReturn;
@@ -41,10 +40,7 @@ class FieldTodayReadService
             ]);
         }
 
-        $contexts = [
-            User::ROLE_DRIVER => null,
-            User::ROLE_SALES_REPRESENTATIVE => null,
-        ];
+        $contexts = [User::ROLE_SALES_REPRESENTATIVE => null];
 
         foreach ($availableRoles as $role) {
             $routeId = $selectedRole === $role ? $selectedRouteId : null;
@@ -149,14 +145,6 @@ class FieldTodayReadService
             $issues[] = 'inactive_vehicle_warehouse';
         }
 
-        if ($role === User::ROLE_DRIVER) {
-            if ($route->driver === null) {
-                $issues[] = 'missing_driver';
-            } elseif ($route->driver->status !== 'active') {
-                $issues[] = 'inactive_driver';
-            }
-        }
-
         if ($route->salesRepresentative === null) {
             $issues[] = 'missing_sales_representative';
         } elseif ($route->salesRepresentative->status !== 'active') {
@@ -176,9 +164,7 @@ class FieldTodayReadService
         DistributionRoute $route,
         string $date,
     ): array {
-        return $role === User::ROLE_DRIVER
-            ? $this->driverSummary($user, $route, $date)
-            : $this->salesSummary($user, $route, $date);
+        return $this->salesSummary($user, $route, $date);
     }
 
     /** @return array<string, mixed> */
@@ -363,135 +349,6 @@ class FieldTodayReadService
                 'approved_amount' => $this->decimal(
                     (clone $expenses)->where('status', 'approved')->sum('amount'),
                 ),
-            ],
-        ];
-    }
-
-    /** @return array<string, mixed> */
-    private function driverSummary(
-        User $user,
-        DistributionRoute $route,
-        string $date,
-    ): array {
-        $driverId = (int) $route->driver_id;
-
-        $loads = VehicleLoad::withoutGlobalScopes()
-            ->withCount([
-                'items',
-                'items as different_items_count' => fn (Builder $query): Builder => $query
-                    ->whereNotNull('received_quantity')
-                    ->whereColumn('received_quantity', '!=', 'quantity'),
-            ])
-            ->whereDate('load_date', $date)
-            ->where('route_id', $route->getKey())
-            ->where('driver_id', $driverId)
-            ->where('status', 'approved');
-        $loads = $this->scoped($loads, $user);
-        $loads = $loads
-            ->orderByRaw("CASE handover_status WHEN 'pending' THEN 0 WHEN 'discrepancy' THEN 1 ELSE 2 END")
-            ->orderBy('id')
-            ->get();
-
-        $warehouseId = $route->vehicle?->warehouse?->getKey();
-        $stock = null;
-
-        if ($warehouseId !== null) {
-            $balances = StockBalance::withoutGlobalScopes()
-                ->where('warehouse_id', $warehouseId)
-                ->where('quantity', '>', 0);
-            $balances = $this->scoped($balances, $user);
-
-            $stock = [
-                'batches_count' => (clone $balances)->count(),
-                'products_count' => (clone $balances)->distinct()->count('product_id'),
-                'total_quantity' => $this->decimal((clone $balances)->sum('quantity'), 3),
-            ];
-        }
-
-        $expenses = VehicleExpense::withoutGlobalScopes()
-            ->whereDate('expense_date', $date)
-            ->where('route_id', $route->getKey())
-            ->where('driver_id', $driverId);
-        $expenses = $this->scoped($expenses, $user);
-
-        $handoverStatuses = $loads->pluck('handover_status');
-        $loadCustodyStatus = match (true) {
-            $loads->isEmpty() => 'none',
-            $handoverStatuses->contains('discrepancy') => 'discrepancy',
-            $handoverStatuses->every(fn (mixed $status): bool => $status === 'received') => 'received',
-            default => 'pending',
-        };
-
-        $primaryLoad = $loads->first();
-
-        return [
-            'load_custody' => [
-                'status' => $loadCustodyStatus,
-                'loads_count' => $loads->count(),
-                'pending_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'pending')->count(),
-                'received_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'received')->count(),
-                'discrepancy_count' => $handoverStatuses->filter(fn (mixed $status): bool => $status === 'discrepancy')->count(),
-                'primary_load' => $primaryLoad === null ? null : [
-                    'id' => (int) $primaryLoad->getKey(),
-                    'load_number' => $primaryLoad->load_number,
-                    'status' => $primaryLoad->status,
-                    'handover_status' => $primaryLoad->handover_status,
-                    'items_count' => (int) $primaryLoad->items_count,
-                    'total_quantity' => $this->decimal($primaryLoad->total_quantity, 3),
-                    'different_items_count' => (int) $primaryLoad->different_items_count,
-                ],
-            ],
-            'stock' => $stock,
-            'journey' => $this->driverJourneySummary($user, $route, $date),
-            'expenses' => [
-                'total' => (clone $expenses)->count(),
-                'pending' => (clone $expenses)->where('status', 'pending')->count(),
-                'approved' => (clone $expenses)->where('status', 'approved')->count(),
-                'rejected' => (clone $expenses)->where('status', 'rejected')->count(),
-                'total_amount' => $this->decimal((clone $expenses)->sum('amount')),
-                'approved_amount' => $this->decimal(
-                    (clone $expenses)->where('status', 'approved')->sum('amount'),
-                ),
-            ],
-        ];
-    }
-
-    /** @return array<string, mixed>|null */
-    private function driverJourneySummary(
-        User $user,
-        DistributionRoute $route,
-        string $date,
-    ): ?array {
-        $query = DriverJourney::withoutGlobalScopes()
-            ->withCount([
-                'deliveries',
-                'deliveries as pending_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'pending'),
-                'deliveries as delivered_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'delivered'),
-                'deliveries as partial_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'partial'),
-                'deliveries as failed_deliveries_count' => fn (Builder $query): Builder => $query->where('status', 'failed'),
-            ])
-            ->whereDate('journey_date', $date)
-            ->where('route_id', $route->getKey())
-            ->where('driver_id', $route->driver_id);
-        $query = $this->scoped($query, $user);
-        $journey = $query->first();
-
-        if ($journey === null) {
-            return null;
-        }
-
-        return [
-            'id' => (int) $journey->getKey(),
-            'journey_number' => $journey->journey_number,
-            'status' => $journey->status,
-            'started_at' => $journey->started_at?->toIso8601String(),
-            'finished_at' => $journey->finished_at?->toIso8601String(),
-            'deliveries' => [
-                'total' => (int) $journey->deliveries_count,
-                'pending' => (int) $journey->pending_deliveries_count,
-                'delivered' => (int) $journey->delivered_deliveries_count,
-                'partial' => (int) $journey->partial_deliveries_count,
-                'failed' => (int) $journey->failed_deliveries_count,
             ],
         ];
     }

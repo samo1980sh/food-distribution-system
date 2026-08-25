@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Customer;
 use App\Models\DistributionRoute;
-use App\Models\DriverJourney;
 use App\Models\Product;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
@@ -35,7 +34,7 @@ class ProfessionalDemoDatabaseTest extends TestCase
 
     public function test_professional_demo_dataset_covers_master_operational_and_reporting_domains(): void
     {
-        $this->assertSame(10, User::query()->count());
+        $this->assertSame(8, User::query()->count());
         $this->assertSame(4, DB::table('areas')->count());
         $this->assertSame(5, DistributionRoute::query()->count());
         $this->assertSame(4, DB::table('vehicles')->count());
@@ -58,25 +57,16 @@ class ProfessionalDemoDatabaseTest extends TestCase
 
         $this->assertSame(3, SalesJourney::query()->whereDate('journey_date', today())->count());
         $this->assertSame(16, DB::table('sales_visits')->count());
-        $this->assertSame(0, DriverJourney::query()->whereDate('journey_date', today())->count());
-        $this->assertSame(0, DB::table('driver_deliveries')->count());
-        $this->assertSame(0, DB::table('driver_delivery_items')->count());
-        $this->assertSame(0, DistributionRoute::query()->whereNotNull('driver_id')->count());
-        $this->assertSame(0, DB::table('vehicle_loads')->whereNotNull('driver_id')->count());
-        $this->assertSame(0, DB::table('vehicle_expenses')->whereNotNull('driver_id')->count());
-        $this->assertSame(0, DB::table('daily_closings')->whereNotNull('driver_id')->count());
     }
 
-    public function test_demo_accounts_support_unified_representatives_and_retain_denied_legacy_identities(): void
+    public function test_demo_accounts_support_unified_representatives(): void
     {
         $admin = User::query()->where('email', 'admin@demo.local')->firstOrFail();
         $sales = User::query()->where('email', 'sales@demo.local')->firstOrFail();
         $salesRif = User::query()->where('email', 'sales.rif@demo.local')->firstOrFail();
-        $driver = User::query()->where('email', 'driver@demo.local')->firstOrFail();
-        $driverRif = User::query()->where('email', 'driver.rif@demo.local')->firstOrFail();
-        $dual = User::query()->where('email', 'field.team@demo.local')->firstOrFail();
+        $south = User::query()->where('email', 'field.team@demo.local')->firstOrFail();
 
-        foreach ([$admin, $sales, $salesRif, $driver, $driverRif, $dual] as $user) {
+        foreach ([$admin, $sales, $salesRif, $south] as $user) {
             $this->assertTrue(Hash::check('Demo@2026', $user->password));
             $this->assertTrue($user->isActive());
         }
@@ -84,23 +74,13 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $this->assertFalse(MobileAppAccess::allowsLogin($admin));
         $this->assertTrue(MobileAppAccess::allowsLogin($sales));
         $this->assertTrue(MobileAppAccess::allowsLogin($salesRif));
-        $this->assertTrue(MobileAppAccess::allowsLogin($dual));
-        $this->assertTrue(MobileAppAccess::allows($driver));
-        $this->assertTrue(MobileAppAccess::allows($driverRif));
-        $this->assertFalse(MobileAppAccess::allowsLogin($driver));
-        $this->assertFalse(MobileAppAccess::allowsLogin($driverRif));
+        $this->assertTrue(MobileAppAccess::allowsLogin($south));
 
-        $this->assertEqualsCanonicalizing(
-            ['driver', 'sales_representative'],
-            $dual->getRoleNames()->all(),
-        );
+        $this->assertSame(['sales_representative'], $south->getRoleNames()->all());
 
         $scopeService = app(AccessScopeService::class);
         $this->assertNotEmpty($scopeService->for($sales)->routeIds);
-        $this->assertEmpty($scopeService->for($driver)->routeIds);
-        $this->assertEmpty($scopeService->for($driver)->vehicleIds);
-        $this->assertEmpty($scopeService->for($driverRif)->routeIds);
-        $this->assertNotEmpty($scopeService->for($dual)->warehouseIds);
+        $this->assertNotEmpty($scopeService->for($south)->warehouseIds);
     }
 
     public function test_unified_representative_demo_accounts_have_ready_today_workspaces_on_every_reset_day(): void
@@ -108,12 +88,12 @@ class ProfessionalDemoDatabaseTest extends TestCase
         $resolver = app(FieldRouteAssignmentResolver::class);
         $sales = User::query()->where('email', 'sales@demo.local')->firstOrFail();
         $salesRif = User::query()->where('email', 'sales.rif@demo.local')->firstOrFail();
-        $dual = User::query()->where('email', 'field.team@demo.local')->firstOrFail();
+        $south = User::query()->where('email', 'field.team@demo.local')->firstOrFail();
 
         foreach ([
             [$sales, User::ROLE_SALES_REPRESENTATIVE],
             [$salesRif, User::ROLE_SALES_REPRESENTATIVE],
-            [$dual, User::ROLE_SALES_REPRESENTATIVE],
+            [$south, User::ROLE_SALES_REPRESENTATIVE],
         ] as [$user, $role]) {
             $resolution = $resolver->resolveRole($user, $role, null, today());
 
@@ -128,10 +108,8 @@ class ProfessionalDemoDatabaseTest extends TestCase
             ->where('route_id', $centralRoute->id)
             ->firstOrFail();
         $this->assertSame('ready', $salesJourney->status);
-        $this->assertNull($salesJourney->driver_id);
         $this->assertSame(5, $salesJourney->visits()->count());
         $this->assertSame(5, $salesJourney->visits()->where('status', 'pending')->count());
-        $this->assertSame(0, DriverJourney::query()->whereDate('journey_date', today())->count());
 
         $this->assertTrue(DB::table('vehicle_loads')
             ->whereDate('load_date', today())

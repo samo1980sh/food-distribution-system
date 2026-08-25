@@ -18,7 +18,6 @@ class SalesJourney extends Model
         'vehicle_id',
         'warehouse_id',
         'sales_representative_id',
-        'driver_id',
         'status',
         'started_at',
         'finished_at',
@@ -79,11 +78,6 @@ class SalesJourney extends Model
     public function salesRepresentative(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'sales_representative_id');
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'driver_id');
     }
 
     public function visits(): HasMany

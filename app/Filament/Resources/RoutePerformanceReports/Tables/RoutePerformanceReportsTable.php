@@ -33,8 +33,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('ranking')
                     ->label('الترتيب')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): int =>
-                            (int) self::summaryForRecord($record, $livewire)['rank']
+                        fn (DistributionRoute $record, $livewire): int => (int) self::summaryForRecord($record, $livewire)['rank']
                     )
                     ->badge()
                     ->weight('bold')
@@ -60,8 +59,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('activity_report')
                     ->label('النشاط')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): bool =>
-                            (bool) self::summaryForRecord($record, $livewire)['has_activity']
+                        fn (DistributionRoute $record, $livewire): bool => (bool) self::summaryForRecord($record, $livewire)['has_activity']
                     )
                     ->formatStateUsing(fn (bool $state): string => $state ? 'يوجد نشاط' : 'دون نشاط')
                     ->badge()
@@ -81,12 +79,6 @@ class RoutePerformanceReportsTable
                     ->alignCenter()
                     ->visible(fn ($livewire): bool => self::isView($livewire, 'operations')),
 
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->placeholder('-')
-                    ->wrap()
-                    ->visible(fn ($livewire): bool => self::isView($livewire, 'operations')),
-
                 TextColumn::make('salesRepresentative.name')
                     ->label('المندوب')
                     ->placeholder('-')
@@ -96,8 +88,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('assigned_customers_report')
                     ->label('العملاء المسجلون')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): int =>
-                            (int) self::summaryForRecord($record, $livewire)['assigned_active_customers']
+                        fn (DistributionRoute $record, $livewire): int => (int) self::summaryForRecord($record, $livewire)['assigned_active_customers']
                     )
                     ->numeric()
                     ->alignEnd()
@@ -117,8 +108,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('served_customers_report')
                     ->label('العملاء المخدومون')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): int =>
-                            (int) self::summaryForRecord($record, $livewire)['served_customers']
+                        fn (DistributionRoute $record, $livewire): int => (int) self::summaryForRecord($record, $livewire)['served_customers']
                     )
                     ->numeric()
                     ->alignEnd()
@@ -138,8 +128,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('service_coverage_report')
                     ->label('تغطية العملاء')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): ?float =>
-                            self::summaryForRecord($record, $livewire)['service_coverage_percent']
+                        fn (DistributionRoute $record, $livewire): ?float => self::summaryForRecord($record, $livewire)['service_coverage_percent']
                     )
                     ->formatStateUsing(
                         fn (?float $state): string => $state === null
@@ -161,8 +150,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('invoice_count_report')
                     ->label('عدد الفواتير')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): int =>
-                            (int) self::summaryForRecord($record, $livewire)['invoice_count']
+                        fn (DistributionRoute $record, $livewire): int => (int) self::summaryForRecord($record, $livewire)['invoice_count']
                     )
                     ->numeric()
                     ->alignEnd()
@@ -171,8 +159,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('net_sales_report')
                     ->label('صافي المبيعات')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['net_sales']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['net_sales']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -195,8 +182,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('return_rate_report')
                     ->label('نسبة المرتجعات')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): ?float =>
-                            self::summaryForRecord($record, $livewire)['return_rate_percent']
+                        fn (DistributionRoute $record, $livewire): ?float => self::summaryForRecord($record, $livewire)['return_rate_percent']
                     )
                     ->formatStateUsing(
                         fn (?float $state): string => $state === null
@@ -210,8 +196,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('gross_profit_report')
                     ->label('الربح قبل المصاريف')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['gross_profit']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['gross_profit']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -221,8 +206,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('vehicle_expenses_report')
                     ->label('مصاريف السيارات')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['vehicle_expenses']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['vehicle_expenses']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -243,8 +227,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('net_contribution_report')
                     ->label('صافي المساهمة')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['net_contribution']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['net_contribution']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -267,8 +250,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('contribution_margin_report')
                     ->label('هامش المساهمة')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): ?float =>
-                            self::summaryForRecord($record, $livewire)['contribution_margin_percent']
+                        fn (DistributionRoute $record, $livewire): ?float => self::summaryForRecord($record, $livewire)['contribution_margin_percent']
                     )
                     ->formatStateUsing(
                         fn (?float $state): string => $state === null
@@ -282,8 +264,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('total_collections_report')
                     ->label('إجمالي المقبوضات')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['total_collections']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['total_collections']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -304,8 +285,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('collection_coverage_report')
                     ->label('تغطية المقبوضات')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): ?float =>
-                            self::summaryForRecord($record, $livewire)['collection_coverage_percent']
+                        fn (DistributionRoute $record, $livewire): ?float => self::summaryForRecord($record, $livewire)['collection_coverage_percent']
                     )
                     ->formatStateUsing(
                         fn (?float $state): string => $state === null
@@ -326,8 +306,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('loaded_quantity_report')
                     ->label('كمية التحميل')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['loaded_quantity']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['loaded_quantity']
                     )
                     ->numeric(decimalPlaces: 3)
                     ->alignEnd()
@@ -348,8 +327,7 @@ class RoutePerformanceReportsTable
                 TextColumn::make('cash_difference_report')
                     ->label('فرق الصندوق')
                     ->getStateUsing(
-                        fn (DistributionRoute $record, $livewire): float =>
-                            (float) self::summaryForRecord($record, $livewire)['cash_difference']
+                        fn (DistributionRoute $record, $livewire): float => (float) self::summaryForRecord($record, $livewire)['cash_difference']
                     )
                     ->money('SYP')
                     ->alignEnd()
@@ -453,21 +431,8 @@ class RoutePerformanceReportsTable
                             ->columnSpanFull(),
 
                         Section::make('فريق الخط')
-                            ->description('صفِّ النتائج حسب السائق أو مندوب المبيعات المرتبط بالخط.')
+                            ->description('صفِّ النتائج حسب مندوب المبيعات المرتبط بالخط.')
                             ->schema([
-                                Select::make('driver_id')
-                                    ->label('السائق')
-                                    ->options(
-                                        fn (): array => Employee::query()
-                                            ->where('status', 'active')
-                                            ->forOperationalRole(UserRole::DRIVER)
-                                            ->orderBy('name')
-                                            ->pluck('name', 'id')
-                                            ->all()
-                                    )
-                                    ->searchable()
-                                    ->preload(),
-
                                 Select::make('sales_representative_id')
                                     ->label('المندوب')
                                     ->options(
@@ -551,8 +516,7 @@ class RoutePerformanceReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (): bool =>
-                            auth()->user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true
+                        fn (): bool => auth()->user()?->can(PermissionName::REPORT_ROUTE_PERFORMANCE->value) === true
                     ),
             ])
             ->toolbarActions([])

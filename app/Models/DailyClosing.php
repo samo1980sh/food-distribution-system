@@ -22,7 +22,6 @@ class DailyClosing extends Model
         'warehouse_id',
         'sales_representative_id',
         'field_workflow',
-        'driver_id',
         'status',
         'total_opening_quantity',
         'total_movement_in_quantity',
@@ -174,11 +173,6 @@ class DailyClosing extends Model
     public function salesRepresentative(): BelongsTo
     {
         return $this->belongsTo(Employee::class, 'sales_representative_id');
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'driver_id');
     }
 
     public function inventorySubmitter(): BelongsTo

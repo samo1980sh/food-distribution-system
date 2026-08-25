@@ -5,7 +5,6 @@ namespace App\Filament\Resources\DistributionRoutes\Pages;
 use App\Filament\Resources\DistributionRoutes\DistributionRouteResource;
 use App\Services\Imports\Excel\DistributionRouteExcelImportService;
 use App\Services\Imports\Excel\DistributionRouteExcelTemplateService;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -35,7 +34,6 @@ class ManageDistributionRoutes extends ManageRecords
     {
         return [
             CreateAction::make()
-                ->mutateDataUsing(fn (array $data): array => AdminOperationalDriverGuard::sanitize($data))
                 ->visible(fn (): bool => DistributionRouteResource::canCreate())
                 ->label('إضافة خط توزيع')
                 ->icon('heroicon-o-plus')

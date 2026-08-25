@@ -47,10 +47,8 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             'warehouse' => ['name' => 'أمين المستودع الرئيسي', 'email' => 'warehouse@demo.local', 'roles' => [UserRole::WAREHOUSE_KEEPER]],
             'accountant' => ['name' => 'محاسب المبيعات', 'email' => 'accountant@demo.local', 'roles' => [UserRole::ACCOUNTANT]],
             'sales' => ['name' => 'رامي مندوب دمشق', 'email' => 'sales@demo.local', 'roles' => [UserRole::SALES_REPRESENTATIVE]],
-            'driver' => ['name' => 'حساب توافق سائق دمشق', 'email' => 'driver@demo.local', 'roles' => [UserRole::DRIVER]],
             'sales_rif' => ['name' => 'هالة مندوبة الريف', 'email' => 'sales.rif@demo.local', 'roles' => [UserRole::SALES_REPRESENTATIVE]],
-            'driver_rif' => ['name' => 'حساب توافق سائق الريف', 'email' => 'driver.rif@demo.local', 'roles' => [UserRole::DRIVER]],
-            'field_team' => ['name' => 'مندوب موحد بحساب توافق مزدوج', 'email' => 'field.team@demo.local', 'roles' => [UserRole::DRIVER, UserRole::SALES_REPRESENTATIVE]],
+            'field_team' => ['name' => 'مندوب مبيعات دمشق الجنوبي', 'email' => 'field.team@demo.local', 'roles' => [UserRole::SALES_REPRESENTATIVE]],
         ];
 
         $users = [];
@@ -86,9 +84,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             'warehouse' => ['user' => 'warehouse', 'code' => 'EMP-102', 'name' => 'مازن الحمصي', 'phone' => '0991000102', 'title' => 'أمين المستودع الرئيسي', 'type' => 'warehouse_keeper'],
             'accountant' => ['user' => 'accountant', 'code' => 'EMP-103', 'name' => 'لين العبدالله', 'phone' => '0991000103', 'title' => 'محاسب مبيعات وتحصيل', 'type' => 'accountant'],
             'sales' => ['user' => 'sales', 'code' => 'EMP-201', 'name' => 'رامي منصور', 'phone' => '0992000201', 'title' => 'مندوب مبيعات دمشق', 'type' => 'sales_representative'],
-            'driver' => ['user' => 'driver', 'code' => 'EMP-202', 'name' => 'سامر حمود', 'phone' => '0992000202', 'title' => 'سائق تاريخي للتوافق', 'type' => 'driver'],
             'sales_rif' => ['user' => 'sales_rif', 'code' => 'EMP-203', 'name' => 'هالة شحادة', 'phone' => '0992000203', 'title' => 'مندوبة مبيعات الريف', 'type' => 'sales_representative'],
-            'driver_rif' => ['user' => 'driver_rif', 'code' => 'EMP-204', 'name' => 'ياسر دياب', 'phone' => '0992000204', 'title' => 'سائق تاريخي للتوافق', 'type' => 'driver'],
             'field_team' => ['user' => 'field_team', 'code' => 'EMP-205', 'name' => 'فراس العلي', 'phone' => '0992000205', 'title' => 'مندوب مبيعات موحد', 'type' => 'sales_representative'],
         ];
 
@@ -177,7 +173,6 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             $routes[$key] = DistributionRoute::query()->create([
                 'area_id' => $areas[$definition['area']],
                 'vehicle_id' => $definition['vehicle'] ? $vehicles[$definition['vehicle']] : null,
-                'driver_id' => null,
                 'sales_representative_id' => $definition['sales'] ? $employees[$definition['sales']]->id : null,
                 'code' => $definition['code'],
                 'name' => $definition['name'],

@@ -59,7 +59,6 @@ class VehicleExpenseInfolist
                         TextEntry::make('vehicle.name')->label('السيارة'),
                         TextEntry::make('warehouse.name')->label('مستودع السيارة'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
-                        TextEntry::make('driver.name')->label('السائق')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),
                     ]),
 

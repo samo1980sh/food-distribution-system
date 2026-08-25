@@ -107,32 +107,24 @@ class VehicleExpenseReportsTable
                         Summarizer::make()
                             ->label('المصاريف النقدية')
                             ->using(
-                                fn (QueryBuilder $query): float =>
-                                    (float) (clone $query)
-                                        ->where('payment_method', 'cash')
-                                        ->sum('amount')
+                                fn (QueryBuilder $query): float => (float) (clone $query)
+                                    ->where('payment_method', 'cash')
+                                    ->sum('amount')
                             )
                             ->money('SYP'),
 
                         Summarizer::make()
                             ->label('المصاريف غير النقدية')
                             ->using(
-                                fn (QueryBuilder $query): float =>
-                                    (float) (clone $query)
-                                        ->where('payment_method', '!=', 'cash')
-                                        ->sum('amount')
+                                fn (QueryBuilder $query): float => (float) (clone $query)
+                                    ->where('payment_method', '!=', 'cash')
+                                    ->sum('amount')
                             )
                             ->money('SYP'),
                     ]),
 
                 TextColumn::make('route.name')
                     ->label('خط التوزيع')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('driver.name')
-                    ->label('السائق')
                     ->searchable()
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -159,13 +151,11 @@ class VehicleExpenseReportsTable
                 TextColumn::make('receipt_path')
                     ->label('الإيصال')
                     ->getStateUsing(
-                        fn (VehicleExpense $record): string =>
-                            filled($record->receipt_path) ? 'مرفق' : 'غير مرفق'
+                        fn (VehicleExpense $record): string => filled($record->receipt_path) ? 'مرفق' : 'غير مرفق'
                     )
                     ->badge()
                     ->color(
-                        fn (string $state): string =>
-                            $state === 'مرفق' ? 'success' : 'gray'
+                        fn (string $state): string => $state === 'مرفق' ? 'success' : 'gray'
                     )
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -215,12 +205,6 @@ class VehicleExpenseReportsTable
                     ->searchable()
                     ->preload(),
 
-                SelectFilter::make('driver_id')
-                    ->label('السائق')
-                    ->relationship('driver', 'name')
-                    ->searchable()
-                    ->preload(),
-
                 SelectFilter::make('sales_representative_id')
                     ->label('المندوب')
                     ->relationship('salesRepresentative', 'name')
@@ -258,9 +242,8 @@ class VehicleExpenseReportsTable
                     ->columnSpanFull(),
 
                 Section::make('فريق التوزيع')
-                    ->description('حدد السائق أو مندوب المبيعات المرتبط بالمصروف عند الحاجة.')
+                    ->description('حدد مندوب المبيعات المرتبط بالمصروف عند الحاجة.')
                     ->schema([
-                        $filters['driver_id'],
                         $filters['sales_representative_id'],
                     ])
                     ->columns(2)
@@ -305,8 +288,7 @@ class VehicleExpenseReportsTable
                         shouldOpenInNewTab: true,
                     )
                     ->visible(
-                        fn (VehicleExpense $record): bool =>
-                            $record->isApproved()
+                        fn (VehicleExpense $record): bool => $record->isApproved()
                             && auth()->user()?->can(PermissionName::REPORT_VEHICLE_EXPENSES->value) === true
                     ),
             ])

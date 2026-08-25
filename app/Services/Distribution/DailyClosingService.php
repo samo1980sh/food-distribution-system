@@ -223,7 +223,7 @@ class DailyClosingService
                     ->exists();
 
                 if ($unexplainedInventoryDifference) {
-                    throw new RuntimeException('يوجد فرق جرد غير مفسر. يجب أن يعيد السائق تسليم الجرد مع توضيح الفروقات.');
+                    throw new RuntimeException('يوجد فرق جرد غير مفسر. يجب أن يعيد المندوب تسليم الجرد مع توضيح الفروقات.');
                 }
 
                 if (abs((float) $closing->cash_difference) >= 0.005 && blank($closing->cash_notes)) {

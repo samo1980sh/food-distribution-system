@@ -102,12 +102,6 @@ class DailyClosingsTable
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('salesRepresentative.name')
                     ->label('مندوب المبيعات')
                     ->searchable()

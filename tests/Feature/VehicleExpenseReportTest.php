@@ -32,7 +32,7 @@ class VehicleExpenseReportTest extends TestCase
 
     public function test_row_print_action_resolves_the_single_expense_print_route(): void
     {
-        $expense = new VehicleExpense();
+        $expense = new VehicleExpense;
         $expense->forceFill(['id' => 17]);
 
         $this->assertSame(
@@ -122,7 +122,6 @@ class VehicleExpenseReportTest extends TestCase
                     'vehicle_id' => 1,
                     'warehouse_id' => 1,
                     'route_id' => null,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'expense_type' => 'fuel',
                     'amount' => 1250,
@@ -141,7 +140,6 @@ class VehicleExpenseReportTest extends TestCase
                     'vehicle_id' => 1,
                     'warehouse_id' => 1,
                     'route_id' => null,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'expense_type' => 'maintenance',
                     'amount' => 3000,
@@ -160,7 +158,6 @@ class VehicleExpenseReportTest extends TestCase
                     'vehicle_id' => 1,
                     'warehouse_id' => 1,
                     'route_id' => null,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'expense_type' => 'fuel',
                     'amount' => 900,
@@ -179,7 +176,6 @@ class VehicleExpenseReportTest extends TestCase
                     'vehicle_id' => 1,
                     'warehouse_id' => 1,
                     'route_id' => null,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'expense_type' => 'fees',
                     'amount' => 500,

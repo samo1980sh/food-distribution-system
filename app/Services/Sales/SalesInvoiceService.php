@@ -3,7 +3,6 @@
 namespace App\Services\Sales;
 
 use App\Models\CustomerPayment;
-use App\Models\DriverDelivery;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Services\Distribution\DailyClosingGuard;
@@ -131,8 +130,6 @@ class SalesInvoiceService
                 $invoice->invoice_date,
                 $invoice->warehouse_id,
             );
-            $this->reconcileLegacyDeliveryForCancellationOrFail($invoice);
-
             $inventory = app(InventoryMovementService::class);
 
             foreach ($invoice->items as $item) {
@@ -161,32 +158,6 @@ class SalesInvoiceService
 
             return $invoice->refresh();
         });
-    }
-
-    private function reconcileLegacyDeliveryForCancellationOrFail(SalesInvoice $invoice): void
-    {
-        $delivery = DriverDelivery::withoutGlobalScopes()
-            ->with('journey')
-            ->where('sales_invoice_id', $invoice->getKey())
-            ->lockForUpdate()
-            ->first();
-
-        if ($delivery === null) {
-            return;
-        }
-
-        $journey = $delivery->journey;
-
-        if ($delivery->isPending() && $journey?->isReady()) {
-            $delivery->delete();
-            $journey->touch();
-
-            return;
-        }
-
-        throw new RuntimeException(
-            'لا يمكن إلغاء الفاتورة بعد بدء رحلة السائق أو تسجيل نتيجة التسليم. استخدم مسار المرتجع الرسمي عند الحاجة.',
-        );
     }
 
     public function recalculateTotals(SalesInvoice $invoice): void

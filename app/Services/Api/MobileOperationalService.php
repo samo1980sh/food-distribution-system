@@ -229,7 +229,7 @@ class MobileOperationalService
         $routes = $user->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value)
             ? DistributionRouteResource::collection(
                 DistributionRoute::query()
-                    ->with(['area', 'vehicle', 'driver', 'salesRepresentative'])
+                    ->with(['area', 'vehicle', 'salesRepresentative'])
                     ->where('status', 'active')
                     ->orderBy('name')
                     ->limit(100)

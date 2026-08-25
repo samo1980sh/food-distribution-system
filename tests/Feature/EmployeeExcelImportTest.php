@@ -20,9 +20,8 @@ class EmployeeExcelImportTest extends TestCase
 
     public function test_employee_template_is_real_xlsx_with_dynamic_available_user_reference_list(): void
     {
-        $driver = $this->makeUserWithRoles('driver.available@example.com', ['driver']);
         $available = $this->makeUserWithRoles('sales.available@example.com', ['sales_representative']);
-        $dual = $this->makeUserWithRoles('dual.available@example.com', ['driver', 'sales_representative']);
+        $accountant = $this->makeUserWithRoles('accountant.available@example.com', ['accountant']);
         $linked = $this->makeUserWithRoles('linked@example.com', ['accountant']);
         $this->makeUserWithRoles('manager@example.com', ['manager']);
         $this->makeEmployee('EMP-LINKED', 'موظف مربوط', 'accountant', $linked->id);
@@ -47,8 +46,7 @@ class EmployeeExcelImportTest extends TestCase
         )));
 
         $this->assertContains($available->email, $referenceEmails);
-        $this->assertContains($dual->email, $referenceEmails);
-        $this->assertNotContains($driver->email, $referenceEmails);
+        $this->assertContains($accountant->email, $referenceEmails);
         $this->assertNotContains('linked@example.com', $referenceEmails);
         $this->assertNotContains('manager@example.com', $referenceEmails);
         $this->assertNotNull($spreadsheet->getNamedRange('AVAILABLE_EMPLOYEE_USER_EMAILS'));
@@ -144,11 +142,11 @@ class EmployeeExcelImportTest extends TestCase
 
     public function test_user_role_mismatch_is_rejected_all_or_nothing(): void
     {
-        $this->makeUserWithRoles('driver@example.com', ['driver']);
+        $this->makeUserWithRoles('warehouse@example.com', ['warehouse_keeper']);
 
         $path = $this->makeWorkbook([
             ['EMP-OK', 'موظف سليم', null, null, 'sales_representative', null, 'active', null],
-            ['EMP-BAD', 'موظف خاطئ', null, null, 'sales_representative', 'driver@example.com', 'active', null],
+            ['EMP-BAD', 'موظف خاطئ', null, null, 'sales_representative', 'warehouse@example.com', 'active', null],
         ]);
 
         $result = app(EmployeeExcelImportService::class)->import($path, 'employees.xlsx');
@@ -160,28 +158,10 @@ class EmployeeExcelImportTest extends TestCase
         $this->assertDatabaseMissing('employees', ['employee_code' => 'EMP-BAD']);
     }
 
-    public function test_dual_role_user_can_match_either_supported_field_role(): void
-    {
-        $dual = $this->makeUserWithRoles('dual@example.com', ['driver', 'sales_representative']);
-
-        $path = $this->makeWorkbook([
-            ['EMP-DUAL', 'مندوب ثنائي الدور', null, null, 'sales_representative', 'dual@example.com', 'active', null],
-        ]);
-
-        $result = app(EmployeeExcelImportService::class)->import($path, 'employees.xlsx');
-
-        $this->assertTrue($result['valid'], implode(' | ', $result['errors']));
-        $this->assertDatabaseHas('employees', [
-            'employee_code' => 'EMP-DUAL',
-            'user_id' => $dual->id,
-            'type' => 'sales_representative',
-        ]);
-    }
-
     public function test_missing_user_is_rejected(): void
     {
         $path = $this->makeWorkbook([
-            ['EMP-404', 'موظف', null, null, 'driver', 'missing@example.com', 'active', null],
+            ['EMP-404', 'موظف', null, null, 'sales_representative', 'missing@example.com', 'active', null],
         ]);
 
         $analysis = app(EmployeeExcelImportService::class)->analyze($path, 'employees.xlsx');
@@ -207,11 +187,11 @@ class EmployeeExcelImportTest extends TestCase
 
     public function test_same_user_cannot_be_used_twice_inside_workbook(): void
     {
-        $this->makeUserWithRoles('driver@example.com', ['driver']);
+        $this->makeUserWithRoles('sales@example.com', ['sales_representative']);
 
         $path = $this->makeWorkbook([
-            ['EMP-A', 'أول', null, null, 'driver', 'driver@example.com', 'active', null],
-            ['EMP-B', 'ثان', null, null, 'driver', 'driver@example.com', 'active', null],
+            ['EMP-A', 'أول', null, null, 'sales_representative', 'sales@example.com', 'active', null],
+            ['EMP-B', 'ثان', null, null, 'sales_representative', 'sales@example.com', 'active', null],
         ]);
 
         $analysis = app(EmployeeExcelImportService::class)->analyze($path, 'employees.xlsx');
@@ -223,7 +203,7 @@ class EmployeeExcelImportTest extends TestCase
     public function test_duplicate_employee_code_inside_workbook_is_rejected(): void
     {
         $path = $this->makeWorkbook([
-            ['EMP-DUP', 'أول', null, null, 'driver', null, 'active', null],
+            ['EMP-DUP', 'أول', null, null, 'sales_representative', null, 'active', null],
             ['emp-dup', 'ثان', null, null, 'accountant', null, 'active', null],
         ]);
 
@@ -235,10 +215,10 @@ class EmployeeExcelImportTest extends TestCase
 
     public function test_existing_employee_code_is_rejected_before_import(): void
     {
-        $this->makeEmployee('EMP-EXISTS', 'موجود', 'driver');
+        $this->makeEmployee('EMP-EXISTS', 'موجود', 'sales_representative');
 
         $path = $this->makeWorkbook([
-            ['EMP-EXISTS', 'جديد', null, null, 'driver', null, 'active', null],
+            ['EMP-EXISTS', 'جديد', null, null, 'sales_representative', null, 'active', null],
         ]);
 
         $analysis = app(EmployeeExcelImportService::class)->analyze($path, 'employees.xlsx');
@@ -264,8 +244,8 @@ class EmployeeExcelImportTest extends TestCase
     public function test_required_employee_code_and_name_are_enforced(): void
     {
         $path = $this->makeWorkbook([
-            [null, 'بلا رمز', null, null, 'driver', null, 'active', null],
-            ['EMP-NAMELESS', null, null, null, 'driver', null, 'active', null],
+            [null, 'بلا رمز', null, null, 'sales_representative', null, 'active', null],
+            ['EMP-NAMELESS', null, null, null, 'sales_representative', null, 'active', null],
         ]);
 
         $analysis = app(EmployeeExcelImportService::class)->analyze($path, 'employees.xlsx');
@@ -304,7 +284,7 @@ class EmployeeExcelImportTest extends TestCase
     public function test_non_xlsx_extension_is_rejected_even_if_contents_are_xlsx(): void
     {
         $path = $this->makeWorkbook([
-            ['EMP-001', 'موظف', null, null, 'driver', null, 'active', null],
+            ['EMP-001', 'موظف', null, null, 'sales_representative', null, 'active', null],
         ]);
 
         $analysis = app(EmployeeExcelImportService::class)->analyze($path, 'employees.csv');

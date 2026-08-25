@@ -51,11 +51,9 @@ class VehicleLoadPolicy extends PermissionPolicy
                 (int) $record->sales_representative_id === (int) $employeeId
                 || (int) $record->route?->sales_representative_id === (int) $employeeId
             );
-        $ownsAsDriver = $user->hasRole(User::ROLE_DRIVER)
-            && (int) $record->driver_id === (int) $employeeId;
 
         return $employeeId !== null
-            && ($ownsAsRepresentative || $ownsAsDriver)
+            && $ownsAsRepresentative
             && $record->isApproved()
             && $record->isHandoverPending()
             && $this->allowsRecord($user, $record, PermissionName::VEHICLE_LOADS_VIEW);

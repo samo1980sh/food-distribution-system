@@ -40,7 +40,7 @@ class UserForm
                     ]),
 
                 Section::make('الأدوار وقناة العمل')
-                    ->description('الأدوار ثابتة ضمن مصفوفة الصلاحيات. مندوب المبيعات هو الدور الميداني الحالي، ويُحتفظ بدور السائق للسجلات التاريخية فقط.')
+                    ->description('الأدوار ثابتة ضمن مصفوفة الصلاحيات، ومندوب المبيعات هو الدور الميداني.')
                     ->icon('heroicon-o-shield-check')
                     ->columns(2)
                     ->columnSpanFull()
@@ -51,10 +51,6 @@ class UserForm
                                 name: 'roles',
                                 titleAttribute: 'name',
                                 modifyQueryUsing: function (Builder $query, ?User $record): Builder {
-                                    if ($record?->hasRole(UserRole::DRIVER->value) !== true) {
-                                        $query->where('name', '!=', UserRole::DRIVER->value);
-                                    }
-
                                     if (auth()->user()?->isSuperAdmin() !== true) {
                                         $query->where('name', '!=', UserRole::SUPER_ADMIN->value);
                                     }
@@ -73,12 +69,8 @@ class UserForm
                                     ->all(),
                             )
                             ->multiple()
-                            ->maxItems(2)
-                            ->rules(fn (?User $record): array => [
-                                new AllowedUserRoleCombination(
-                                    allowHistoricalDriver: $record?->hasRole(UserRole::DRIVER->value) === true,
-                                ),
-                            ])
+                            ->maxItems(1)
+                            ->rules([new AllowedUserRoleCombination])
                             ->required()
                             ->live()
                             ->preload()

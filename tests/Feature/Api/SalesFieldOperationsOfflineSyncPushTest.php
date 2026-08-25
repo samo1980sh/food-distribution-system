@@ -25,8 +25,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
-            ->assertCreated()
-            ->assertJsonPath('data.driver', null);
+            ->assertCreated();
         $journeyId = (int) $opened->json('data.id');
 
         $startOperation = [[
@@ -111,8 +110,6 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             ->assertJsonPath('data.results.0.record.status', 'completed');
 
         $this->assertDatabaseHas('sales_journeys', ['id' => $journeyId, 'status' => 'completed']);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDatabaseCount('driver_deliveries', 0);
         $this->assertDatabaseCount('sales_visits', 1);
         $this->assertDatabaseCount('customers', 2);
     }
@@ -142,17 +139,13 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'vehicle_id' => $vehicle->id, 'code' => 'SLS-SYNC-WH',
             'name' => 'مستودع مزامنة المبيعات', 'type' => 'vehicle', 'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'SLS-SYNC-DRV', 'name' => 'سائق مزامنة المبيعات',
-            'type' => User::ROLE_DRIVER, 'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'SLS-SYNC-REP', 'name' => 'مندوب مزامنة المبيعات',
             'type' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active',
         ]);
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id, 'vehicle_id' => $vehicle->id,
-            'driver_id' => null, 'sales_representative_id' => $representative->id,
+            'sales_representative_id' => $representative->id,
             'code' => 'SLS-SYNC-ROUTE', 'name' => 'خط مزامنة المبيعات',
             'visit_days' => [], 'status' => 'active',
         ]);

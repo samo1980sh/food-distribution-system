@@ -18,7 +18,7 @@ class RouteController extends Controller
 
     public function index(OperationalIndexRequest $request): JsonResponse
     {
-        $query = DistributionRoute::query()->with(['area', 'vehicle.warehouse', 'driver', 'salesRepresentative']);
+        $query = DistributionRoute::query()->with(['area', 'vehicle.warehouse', 'salesRepresentative']);
         $this->applySearch($query, $request, ['code', 'name']);
         $query->when($request->validated('status'), fn ($q, $status) => $q->where('status', $status));
 
@@ -39,7 +39,7 @@ class RouteController extends Controller
     public function show(Request $request, DistributionRoute $distributionRoute): JsonResponse
     {
         Gate::authorize('view', $distributionRoute);
-        $distributionRoute->loadMissing(['area', 'vehicle.warehouse', 'driver', 'salesRepresentative']);
+        $distributionRoute->loadMissing(['area', 'vehicle.warehouse', 'salesRepresentative']);
 
         return ApiResponse::success(
             RouteResource::make($distributionRoute)->resolve($request),

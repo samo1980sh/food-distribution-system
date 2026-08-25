@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\VehicleLoads\Pages;
 
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
@@ -25,7 +24,6 @@ class ListVehicleLoads extends ListRecords
     {
         return [
             CreateAction::make()
-                ->mutateDataUsing(fn (array $data): array => AdminOperationalDriverGuard::sanitize($data))
                 ->label('أمر تحميل جديد')
                 ->icon('heroicon-o-plus')
                 ->visible(fn (): bool => VehicleLoadResource::canCreate())

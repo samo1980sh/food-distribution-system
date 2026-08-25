@@ -4,12 +4,10 @@ namespace App\Providers;
 
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockMovement;
 use App\Models\VehicleExpense;
 use App\Models\VehicleLoad;
@@ -38,8 +36,6 @@ class AccessScopeServiceProvider extends ServiceProvider
         foreach ([
             StockMovement::class,
             VehicleLoad::class,
-            DriverJourney::class,
-            DriverDelivery::class,
             SalesJourney::class,
             SalesVisit::class,
             SalesInvoice::class,

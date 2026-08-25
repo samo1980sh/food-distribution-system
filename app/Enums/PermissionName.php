@@ -112,9 +112,6 @@ enum PermissionName: string
     case VEHICLE_EXPENSES_REJECT = 'vehicle_expenses.reject';
     case VEHICLE_EXPENSES_PRINT = 'vehicle_expenses.print';
 
-    case DRIVER_JOURNEYS_VIEW = 'driver_journeys.view';
-    case DRIVER_DELIVERIES_VIEW = 'driver_deliveries.view';
-
     case SALES_JOURNEYS_VIEW = 'sales_journeys.view';
     case SALES_JOURNEYS_OPEN = 'sales_journeys.open';
     case SALES_JOURNEYS_START = 'sales_journeys.start';

@@ -33,23 +33,16 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.field_workspace.legacy', false)
             ->assertJsonPath('data.modules.sales_journeys', true)
             ->assertJsonPath('data.modules.sales_visits', true)
-            ->assertJsonMissingPath('data.modules.driver_journeys')
-            ->assertJsonMissingPath('data.modules.driver_deliveries')
             ->assertJsonPath('data.write.customers.create', true)
             ->assertJsonPath('data.write.sales_journeys.open_today', true)
             ->assertJsonPath('data.write.sales_journeys.start', true)
             ->assertJsonPath('data.write.sales_journeys.finish', true)
-            ->assertJsonPath('data.write.sales_visits.complete', true)
-            ->assertJsonMissingPath('data.write.driver_journeys.open_today')
-            ->assertJsonMissingPath('data.write.driver_journeys.start')
-            ->assertJsonMissingPath('data.write.driver_journeys.finish')
-            ->assertJsonMissingPath('data.write.driver_deliveries.submit_outcome');
+            ->assertJsonPath('data.write.sales_visits.complete', true);
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
             ->assertCreated()
             ->assertJsonPath('data.status', 'ready')
-            ->assertJsonPath('data.driver', null)
             ->assertJsonCount(2, 'data.visits');
 
         $journeyId = (int) $opened->json('data.id');
@@ -107,9 +100,6 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.sales_visit_id', $visitId)
             ->assertJsonPath('data.status', 'confirmed');
 
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
-
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/complete", [
                 'outcome' => 'invoice_created',
@@ -148,7 +138,6 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.summary.in_progress', 0)
             ->assertJsonPath('data.summary.completed', 3);
 
-        $this->assertDatabaseCount('driver_journeys', 0);
     }
 
     public function test_existing_today_journey_keeps_its_visit_plan_frozen_unless_new_customer_is_explicitly_attached(): void
@@ -349,10 +338,6 @@ class SalesFieldOperationsApiTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'SLS-DRV', 'name' => 'سائق خط المبيعات',
-            'type' => User::ROLE_DRIVER, 'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'SLS-REP', 'name' => 'مندوب المبيعات',
             'type' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active',
@@ -360,7 +345,6 @@ class SalesFieldOperationsApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'SLS-ROUTE',
             'name' => 'خط المبيعات',
@@ -394,7 +378,7 @@ class SalesFieldOperationsApiTest extends TestCase
             'average_unit_cost' => 5,
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'product');
+        return compact('area', 'vehicle', 'warehouse', 'representative', 'route', 'product');
     }
 
     private function salesUser(Employee $representative): User

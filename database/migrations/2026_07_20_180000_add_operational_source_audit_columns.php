@@ -44,7 +44,7 @@ return new class extends Migration
 
         DB::table('vehicle_expenses')
             ->whereNotNull('client_reference')
-            ->update(['operation_source' => OperationSource::MOBILE_DRIVER->value]);
+            ->update(['operation_source' => OperationSource::MOBILE_SALES->value]);
     }
 
     public function down(): void

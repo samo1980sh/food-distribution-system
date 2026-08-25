@@ -108,14 +108,11 @@ final class VehicleLoadActions
             'toWarehouse',
             'vehicle',
             'route',
-            'driver',
             'salesRepresentative',
             'creator',
             'approver',
         ]);
     }
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

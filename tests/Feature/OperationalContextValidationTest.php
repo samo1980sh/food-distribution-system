@@ -44,30 +44,12 @@ class OperationalContextValidationTest extends TestCase
     public function test_route_team_must_be_active_and_qualified_for_operational_roles(): void
     {
         $context = $this->context('A');
-        $wrongDriver = Employee::query()->create([
-            'employee_code' => 'CTX-WRONG-DRIVER',
-            'name' => 'موظف غير مؤهل للقيادة',
-            'type' => 'sales_representative',
-            'status' => 'active',
-        ]);
         $inactiveRepresentative = Employee::query()->create([
             'employee_code' => 'CTX-INACTIVE-REP',
             'name' => 'مندوب غير فعال',
             'type' => 'sales_representative',
             'status' => 'inactive',
         ]);
-
-        $this->assertValidationError(
-            fn (): DistributionRoute => DistributionRoute::query()->create([
-                'area_id' => $context['area']->id,
-                'vehicle_id' => $context['vehicle']->id,
-                'driver_id' => $wrongDriver->id,
-                'code' => 'CTX-ROUTE-WRONG-DRIVER',
-                'name' => 'خط بسائق غير مؤهل',
-                'status' => 'active',
-            ]),
-            'driver_id',
-        );
 
         $this->assertValidationError(
             fn (): DistributionRoute => DistributionRoute::query()->create([
@@ -263,7 +245,6 @@ class OperationalContextValidationTest extends TestCase
                 'load_number' => 'CTX-LOAD-MISMATCH',
                 'vehicle_id' => $first['vehicle']->id,
                 'route_id' => $first['route']->id,
-                'driver_id' => $first['driver']->id,
                 'sales_representative_id' => $first['representative']->id,
                 'from_warehouse_id' => $first['source_warehouse']->id,
                 'to_warehouse_id' => $second['warehouse']->id,
@@ -280,7 +261,7 @@ class OperationalContextValidationTest extends TestCase
                 'vehicle_id' => $first['vehicle']->id,
                 'warehouse_id' => $first['warehouse']->id,
                 'route_id' => $second['route']->id,
-                'driver_id' => $first['driver']->id,
+                'sales_representative_id' => $first['representative']->id,
                 'expense_type' => 'fuel',
                 'amount' => 10,
                 'payment_method' => 'cash',
@@ -320,7 +301,6 @@ class OperationalContextValidationTest extends TestCase
             'load_number' => 'CTX-LOAD-VALID',
             'vehicle_id' => $context['vehicle']->id,
             'route_id' => $context['route']->id,
-            'driver_id' => $context['driver']->id,
             'sales_representative_id' => $context['representative']->id,
             'from_warehouse_id' => $context['source_warehouse']->id,
             'to_warehouse_id' => $context['warehouse']->id,
@@ -357,12 +337,6 @@ class OperationalContextValidationTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'CTX-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'CTX-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -372,7 +346,6 @@ class OperationalContextValidationTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'CTX-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -391,7 +364,6 @@ class OperationalContextValidationTest extends TestCase
             'vehicle' => $vehicle,
             'source_warehouse' => $sourceWarehouse,
             'warehouse' => $warehouse,
-            'driver' => $driver,
             'representative' => $representative,
             'route' => $route,
             'customer' => $customer,

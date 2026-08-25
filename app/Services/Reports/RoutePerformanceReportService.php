@@ -78,7 +78,6 @@ class RoutePerformanceReportService
             'route_id' => $this->id($settings['route_id'] ?? null),
             'area_id' => $this->id($settings['area_id'] ?? null),
             'vehicle_id' => $this->id($settings['vehicle_id'] ?? null),
-            'driver_id' => $this->id($settings['driver_id'] ?? null),
             'sales_representative_id' => $this->id(
                 $settings['sales_representative_id'] ?? null,
             ),
@@ -108,7 +107,6 @@ class RoutePerformanceReportService
         $query = DistributionRoute::query()->with([
             'area',
             'vehicle',
-            'driver',
             'salesRepresentative',
             'customers:id,route_id,status',
         ]);
@@ -280,7 +278,6 @@ class RoutePerformanceReportService
         $route = DistributionRoute::query()->with([
             'area',
             'vehicle',
-            'driver',
             'salesRepresentative',
             'customers:id,route_id,status',
         ])->findOrFail($routeId);
@@ -657,9 +654,7 @@ class RoutePerformanceReportService
                 'status' => $route->status,
                 'area' => $route->area?->name_ar,
                 'vehicle' => $route->vehicle?->name,
-                'driver' => $route->driver?->name,
-                'sales_representative' =>
-                    $route->salesRepresentative?->name,
+                'sales_representative' => $route->salesRepresentative?->name,
             ],
             'rank' => null,
             'has_activity' => $documents > 0,
@@ -717,33 +712,23 @@ class RoutePerformanceReportService
         $query
             ->when(
                 $settings['status'] !== 'all',
-                fn (Builder $query): Builder =>
-                    $query->where('status', $settings['status']),
+                fn (Builder $query): Builder => $query->where('status', $settings['status']),
             )
             ->when(
                 $settings['route_id'],
-                fn (Builder $query, int $id): Builder =>
-                    $query->whereKey($id),
+                fn (Builder $query, int $id): Builder => $query->whereKey($id),
             )
             ->when(
                 $settings['area_id'],
-                fn (Builder $query, int $id): Builder =>
-                    $query->where('area_id', $id),
+                fn (Builder $query, int $id): Builder => $query->where('area_id', $id),
             )
             ->when(
                 $settings['vehicle_id'],
-                fn (Builder $query, int $id): Builder =>
-                    $query->where('vehicle_id', $id),
-            )
-            ->when(
-                $settings['driver_id'],
-                fn (Builder $query, int $id): Builder =>
-                    $query->where('driver_id', $id),
+                fn (Builder $query, int $id): Builder => $query->where('vehicle_id', $id),
             )
             ->when(
                 $settings['sales_representative_id'],
-                fn (Builder $query, int $id): Builder =>
-                    $query->where('sales_representative_id', $id),
+                fn (Builder $query, int $id): Builder => $query->where('sales_representative_id', $id),
             )
             ->when(
                 $settings['search'] !== '',
@@ -756,23 +741,15 @@ class RoutePerformanceReportService
                             ->orWhere('name', 'like', $value)
                             ->orWhereHas(
                                 'area',
-                                fn (Builder $query): Builder =>
-                                    $query->where('name_ar', 'like', $value),
+                                fn (Builder $query): Builder => $query->where('name_ar', 'like', $value),
                             )
                             ->orWhereHas(
                                 'vehicle',
-                                fn (Builder $query): Builder =>
-                                    $query->where('plate_number', 'like', $value),
-                            )
-                            ->orWhereHas(
-                                'driver',
-                                fn (Builder $query): Builder =>
-                                    $query->where('name', 'like', $value),
+                                fn (Builder $query): Builder => $query->where('plate_number', 'like', $value),
                             )
                             ->orWhereHas(
                                 'salesRepresentative',
-                                fn (Builder $query): Builder =>
-                                    $query->where('name', 'like', $value),
+                                fn (Builder $query): Builder => $query->where('name', 'like', $value),
                             );
                     });
                 },

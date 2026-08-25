@@ -478,7 +478,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
   /operational/daily-closings/{dailyClosing}/submit-inventory:
     post:
-      summary: Submit vehicle inventory by the responsible driver
+      summary: Submit vehicle inventory by the responsible sales representative
       security: [{ bearerAuth: [] }]
       parameters: [{ $ref: '#/components/parameters/DailyClosingId' }]
       requestBody:
@@ -980,7 +980,6 @@ components:
         vehicle_id: { type: integer }
         warehouse_id: { type: integer }
         route_id: { $ref: '#/components/schemas/NullableId' }
-        driver_id: { $ref: '#/components/schemas/NullableId' }
         sales_representative_id: { $ref: '#/components/schemas/NullableId' }
         expense_type: { type: string, enum: [fuel, maintenance, washing, fees, parking, emergency, other] }
         amount: { type: number, exclusiveMinimum: 0 }

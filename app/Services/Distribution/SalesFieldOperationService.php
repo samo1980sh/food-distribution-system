@@ -76,7 +76,6 @@ class SalesFieldOperationService
                     'vehicle_id' => $vehicle->getKey(),
                     'warehouse_id' => $warehouse->getKey(),
                     'sales_representative_id' => $route->sales_representative_id,
-                    'driver_id' => null,
                     'status' => 'ready',
                     'created_by' => Auth::id(),
                     'operation_source' => OperationSource::MOBILE_SALES,
@@ -495,7 +494,7 @@ class SalesFieldOperationService
     {
         return [
             'route.area', 'route.vehicle.warehouse', 'vehicle.warehouse',
-            'warehouse.vehicle', 'salesRepresentative', 'driver',
+            'warehouse.vehicle', 'salesRepresentative',
             'visits.customer.area', 'visits.customer.route',
         ];
     }

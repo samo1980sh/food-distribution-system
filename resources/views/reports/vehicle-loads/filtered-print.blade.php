@@ -413,7 +413,6 @@
                             <th>التاريخ</th>
                             <th>السيارة</th>
                             <th>خط التوزيع</th>
-                            <th>السائق</th>
                             <th>المندوب</th>
                             <th>المستودع المصدر</th>
                             <th>مستودع السيارة</th>
@@ -440,8 +439,6 @@
                                 </td>
 
                                 <td>{{ $vehicleLoad->route?->name ?? '-' }}</td>
-                                <td>{{ $vehicleLoad->driver?->name ?? '-' }}</td>
-
                                 <td>
                                     {{ $vehicleLoad->salesRepresentative?->name ?? '-' }}
                                 </td>
@@ -471,7 +468,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="12" class="empty">
+                                <td colspan="11" class="empty">
                                     لا توجد أوامر تحميل مطابقة للفلاتر الحالية.
                                 </td>
                             </tr>

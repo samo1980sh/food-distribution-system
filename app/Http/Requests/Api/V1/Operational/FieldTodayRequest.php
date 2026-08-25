@@ -13,10 +13,7 @@ class FieldTodayRequest extends FormRequest
         $user = $this->user();
 
         return $user instanceof User
-            && $user->hasAnyRole([
-                User::ROLE_DRIVER,
-                User::ROLE_SALES_REPRESENTATIVE,
-            ]);
+            && $user->hasRole(User::ROLE_SALES_REPRESENTATIVE);
     }
 
     /** @return array<string, mixed> */
@@ -27,10 +24,7 @@ class FieldTodayRequest extends FormRequest
                 'sometimes',
                 'nullable',
                 'required_with:route_id',
-                Rule::in([
-                    User::ROLE_DRIVER,
-                    User::ROLE_SALES_REPRESENTATIVE,
-                ]),
+                Rule::in([User::ROLE_SALES_REPRESENTATIVE]),
             ],
             'route_id' => [
                 'sometimes',

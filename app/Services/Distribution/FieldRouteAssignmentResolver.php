@@ -6,7 +6,6 @@ use App\Models\DistributionRoute;
 use App\Models\User;
 use App\Services\Authorization\AccessScopeService;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use RuntimeException;
@@ -14,14 +13,16 @@ use RuntimeException;
 class FieldRouteAssignmentResolver
 {
     public const STATUS_READY = 'ready';
+
     public const STATUS_NO_ASSIGNMENT = 'no_assignment';
+
     public const STATUS_NOT_SCHEDULED_TODAY = 'not_scheduled_today';
+
     public const STATUS_ROUTE_SELECTION_REQUIRED = 'route_selection_required';
 
     public function __construct(
         private readonly AccessScopeService $accessScopeService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -49,7 +50,7 @@ class FieldRouteAssignmentResolver
             $selected = $routes->firstWhere('id', $selectedRouteId);
 
             if (! $selected instanceof DistributionRoute) {
-                throw (new ModelNotFoundException())->setModel(
+                throw (new ModelNotFoundException)->setModel(
                     DistributionRoute::class,
                     [$selectedRouteId],
                 );
@@ -74,7 +75,7 @@ class FieldRouteAssignmentResolver
                 'status' => self::STATUS_NO_ASSIGNMENT,
                 'scheduled_today' => false,
                 'route' => null,
-                'candidates' => new Collection(),
+                'candidates' => new Collection,
                 'available_count' => 0,
                 'scheduled_count' => 0,
             ];
@@ -173,23 +174,17 @@ class FieldRouteAssignmentResolver
         $employeeId = $user->employee()->value('id');
 
         if ($employeeId === null || ! $user->hasRole($role)) {
-            return new Collection();
+            return new Collection;
         }
 
-        $column = match ($role) {
-            User::ROLE_DRIVER => 'driver_id',
-            User::ROLE_SALES_REPRESENTATIVE => 'sales_representative_id',
-            default => null,
-        };
-
-        if ($column === null) {
-            return new Collection();
+        if ($role !== User::ROLE_SALES_REPRESENTATIVE) {
+            return new Collection;
         }
 
         $query = DistributionRoute::withoutGlobalScopes()
             ->with($this->relations())
             ->where('status', 'active')
-            ->where($column, $employeeId);
+            ->where('sales_representative_id', $employeeId);
 
         $this->accessScopeService->apply($query, $user);
 
@@ -205,33 +200,17 @@ class FieldRouteAssignmentResolver
         $employeeId = $user->employee()->value('id');
 
         if ($employeeId === null) {
-            return new Collection();
+            return new Collection;
         }
 
-        $isDriver = $user->hasRole(User::ROLE_DRIVER);
-        $isSalesRepresentative = $user->hasRole(User::ROLE_SALES_REPRESENTATIVE);
-
-        if (! $isDriver && ! $isSalesRepresentative) {
-            return new Collection();
+        if (! $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)) {
+            return new Collection;
         }
 
         $query = DistributionRoute::withoutGlobalScopes()
             ->with($this->relations())
             ->where('status', 'active')
-            ->where(function (Builder $query) use (
-                $employeeId,
-                $isDriver,
-                $isSalesRepresentative,
-            ): void {
-                if ($isDriver) {
-                    $query->where('driver_id', $employeeId);
-                }
-
-                if ($isSalesRepresentative) {
-                    $method = $isDriver ? 'orWhere' : 'where';
-                    $query->{$method}('sales_representative_id', $employeeId);
-                }
-            });
+            ->where('sales_representative_id', $employeeId);
 
         $this->accessScopeService->apply($query, $user);
 
@@ -247,7 +226,6 @@ class FieldRouteAssignmentResolver
         return [
             'area',
             'vehicle.warehouse',
-            'driver',
             'salesRepresentative',
         ];
     }

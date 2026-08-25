@@ -24,7 +24,6 @@ class VehicleLoadPrintController extends Controller
         $vehicleLoad->load([
             'vehicle',
             'route',
-            'driver',
             'salesRepresentative',
             'fromWarehouse',
             'toWarehouse',

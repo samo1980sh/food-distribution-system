@@ -59,10 +59,6 @@ class VehicleExpenseReportFilteredPrintController
             $this->filterValue($filters, 'route_id'),
         );
 
-        $driverId = $this->normalizeId(
-            $this->filterValue($filters, 'driver_id'),
-        );
-
         $representativeId = $this->normalizeId(
             $this->filterValue($filters, 'sales_representative_id'),
         );
@@ -76,7 +72,6 @@ class VehicleExpenseReportFilteredPrintController
                 'vehicle',
                 'warehouse',
                 'route',
-                'driver',
                 'salesRepresentative',
                 'approvedBy',
             ])
@@ -104,11 +99,6 @@ class VehicleExpenseReportFilteredPrintController
                 $routeId,
                 fn (Builder $query, int $id): Builder => $query
                     ->where('route_id', $id),
-            )
-            ->when(
-                $driverId,
-                fn (Builder $query, int $id): Builder => $query
-                    ->where('driver_id', $id),
             )
             ->when(
                 $representativeId,
@@ -146,11 +136,6 @@ class VehicleExpenseReportFilteredPrintController
                                 )
                                 ->orWhereHas(
                                     'route',
-                                    fn (Builder $query): Builder => $query
-                                        ->where('name', 'like', $value),
-                                )
-                                ->orWhereHas(
-                                    'driver',
                                     fn (Builder $query): Builder => $query
                                         ->where('name', 'like', $value),
                                 )
@@ -211,9 +196,6 @@ class VehicleExpenseReportFilteredPrintController
                 : null,
             'خط التوزيع' => $routeId
                 ? DistributionRoute::query()->find($routeId)?->name
-                : null,
-            'السائق' => $driverId
-                ? Employee::query()->find($driverId)?->name
                 : null,
             'المندوب' => $representativeId
                 ? Employee::query()->find($representativeId)?->name

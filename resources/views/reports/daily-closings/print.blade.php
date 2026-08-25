@@ -387,11 +387,6 @@
                 </div>
 
                 <div class="meta-item">
-                    <span>السائق</span>
-                    <strong>{{ $dailyClosing->driver?->name ?? '-' }}</strong>
-                </div>
-
-                <div class="meta-item">
                     <span>مندوب المبيعات</span>
                     <strong>{{ $dailyClosing->salesRepresentative?->name ?? '-' }}</strong>
                 </div>
@@ -533,7 +528,7 @@
                 <div class="meta-grid" style="margin-top: 14px;">
                     <div class="meta-item">
                         <span>تسليم جرد السيارة</span>
-                        <strong>{{ $dailyClosing->inventory_submitted_at?->format('Y-m-d H:i') ?? 'بانتظار السائق' }}</strong>
+                        <strong>{{ $dailyClosing->inventory_submitted_at?->format('Y-m-d H:i') ?? 'بانتظار مندوب المبيعات' }}</strong>
                     </div>
                     <div class="meta-item">
                         <span>سلّم الجرد</span>

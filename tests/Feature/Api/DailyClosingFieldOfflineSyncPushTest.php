@@ -23,7 +23,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
     public function test_representative_inventory_and_cash_merge_from_the_same_base_version(): void
     {
         $context = $this->context();
-        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
@@ -123,7 +122,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
     public function test_a_submitted_section_cannot_be_overwritten_by_a_new_operation(): void
     {
         $context = $this->context();
-        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
@@ -234,12 +232,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'SYNC-CLOSE-DRV',
-            'name' => 'سائق مزامنة الإغلاق',
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'SYNC-CLOSE-REP',
             'name' => 'مندوب مزامنة الإغلاق',
@@ -249,7 +241,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'SYNC-CLOSE-ROUTE',
             'name' => 'خط مزامنة الإغلاق',
@@ -287,7 +278,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
             'area',
             'vehicle',
             'warehouse',
-            'driver',
             'representative',
             'route',
             'product',
@@ -312,7 +302,6 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'sales_representative_id' => $context['representative']->id,
-            'driver_id' => null,
             'status' => 'completed',
             'started_at' => now()->subHour(),
             'finished_at' => now(),

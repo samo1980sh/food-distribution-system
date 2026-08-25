@@ -6,8 +6,6 @@ use App\Models\Area;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\MobileSyncChange;
 use App\Models\MobileSyncCheckpoint;
@@ -20,7 +18,6 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Models\Warehouse;
-use App\Services\Api\MobileSyncScopeService;
 use App\Services\Authorization\AccessScopeService;
 use App\Services\Sales\CustomerPaymentService;
 use Illuminate\Database\QueryException;
@@ -90,104 +87,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->assertJsonPath('data.reset_required', false);
     }
 
-    public function test_representative_pull_excludes_retired_legacy_driver_entities(): void
-    {
-        $context = $this->context('UNIFIED');
-        $journey = DriverJourney::query()->create([
-            'journey_number' => 'LEGACY-SYNC-JOURNEY',
-            'journey_date' => today(),
-            'route_id' => $context['route']->id,
-            'vehicle_id' => $context['vehicle']->id,
-            'warehouse_id' => $context['warehouse']->id,
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['representative']->id,
-            'status' => 'ready',
-        ]);
-        $delivery = DriverDelivery::query()->create([
-            'driver_journey_id' => $journey->id,
-            'sales_invoice_id' => $context['invoice']->id,
-            'customer_id' => $context['customer']->id,
-            'route_id' => $context['route']->id,
-            'vehicle_id' => $context['vehicle']->id,
-            'warehouse_id' => $context['warehouse']->id,
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['representative']->id,
-            'status' => 'pending',
-            'expected_quantity' => 1,
-            'delivered_quantity' => 0,
-            'returned_quantity' => 0,
-            'return_required' => false,
-        ]);
-        $journeyChange = MobileSyncChange::query()->create([
-            'entity' => 'driver_journeys',
-            'record_id' => $journey->id,
-            'operation' => 'upsert',
-            'scope_snapshot' => ['route_id' => $context['route']->id],
-            'changed_at' => now(),
-        ]);
-        $deliveryChange = MobileSyncChange::query()->create([
-            'entity' => 'driver_deliveries',
-            'record_id' => $delivery->id,
-            'operation' => 'upsert',
-            'scope_snapshot' => ['route_id' => $context['route']->id],
-            'changed_at' => now(),
-        ]);
-        $legacyChanges = MobileSyncChange::query()
-            ->whereKey([$journeyChange->id, $deliveryChange->id])
-            ->get()
-            ->map->getRawOriginal()
-            ->all();
-
-        $representative = User::factory()->create([
-            'role' => User::ROLE_SALES_REPRESENTATIVE,
-        ]);
-        $context['representative']->update(['user_id' => $representative->id]);
-        $representativeToken = $this->tokenFor(
-            $representative,
-            'sync-unified-representative',
-        );
-
-        $representativeEntities = $this->withToken($representativeToken)
-            ->getJson('/api/v1/operational/sync/status')
-            ->assertOk()
-            ->json('data.entities');
-        $this->assertContains('sales_journeys', $representativeEntities);
-        $this->assertContains('sales_visits', $representativeEntities);
-        $this->assertNotContains('driver_journeys', $representativeEntities);
-        $this->assertNotContains('driver_deliveries', $representativeEntities);
-
-        $scopeService = app(MobileSyncScopeService::class);
-        $this->assertFalse($scopeService->allows(
-            $representative,
-            'driver_journeys',
-            $scopeService->snapshot($journey),
-        ));
-        $this->assertFalse($scopeService->allows(
-            $representative,
-            'driver_deliveries',
-            $scopeService->snapshot($delivery),
-        ));
-
-        $representativePull = $this->withToken($representativeToken)
-            ->postJson('/api/v1/operational/sync/pull', [
-                'cursor' => 0,
-                'limit' => 500,
-                'context_key' => $this->contextKey($representativeToken),
-            ])
-            ->assertOk();
-        $representativeChanges = collect($representativePull->json('data.changes'));
-        $this->assertFalse($representativeChanges->contains('entity', 'driver_journeys'));
-        $this->assertFalse($representativeChanges->contains('entity', 'driver_deliveries'));
-        $this->assertSame(
-            $legacyChanges,
-            MobileSyncChange::query()
-                ->whereKey([$journeyChange->id, $deliveryChange->id])
-                ->get()
-                ->map->getRawOriginal()
-                ->all(),
-        );
-    }
-
     public function test_initial_pull_returns_only_permitted_scoped_records(): void
     {
         $first = $this->context('A');
@@ -218,9 +117,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
         $this->assertContains($first['area']->id, $areaIds);
         $this->assertNotContains($second['area']->id, $areaIds);
-        $this->assertContains($first['driver']->id, $employeeIds);
         $this->assertContains($first['representative']->id, $employeeIds);
-        $this->assertNotContains($second['driver']->id, $employeeIds);
         $this->assertContains($first['category']->id, $categoryIds);
         $this->assertContains($second['category']->id, $categoryIds);
         $this->assertContains($first['unit']->id, $unitIds);
@@ -530,12 +427,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'type' => 'main',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -545,7 +436,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -601,7 +491,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'load_number' => 'LOAD-'.$suffix,
             'vehicle_id' => $vehicle->id,
             'route_id' => $route->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $warehouse->id,
@@ -613,7 +502,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'area',
             'vehicle',
             'warehouse',
-            'driver',
             'representative',
             'route',
             'customer',

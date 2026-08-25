@@ -203,7 +203,6 @@ class ExecutiveDashboardTest extends TestCase
                 'load_number' => 'DASH-LOAD-DISCREPANCY',
                 'vehicle_id' => 1,
                 'route_id' => 101,
-                'driver_id' => null,
                 'sales_representative_id' => null,
                 'from_warehouse_id' => 1,
                 'to_warehouse_id' => 1,
@@ -335,7 +334,7 @@ class ExecutiveDashboardTest extends TestCase
     public function test_dashboard_access_still_requires_dashboard_view_permission(): void
     {
         $user = User::factory()->create([
-            'role' => User::ROLE_DRIVER,
+            'role' => User::ROLE_SALES_REPRESENTATIVE,
             'status' => User::STATUS_ACTIVE,
         ]);
 
@@ -458,7 +457,6 @@ class ExecutiveDashboardTest extends TestCase
                     'id' => 101,
                     'area_id' => 1,
                     'vehicle_id' => 1,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'code' => 'DASH-ROUTE-1',
                     'name' => 'خط لوحة التحكم',
@@ -693,7 +691,6 @@ class ExecutiveDashboardTest extends TestCase
             'vehicle_id' => 1,
             'warehouse_id' => 1,
             'route_id' => 101,
-            'driver_id' => null,
             'sales_representative_id' => null,
             'expense_type' => 'fuel',
             'amount' => $amount,

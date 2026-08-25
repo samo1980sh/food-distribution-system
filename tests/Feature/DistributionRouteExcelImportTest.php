@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Area;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
-use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\Imports\Excel\DistributionRouteExcelImportService;
 use App\Services\Imports\Excel\DistributionRouteExcelTemplateService;
@@ -14,7 +13,6 @@ use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class DistributionRouteExcelImportTest extends TestCase
@@ -27,11 +25,8 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->makeArea('AREA-I', 'منطقة غير فعالة', 'inactive');
         $activeVehicle = $this->makeVehicle('VEH-A', 'PLATE-A');
         $this->makeVehicle('VEH-I', 'PLATE-I', 'inactive');
-        $this->makeEmployee('DRV-A', 'سائق فعال', 'driver');
         $representative = $this->makeEmployee('REP-A', 'مندوب فعال', 'sales_representative');
-        $this->makeEmployee('DRV-I', 'سائق غير فعال', 'driver', 'inactive');
         $this->makeEmployee('ACC-A', 'محاسب', 'accountant');
-        $dual = $this->makeDualRoleEmployee('DUAL-A', 'ثنائي الدور');
 
         $spreadsheet = app(DistributionRouteExcelTemplateService::class)->makeSpreadsheet();
         $sheet = $spreadsheet->getSheet(0);
@@ -59,9 +54,6 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertContains($activeVehicle->code, $vehicleCodes);
         $this->assertNotContains('VEH-I', $vehicleCodes);
         $this->assertContains($representative->employee_code, $representativeCodes);
-        $this->assertContains($dual->employee_code, $representativeCodes);
-        $this->assertNotContains('DRV-A', $representativeCodes);
-        $this->assertNotContains('DRV-I', $representativeCodes);
         $this->assertNotContains('ACC-A', $representativeCodes);
 
         $this->assertNotNull($spreadsheet->getNamedRange('ACTIVE_AREA_CODES'));
@@ -100,14 +92,12 @@ class DistributionRouteExcelImportTest extends TestCase
         $route = DistributionRoute::query()->where('code', 'ROUTE-001')->firstOrFail();
         $this->assertSame($area->id, $route->area_id);
         $this->assertSame($vehicle->id, $route->vehicle_id);
-        $this->assertNull($route->driver_id);
         $this->assertSame($representative->id, $route->sales_representative_id);
         $this->assertSame(['saturday', 'monday', 'wednesday'], $route->visit_days);
         $this->assertSame('active', $route->status);
 
         $optionalRoute = DistributionRoute::query()->where('code', 'ROUTE-002')->firstOrFail();
         $this->assertNull($optionalRoute->vehicle_id);
-        $this->assertNull($optionalRoute->driver_id);
         $this->assertNull($optionalRoute->sales_representative_id);
         $this->assertSame([], $optionalRoute->visit_days);
         $this->assertSame('inactive', $optionalRoute->status);
@@ -211,13 +201,13 @@ class DistributionRouteExcelImportTest extends TestCase
     {
         $this->makeArea('AREA-001', 'دمشق');
         $this->makeEmployee('REP-I', 'غير فعال', 'sales_representative', 'inactive');
-        $this->makeEmployee('DRV-001', 'سائق', 'driver');
+        $this->makeEmployee('ACC-001', 'محاسب', 'accountant');
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
                 ['ROUTE-404', 'مفقود', 'AREA-001', null, 'REP-404', null, 'active', null],
                 ['ROUTE-I', 'غير فعال', 'AREA-001', null, 'REP-I', null, 'active', null],
-                ['ROUTE-U', 'غير مؤهل', 'AREA-001', null, 'DRV-001', null, 'active', null],
+                ['ROUTE-U', 'غير مؤهل', 'AREA-001', null, 'ACC-001', null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -226,27 +216,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $errors = implode(' | ', $analysis['errors']);
         $this->assertStringContainsString('REP-404', $errors);
         $this->assertStringContainsString('مندوب المبيعات REP-I موجود لكنه غير فعال', $errors);
-        $this->assertStringContainsString('DRV-001 غير مؤهل للعمل كمندوب مبيعات', $errors);
-    }
-
-    public function test_dual_role_employee_can_be_used_as_route_representative_without_driver_assignment(): void
-    {
-        $this->makeArea('AREA-001', 'دمشق');
-        $dual = $this->makeDualRoleEmployee('DUAL-001', 'ثنائي الدور');
-
-        $result = app(DistributionRouteExcelImportService::class)->import(
-            $this->makeWorkbook([
-                ['ROUTE-DUAL', 'خط ثنائي', 'AREA-001', null, 'DUAL-001', 'sunday', 'active', null],
-            ]),
-            'routes.xlsx',
-        );
-
-        $this->assertTrue($result['valid'], implode(' | ', $result['errors']));
-        $this->assertDatabaseHas('distribution_routes', [
-            'code' => 'ROUTE-DUAL',
-            'driver_id' => null,
-            'sales_representative_id' => $dual->id,
-        ]);
+        $this->assertStringContainsString('ACC-001 غير مؤهل للعمل كمندوب مبيعات', $errors);
     }
 
     public function test_invalid_or_duplicate_visit_days_are_rejected(): void
@@ -418,16 +388,6 @@ class DistributionRouteExcelImportTest extends TestCase
             'type' => $type,
             'status' => $status,
         ]);
-    }
-
-    private function makeDualRoleEmployee(string $code, string $name): Employee
-    {
-        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
-        Role::findOrCreate('driver', 'web');
-        Role::findOrCreate('sales_representative', 'web');
-        $user->syncRoles(['driver', 'sales_representative']);
-
-        return $this->makeEmployee($code, $name, 'sales_representative', 'active', $user->id);
     }
 
     /** @return list<string> */

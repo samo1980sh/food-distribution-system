@@ -25,7 +25,6 @@ class VehicleExpensePrintController
             'vehicle',
             'warehouse',
             'route',
-            'driver',
             'salesRepresentative',
             'createdBy',
             'approvedBy',

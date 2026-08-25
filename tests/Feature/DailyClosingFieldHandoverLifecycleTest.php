@@ -27,7 +27,6 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
     public function test_field_handover_remains_draft_until_existing_admin_confirmation(): void
     {
         $context = $this->context();
-        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
         $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
         $handover = app(DailyClosingFieldHandoverService::class);
@@ -86,29 +85,6 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         );
     }
 
-    public function test_driver_field_closing_rejects_driver_handover_and_admin_edit(): void
-    {
-        $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
-
-        $this->actingAs($driver);
-        $closing = app(DailyClosingFieldHandoverService::class)->openToday(
-            $driver,
-            $context['route']->id,
-        );
-
-        $this->assertFalse($driver->can('submitInventory', $closing));
-        $this->assertFalse($driver->can('submitCash', $closing));
-
-        $this->actingAs($manager);
-        $closing = $closing->fresh();
-
-        $this->assertTrue($manager->can('view', $closing));
-        $this->assertFalse($manager->can('update', $closing));
-        $this->assertFalse($manager->can('confirm', $closing));
-    }
-
     /** @return array<string, mixed> */
     private function context(): array
     {
@@ -129,12 +105,6 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'LIFE-DRV',
-            'name' => 'سائق دورة الإغلاق',
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'LIFE-REP',
             'name' => 'مندوب دورة الإغلاق',
@@ -144,7 +114,6 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'LIFE-ROUTE',
             'name' => 'خط دورة الإغلاق',
@@ -178,7 +147,7 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             'average_unit_cost' => 5,
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'product');
+        return compact('area', 'vehicle', 'warehouse', 'representative', 'route', 'product');
     }
 
     private function userForEmployee(string $role, Employee $employee): User
@@ -199,7 +168,6 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'sales_representative_id' => $context['representative']->id,
-            'driver_id' => null,
             'status' => 'completed',
             'started_at' => now()->subHour(),
             'finished_at' => now(),

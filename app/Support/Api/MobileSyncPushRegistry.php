@@ -109,22 +109,16 @@ final class MobileSyncPushRegistry
     /** @return list<string> */
     public static function entities(): array
     {
-        return array_values(array_unique([
-            ...array_keys(self::definitions()),
-            ...MobileSyncRetiredLegacyRegistry::entities(),
-        ]));
+        return array_keys(self::definitions());
     }
 
     /** @return list<string> */
     public static function actions(): array
     {
-        return array_values(array_unique([
-            ...array_merge(...array_values(array_map(
-                static fn (array $definition): array => $definition['actions'],
-                self::definitions(),
-            ))),
-            ...MobileSyncRetiredLegacyRegistry::actions(),
-        ]));
+        return array_values(array_unique(array_merge(...array_values(array_map(
+            static fn (array $definition): array => $definition['actions'],
+            self::definitions(),
+        )))));
     }
 
     /** @return array{model: class-string<Model>, request: class-string<FormRequest>, route_parameter: string, actions: list<string>} */
@@ -143,21 +137,11 @@ final class MobileSyncPushRegistry
     {
         $definition = self::definitions()[$entity] ?? null;
 
-        return ($definition !== null && in_array($action, $definition['actions'], true))
-            || MobileSyncRetiredLegacyRegistry::supports($entity, $action);
+        return $definition !== null && in_array($action, $definition['actions'], true);
     }
 
     public static function supportsFor(User $user, string $entity, string $action): bool
     {
-        if (self::isRetired($entity, $action)) {
-            return false;
-        }
-
         return self::supports($entity, $action);
-    }
-
-    public static function isRetired(string $entity, string $action): bool
-    {
-        return MobileSyncRetiredLegacyRegistry::supports($entity, $action);
     }
 }

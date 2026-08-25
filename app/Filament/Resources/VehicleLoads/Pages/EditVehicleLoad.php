@@ -4,7 +4,6 @@ namespace App\Filament\Resources\VehicleLoads\Pages;
 
 use App\Filament\Resources\VehicleLoads\Actions\VehicleLoadActions;
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
@@ -32,11 +31,6 @@ class EditVehicleLoad extends EditRecord
                 ->label('حذف المسودة')
                 ->visible(fn (): bool => auth()->user()?->can('delete', $this->record) === true),
         ];
-    }
-
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        return AdminOperationalDriverGuard::sanitize($data, $this->record);
     }
 
     protected function getRedirectUrl(): string

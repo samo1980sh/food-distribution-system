@@ -23,7 +23,7 @@ final class OperationalFormContext
         ];
     }
 
-    /** @return array{vehicle_id: ?int, warehouse_id: ?int, driver_id: ?int, sales_representative_id: ?int} */
+    /** @return array{vehicle_id: ?int, warehouse_id: ?int, sales_representative_id: ?int} */
     public static function forRoute(mixed $routeId): array
     {
         $route = self::route($routeId);
@@ -31,7 +31,6 @@ final class OperationalFormContext
         return [
             'vehicle_id' => self::id($route?->vehicle_id),
             'warehouse_id' => self::vehicleWarehouseId($route?->vehicle_id),
-            'driver_id' => self::id($route?->driver_id),
             'sales_representative_id' => self::id($route?->sales_representative_id),
         ];
     }

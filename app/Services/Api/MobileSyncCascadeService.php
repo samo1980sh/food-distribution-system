@@ -12,8 +12,8 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\Vehicle;
@@ -30,8 +30,7 @@ class MobileSyncCascadeService
     public function __construct(
         private readonly MobileSyncChangeRecorder $recorder,
         private readonly MobileSyncScopeService $scopeService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{
@@ -82,8 +81,8 @@ class MobileSyncCascadeService
     }
 
     /**
-     * @param array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>} $plan
-     * @param array<string, bool> $visited
+     * @param  array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>}  $plan
+     * @param  array<string, bool>  $visited
      */
     private function collectDependents(Model $model, array &$plan, array &$visited): void
     {
@@ -181,19 +180,16 @@ class MobileSyncCascadeService
             $employeeId = $model->getKey();
 
             $this->refreshQuery($plan, DistributionRoute::withoutGlobalScopes()
-                ->where('driver_id', $employeeId)
-                ->orWhere('sales_representative_id', $employeeId));
+                ->where('sales_representative_id', $employeeId));
             $this->refreshQuery($plan, VehicleLoad::withoutGlobalScopes()
-                ->where('driver_id', $employeeId)
-                ->orWhere('sales_representative_id', $employeeId));
+                ->where('sales_representative_id', $employeeId));
             $this->refreshWhere($plan, SalesInvoice::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, SalesJourney::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, SalesVisit::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, CustomerPayment::class, 'sales_representative_id', $employeeId);
             $this->refreshWhere($plan, SalesReturn::class, 'sales_representative_id', $employeeId);
             $this->refreshQuery($plan, VehicleExpense::withoutGlobalScopes()
-                ->where('driver_id', $employeeId)
-                ->orWhere('sales_representative_id', $employeeId));
+                ->where('sales_representative_id', $employeeId));
             $this->refreshWhere($plan, DailyClosing::class, 'sales_representative_id', $employeeId);
 
             return;
@@ -296,9 +292,9 @@ class MobileSyncCascadeService
     }
 
     /**
-     * @param Builder<Model> $query
-     * @param array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>} $plan
-     * @param array<string, bool> $visited
+     * @param  Builder<Model>  $query
+     * @param  array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>}  $plan
+     * @param  array<string, bool>  $visited
      */
     private function cascadeQuery(Builder $query, array &$plan, array &$visited): void
     {
@@ -340,8 +336,8 @@ class MobileSyncCascadeService
     }
 
     /**
-     * @param array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>} $plan
-     * @param Builder<Model> $query
+     * @param  array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>}  $plan
+     * @param  Builder<Model>  $query
      */
     private function refreshQuery(array &$plan, Builder $query): void
     {
@@ -350,9 +346,9 @@ class MobileSyncCascadeService
     }
 
     /**
-     * @param array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>} $plan
-     * @param class-string<Model> $modelClass
-     * @param array<int, mixed> $ids
+     * @param  array{deletions: list<array{entity: string, record_id: int, scope: array<string, mixed>}>, refresh: array<class-string<Model>, list<int>>}  $plan
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, mixed>  $ids
      */
     private function refreshIds(array &$plan, string $modelClass, array $ids): void
     {

@@ -9,10 +9,6 @@ use Spatie\Permission\Models\Role;
 
 final class AllowedUserRoleCombination implements ValidationRule
 {
-    public function __construct(
-        private readonly bool $allowHistoricalDriver = true,
-    ) {}
-
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $roleIds = collect((array) $value)
@@ -22,8 +18,8 @@ final class AllowedUserRoleCombination implements ValidationRule
             ->unique()
             ->values();
 
-        if ($roleIds->isEmpty() || $roleIds->count() > 2) {
-            $fail('يجب اختيار دور واحد، أو دوري السائق ومندوب المبيعات معاً فقط.');
+        if ($roleIds->count() !== 1) {
+            $fail('يجب اختيار دور واحد فقط.');
 
             return;
         }
@@ -40,26 +36,8 @@ final class AllowedUserRoleCombination implements ValidationRule
             return;
         }
 
-        if (
-            ! $this->allowHistoricalDriver
-            && $roleNames->contains(UserRole::DRIVER->value)
-        ) {
-            $fail('دور السائق مخصص للسجلات التاريخية ولا يمكن تعيينه لحساب جديد أو إضافته إلى حساب حالي.');
-
-            return;
-        }
-
-        if ($roleNames->count() === 1) {
-            return;
-        }
-
-        $allowedFieldCombination = collect([
-            UserRole::DRIVER->value,
-            UserRole::SALES_REPRESENTATIVE->value,
-        ])->sort()->values();
-
-        if ($roleNames->all() !== $allowedFieldCombination->all()) {
-            $fail('لا يمكن جمع أكثر من دور إلا للسائق ومندوب المبيعات معاً.');
+        if ($roleNames->diff(array_column(UserRole::cases(), 'value'))->isNotEmpty()) {
+            $fail('يتضمن اختيار الأدوار دورًا غير مدعوم.');
         }
     }
 }

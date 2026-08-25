@@ -27,10 +27,9 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_sales_representative_opens_closing_with_both_handover_capabilities_without_driver(): void
+    public function test_sales_representative_opens_closing_with_both_handover_capabilities(): void
     {
         $context = $this->context();
-        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
 
         $salesToken = $this->tokenFor($sales);
@@ -50,7 +49,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.field_workflow', true)
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.actions.can_submit_inventory', true)
             ->assertJsonPath('data.actions.can_submit_cash', true)
@@ -68,7 +66,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
             'field_workflow' => true,
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
         ]);
 
@@ -82,7 +79,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
     public function test_representative_submits_both_sections_and_differences_require_notes(): void
     {
         $context = $this->context();
-        $context['route']->update(['driver_id' => null]);
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
         $salesToken = $this->tokenFor($sales);
         $this->completedJourney($context, $sales);
@@ -195,7 +191,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
         $otherRoute = DistributionRoute::query()->create([
             'area_id' => $otherArea->id,
             'vehicle_id' => $otherVehicle->id,
-            'driver_id' => null,
             'sales_representative_id' => $otherRepresentative->id,
             'code' => 'FIELD-CLOSE-OTHER-ROUTE',
             'name' => 'خط إغلاق آخر',
@@ -225,7 +220,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'route_id' => $context['route']->id,
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'expense_type' => 'fuel',
             'amount' => 40000,
@@ -274,12 +268,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'FIELD-CLOSE-DRV',
-            'name' => 'سائق الإغلاق',
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'FIELD-CLOSE-REP',
             'name' => 'مندوب الإغلاق',
@@ -289,7 +277,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'FIELD-CLOSE-ROUTE',
             'name' => 'خط الإغلاق',
@@ -323,7 +310,7 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'average_unit_cost' => 5,
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'driver', 'representative', 'route', 'product');
+        return compact('area', 'vehicle', 'warehouse', 'representative', 'route', 'product');
     }
 
     private function userForEmployee(string $role, Employee $employee): User
@@ -344,7 +331,6 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             'vehicle_id' => $context['vehicle']->id,
             'warehouse_id' => $context['warehouse']->id,
             'sales_representative_id' => $context['representative']->id,
-            'driver_id' => null,
             'status' => 'completed',
             'started_at' => now()->subHour(),
             'finished_at' => now(),

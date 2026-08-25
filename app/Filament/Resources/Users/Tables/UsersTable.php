@@ -98,7 +98,6 @@ class UsersTable
                 SelectFilter::make('employee_type')
                     ->label('نوع الموظف المرتبط')
                     ->options([
-                        'driver' => 'سائق',
                         'sales_representative' => 'مندوب مبيعات',
                         'warehouse_keeper' => 'أمين مستودع',
                         'accountant' => 'محاسب',

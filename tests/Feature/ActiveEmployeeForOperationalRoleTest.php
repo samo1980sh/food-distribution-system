@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\Employee;
-use App\Models\User;
 use App\Rules\ActiveEmployeeForOperationalRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
@@ -14,98 +13,41 @@ class ActiveEmployeeForOperationalRoleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_account_roles_extend_employee_operational_eligibility(): void
+    public function test_only_active_sales_representative_is_operationally_eligible(): void
     {
-        $driverUser = User::factory()->create([
-            'role' => User::ROLE_DRIVER,
-        ]);
-        $driverUser->assignRole(User::ROLE_SALES_REPRESENTATIVE);
-
-        $driverEmployee = Employee::query()->create([
-            'user_id' => $driverUser->id,
-            'employee_code' => 'DUAL-DRV',
-            'name' => 'Dual Driver',
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
-
-        $representativeUser = User::factory()->create([
-            'role' => User::ROLE_SALES_REPRESENTATIVE,
-        ]);
-        $representativeUser->assignRole(User::ROLE_DRIVER);
-
-        $representativeEmployee = Employee::query()->create([
-            'user_id' => $representativeUser->id,
-            'employee_code' => 'DUAL-REP',
-            'name' => 'Dual Representative',
+        $active = Employee::query()->create([
+            'employee_code' => 'ACTIVE-REP',
+            'name' => 'Active Representative',
             'type' => 'sales_representative',
             'status' => 'active',
         ]);
-
-        $this->assertContains(
-            $driverEmployee->id,
-            Employee::query()
-                ->where('status', 'active')
-                ->forOperationalRole(UserRole::SALES_REPRESENTATIVE)
-                ->pluck('id')
-                ->all(),
-        );
-        $this->assertContains(
-            $representativeEmployee->id,
-            Employee::query()
-                ->where('status', 'active')
-                ->forOperationalRole(UserRole::DRIVER)
-                ->pluck('id')
-                ->all(),
-        );
-
-        $this->assertTrue($this->validatorPasses(
-            $driverEmployee->id,
-            UserRole::SALES_REPRESENTATIVE,
-        ));
-        $this->assertTrue($this->validatorPasses(
-            $representativeEmployee->id,
-            UserRole::DRIVER,
-        ));
-    }
-
-    public function test_validation_rejects_inactive_or_unqualified_employee(): void
-    {
-        $ordinaryDriver = Employee::query()->create([
-            'employee_code' => 'ONLY-DRV',
-            'name' => 'Only Driver',
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
-
-        $inactiveRepresentative = Employee::query()->create([
+        $inactive = Employee::query()->create([
             'employee_code' => 'INACTIVE-REP',
             'name' => 'Inactive Representative',
             'type' => 'sales_representative',
             'status' => 'inactive',
         ]);
+        $supervisor = Employee::query()->create([
+            'employee_code' => 'SUPERVISOR',
+            'name' => 'Supervisor',
+            'type' => 'supervisor',
+            'status' => 'active',
+        ]);
 
-        $this->assertFalse($this->validatorPasses(
-            $ordinaryDriver->id,
-            UserRole::SALES_REPRESENTATIVE,
-        ));
-        $this->assertFalse($this->validatorPasses(
-            $inactiveRepresentative->id,
-            UserRole::SALES_REPRESENTATIVE,
-        ));
+        $this->assertTrue($this->validatorPasses($active->id));
+        $this->assertFalse($this->validatorPasses($inactive->id));
+        $this->assertFalse($this->validatorPasses($supervisor->id));
     }
 
-    private function validatorPasses(int $employeeId, UserRole $role): bool
+    private function validatorPasses(int $employeeId): bool
     {
         return Validator::make(
             ['employee_id' => $employeeId],
-            [
-                'employee_id' => [
-                    'required',
-                    'integer',
-                    new ActiveEmployeeForOperationalRole($role),
-                ],
-            ],
+            ['employee_id' => [
+                'required',
+                'integer',
+                new ActiveEmployeeForOperationalRole(UserRole::SALES_REPRESENTATIVE),
+            ]],
         )->passes();
     }
 }

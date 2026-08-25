@@ -12,7 +12,6 @@ class DistributionRoute extends Model
     protected $fillable = [
         'area_id',
         'vehicle_id',
-        'driver_id',
         'sales_representative_id',
         'code',
         'name',
@@ -40,11 +39,6 @@ class DistributionRoute extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'driver_id');
     }
 
     public function salesRepresentative(): BelongsTo

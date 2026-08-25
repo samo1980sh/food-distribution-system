@@ -8,14 +8,12 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -64,8 +62,6 @@ class AccessScopeService
             VehicleLoad::class => $this->scopeVehicleLoads($query, $scope),
             SalesInvoice::class,
             SalesReturn::class,
-            DriverJourney::class,
-            DriverDelivery::class,
             SalesJourney::class,
             SalesVisit::class,
             CustomerPayment::class,
@@ -216,8 +212,6 @@ class AccessScopeService
             VehicleLoad::class => $this->allowsVehicleLoadAttributes($scope, $record),
             SalesInvoice::class,
             SalesReturn::class,
-            DriverJourney::class,
-            DriverDelivery::class,
             SalesJourney::class,
             SalesVisit::class,
             CustomerPayment::class,
@@ -369,14 +363,13 @@ class AccessScopeService
             );
         }
 
-        $isDriver = in_array(UserRole::DRIVER, $roles, true);
         $isSalesRepresentative = in_array(
             UserRole::SALES_REPRESENTATIVE,
             $roles,
             true,
         );
 
-        if ($isDriver || $isSalesRepresentative) {
+        if ($isSalesRepresentative) {
             if ($employeeId === null) {
                 return $this->cache[$key] = new EffectiveAccessScope(
                     role: $role,
@@ -385,20 +378,7 @@ class AccessScopeService
             }
 
             $routeIds = $this->ids(DistributionRoute::withoutGlobalScopes()
-                ->where(function (Builder $query) use (
-                    $employeeId,
-                    $isDriver,
-                    $isSalesRepresentative,
-                ): void {
-                    if ($isDriver) {
-                        $query->where('driver_id', $employeeId);
-                    }
-
-                    if ($isSalesRepresentative) {
-                        $method = $isDriver ? 'orWhere' : 'where';
-                        $query->{$method}('sales_representative_id', $employeeId);
-                    }
-                })
+                ->where('sales_representative_id', $employeeId)
                 ->pluck('id')
                 ->all());
             $areaIds = $this->ids(DistributionRoute::withoutGlobalScopes()
@@ -541,7 +521,7 @@ class AccessScopeService
      * Visibility dimensions are intentionally role-aware.
      *
      * A warehouse assignment allows inventory work and validates operational
-     * payloads, but for supervisors, drivers, and representatives it must not
+     * payloads, but for supervisors and representatives it must not
      * widen sales visibility. Multiple routes commonly share one main
      * warehouse, so sales-like records are scoped by route, vehicle, team, and
      * customer instead.
@@ -562,7 +542,6 @@ class AccessScopeService
             'route_id' => $scope->routeIds,
             'vehicle_id' => $scope->vehicleIds,
             'sales_representative_id' => $scope->employeeIds,
-            'driver_id' => $scope->employeeIds,
         ];
     }
 
@@ -574,8 +553,7 @@ class AccessScopeService
         if ($scope->role === UserRole::WAREHOUSE_KEEPER) {
             return match ($table) {
                 'sales_invoices', 'sales_returns', 'customer_payments',
-                'vehicle_expenses', 'daily_closings',
-                'driver_journeys', 'driver_deliveries' => [
+                'vehicle_expenses', 'daily_closings' => [
                     'warehouse_id' => $scope->warehouseIds,
                 ],
                 'vehicle_loads' => [
@@ -596,14 +574,11 @@ class AccessScopeService
                 'route_id' => $scope->routeIds,
                 'vehicle_id' => $scope->vehicleIds,
                 'sales_representative_id' => $scope->employeeIds,
-                'driver_id' => $scope->employeeIds,
             ],
-            'vehicle_expenses', 'vehicle_loads',
-            'driver_journeys', 'driver_deliveries' => [
+            'vehicle_expenses', 'vehicle_loads' => [
                 'route_id' => $scope->routeIds,
                 'vehicle_id' => $scope->vehicleIds,
                 'sales_representative_id' => $scope->employeeIds,
-                'driver_id' => $scope->employeeIds,
             ],
             default => [],
         };
@@ -639,7 +614,6 @@ class AccessScopeService
             'from_warehouse_id' => $scope->warehouseIds,
             'to_warehouse_id' => $scope->warehouseIds,
             'sales_representative_id' => $scope->employeeIds,
-            'driver_id' => $scope->employeeIds,
         ];
 
         foreach ($checks as $column => $allowedIds) {
@@ -692,8 +666,6 @@ class AccessScopeService
             CustomerPayment::class,
             VehicleExpense::class,
             DailyClosing::class,
-            DriverJourney::class,
-            DriverDelivery::class,
         ] as $model) {
             $ids = array_merge(
                 $ids,
@@ -723,12 +695,9 @@ class AccessScopeService
         if ($routeIds !== []) {
             $routes = DistributionRoute::withoutGlobalScopes()
                 ->whereIn('id', $routeIds)
-                ->get(['driver_id', 'sales_representative_id']);
+                ->get(['sales_representative_id']);
 
-            $ids = array_merge(
-                $routes->pluck('driver_id')->all(),
-                $routes->pluck('sales_representative_id')->all(),
-            );
+            $ids = array_merge($ids, $routes->pluck('sales_representative_id')->all());
         }
 
         if ($employeeId !== null) {
@@ -788,8 +757,8 @@ class AccessScopeService
     }
 
     /**
-     * @param list<UserRole> $roles
-     * @param list<UserRole> $expected
+     * @param  list<UserRole>  $roles
+     * @param  list<UserRole>  $expected
      */
     private function hasAnyRole(array $roles, array $expected): bool
     {

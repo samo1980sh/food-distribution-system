@@ -32,7 +32,6 @@ return new class extends Migration
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->restrictOnDelete();
             $table->foreignId('warehouse_id')->nullable()->constrained('warehouses')->restrictOnDelete();
             $table->foreignId('sales_representative_id')->constrained('employees')->restrictOnDelete();
-            $table->foreignId('driver_id')->nullable()->constrained('employees')->nullOnDelete();
             $table->string('status')->default('ready');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();

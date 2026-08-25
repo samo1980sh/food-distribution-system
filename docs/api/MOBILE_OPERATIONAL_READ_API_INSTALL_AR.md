@@ -1,59 +1,38 @@
-# تركيب Mobile Operational Read API — Phase 1
+# تركيب Mobile Operational Read API
 
-## نقطة البداية
+## المتطلبات
 
-يجب أن يكون المشروع على commit:
+- Mobile API وSanctum يعملان.
+- المستخدم فعال ويحمل `sales_representative` و`api.access`.
+- يوجد Employee فعال مرتبط بالحساب ومعين على DistributionRoute فعالة.
+- الخط مرتبط بسيارة فعالة لها مستودع سيارة فعال.
 
-`b5a8eca Add mobile API foundation`
-
-وأن تكون الشجرة نظيفة قبل فك الحزمة.
-
-## التركيب
-
-فك ملف ZIP مباشرة داخل جذر المشروع، ثم احذف ملف ZIP من المجلد.
-
-لا توجد Migration جديدة في هذه المرحلة.
-
-## تحديث مصفوفة الصلاحيات
-
-أُضيفت للسائق والمندوب صلاحيات القراءة اللازمة للتطبيق: المنتجات، الخطوط، السيارات، والمستودعات. طبّق المصفوفة عبر:
-
-```powershell
-php artisan db:seed --class=RolesAndPermissionsSeeder
-php artisan permission:cache-reset
-php artisan optimize:clear
-```
-
-## التحقق من المسارات
+## الفحص
 
 ```powershell
 php artisan route:list --path=api/v1/operational
-```
-
-يجب أن تظهر مسارات bootstrap والقوائم والتفاصيل للوحدات التشغيلية.
-
-## الاختبارات
-
-```powershell
 php artisan test --filter=MobileOperationalReadApiTest
-php artisan test
+php artisan test --filter=FieldTodayReadApiTest
+php artisan test --filter=RoleDataScopeTest
 ```
 
-## الاختبار اليدوي
+بعد تسجيل الدخول استخدم Bearer Token مع:
 
-1. سجّل الدخول من `/api/v1/auth/login`.
-2. استخدم Bearer Token مع `/api/v1/operational/bootstrap`.
-3. اختبر حساب مندوب مرتبط بخط، وتأكد أن العملاء والفواتير من الخط نفسه فقط.
-4. اختبر حساب سائق، وتأكد أنه يستطيع قراءة خطه وسيارته ومخزونها وأوامر تحميلها، ولا يستطيع فتح العملاء.
-5. جرّب رقم سجل خارج النطاق، ويجب أن تكون النتيجة 404.
-6. تحقق أن `average_unit_cost` وحقول تكلفة التحميل لا تظهر للأدوار التي لا تملك `reports.profit`.
-
-## Git
-
-استخدم السكربت:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\mobile-operational-read-api-git-add.ps1
+```text
+GET /api/v1/operational/bootstrap
+GET /api/v1/operational/today
+GET /api/v1/operational/routes
+GET /api/v1/operational/stock-balances
 ```
 
-السكربت لا يستخدم `git add .`.
+## فحوص النطاق
+
+- حساب المندوب لا يرى خط مندوب آخر.
+- لا تظهر سيارة أو مستودع أو عميل خارج سياق الخط.
+- السجل خارج النطاق يعاد 404 بدل كشف وجوده.
+- بيانات التكلفة لا تظهر دون صلاحيتها.
+- bootstrap لا يعرض إلا مساحة العمل الموحدة للمندوب.
+
+## لا توجد كتابة ضمن القراءة
+
+طلبات GET لا تنشئ `SalesJourney` أو زيارات. فتح الجولة والعمليات التشغيلية تستخدم endpoints الكتابة الموثقة بصورة مستقلة.

@@ -49,7 +49,6 @@ final class OperationalContextValidator
             $record instanceof VehicleLoad => [
                 'vehicle_id',
                 'route_id',
-                'driver_id',
                 'sales_representative_id',
                 'from_warehouse_id',
                 'to_warehouse_id',
@@ -58,14 +57,12 @@ final class OperationalContextValidator
                 'vehicle_id',
                 'warehouse_id',
                 'route_id',
-                'driver_id',
                 'sales_representative_id',
             ],
             $record instanceof DailyClosing => [
                 'vehicle_id',
                 'route_id',
                 'warehouse_id',
-                'driver_id',
                 'sales_representative_id',
             ],
             default => [],
@@ -111,13 +108,6 @@ final class OperationalContextValidator
 
     public function validateRoute(DistributionRoute $route): void
     {
-        $this->assertEmployeeRole(
-            $route->driver_id,
-            UserRole::DRIVER,
-            'driver_id',
-            'الموظف المحدد غير مؤهل للعمل كسائق على خط التوزيع.',
-        );
-
         $this->assertEmployeeRole(
             $route->sales_representative_id,
             UserRole::SALES_REPRESENTATIVE,
@@ -324,17 +314,10 @@ final class OperationalContextValidator
         }
 
         $this->assertRouteVehicle($route, $load->vehicle_id, requireWhenAssigned: true);
-        $this->assertRouteDriver($route, $load->driver_id);
         $this->assertRouteRepresentative(
             $route,
             $load->sales_representative_id,
             requireWhenAssigned: false,
-        );
-        $this->assertEmployeeRole(
-            $load->driver_id,
-            UserRole::DRIVER,
-            'driver_id',
-            'الموظف المحدد غير مؤهل للعمل كسائق.',
         );
         $this->assertEmployeeRole(
             $load->sales_representative_id,
@@ -351,17 +334,10 @@ final class OperationalContextValidator
 
         $this->assertWarehouseVehicle($warehouse, $expense->vehicle_id);
         $this->assertRouteVehicle($route, $expense->vehicle_id, requireWhenAssigned: true);
-        $this->assertRouteDriver($route, $expense->driver_id);
         $this->assertRouteRepresentative(
             $route,
             $expense->sales_representative_id,
             requireWhenAssigned: false,
-        );
-        $this->assertEmployeeRole(
-            $expense->driver_id,
-            UserRole::DRIVER,
-            'driver_id',
-            'الموظف المحدد غير مؤهل للعمل كسائق.',
         );
         $this->assertEmployeeRole(
             $expense->sales_representative_id,
@@ -378,17 +354,10 @@ final class OperationalContextValidator
 
         $this->assertWarehouseVehicle($warehouse, $closing->vehicle_id);
         $this->assertRouteVehicle($route, $closing->vehicle_id, requireWhenAssigned: true);
-        $this->assertRouteDriver($route, $closing->driver_id);
         $this->assertRouteRepresentative(
             $route,
             $closing->sales_representative_id,
             requireWhenAssigned: false,
-        );
-        $this->assertEmployeeRole(
-            $closing->driver_id,
-            UserRole::DRIVER,
-            'driver_id',
-            'الموظف المحدد غير مؤهل للعمل كسائق.',
         );
         $this->assertEmployeeRole(
             $closing->sales_representative_id,
@@ -529,19 +498,6 @@ final class OperationalContextValidator
 
         if ((int) $warehouse->vehicle_id !== $selectedVehicleId) {
             $this->fail('warehouse_id', 'المستودع المحدد لا يتبع السيارة.');
-        }
-    }
-
-    private function assertRouteDriver(?DistributionRoute $route, mixed $driverId): void
-    {
-        $selectedDriverId = $this->id($driverId);
-
-        if ($route === null || $selectedDriverId === null) {
-            return;
-        }
-
-        if ($selectedDriverId !== $this->id($route->driver_id)) {
-            $this->fail('driver_id', 'السائق المحدد ليس السائق المعتمد لخط التوزيع.');
         }
     }
 

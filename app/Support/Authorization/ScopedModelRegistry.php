@@ -7,14 +7,12 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
-use App\Models\SalesVisit;
 use App\Models\SalesReturn;
+use App\Models\SalesVisit;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Vehicle;
@@ -37,8 +35,6 @@ final class ScopedModelRegistry
             StockBalance::class,
             StockMovement::class,
             VehicleLoad::class,
-            DriverJourney::class,
-            DriverDelivery::class,
             SalesJourney::class,
             SalesVisit::class,
             SalesInvoice::class,

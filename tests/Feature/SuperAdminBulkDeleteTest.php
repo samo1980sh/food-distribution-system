@@ -87,14 +87,14 @@ class SuperAdminBulkDeleteTest extends TestCase
         $this->seed(RolesAndPermissionsSeeder::class);
 
         $guard = app(MasterDataDeletionGuard::class);
-        $user = User::factory()->create(['role' => UserRole::DRIVER->value]);
-        $user->syncRoles(UserRole::DRIVER->value);
+        $user = User::factory()->create(['role' => UserRole::SALES_REPRESENTATIVE->value]);
+        $user->syncRoles(UserRole::SALES_REPRESENTATIVE->value);
 
         $employee = Employee::query()->create([
             'user_id' => $user->id,
             'employee_code' => 'BULK-EMP',
             'name' => 'موظف مرتبط بحساب',
-            'type' => 'driver',
+            'type' => 'sales_representative',
             'status' => 'active',
         ]);
 

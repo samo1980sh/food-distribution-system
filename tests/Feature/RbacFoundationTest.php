@@ -62,10 +62,6 @@ class RbacFoundationTest extends TestCase
             'role' => User::ROLE_ACCOUNTANT,
         ]);
 
-        $driver = User::factory()->create([
-            'role' => User::ROLE_DRIVER,
-        ]);
-
         $salesRepresentative = User::factory()->create([
             'role' => User::ROLE_SALES_REPRESENTATIVE,
         ]);
@@ -115,41 +111,11 @@ class RbacFoundationTest extends TestCase
             $accountant->can(PermissionName::VEHICLE_LOADS_APPROVE->value),
         );
 
-        $this->assertFalse(
-            $driver->can(PermissionName::ADMIN_ACCESS->value),
-        );
-        $this->assertFalse(
-            $driver->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
-        );
-        $this->assertFalse(
-            $driver->can(PermissionName::API_ACCESS->value),
-        );
-        $this->assertTrue(
-            $driver->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
-        );
-        $this->assertTrue(
-            $driver->can(PermissionName::VEHICLES_VIEW->value),
-        );
-        $this->assertTrue(
-            $driver->can(PermissionName::WAREHOUSES_VIEW->value),
-        );
-        $this->assertTrue(
-            $driver->can(PermissionName::PRODUCTS_VIEW->value),
-        );
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
         );
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::PRODUCTS_VIEW->value),
-        );
-        $this->assertFalse(
-            $driver->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
-        );
-        $this->assertFalse(
-            $driver->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
-        );
-        $this->assertFalse(
-            $driver->can(PermissionName::DAILY_CLOSINGS_SUBMIT_CASH->value),
         );
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
@@ -247,23 +213,5 @@ class RbacFoundationTest extends TestCase
 
         $this->assertSame(count(UserRole::cases()), Role::query()->count());
         $this->assertSame(count(PermissionName::cases()), Permission::query()->count());
-    }
-
-    public function test_permission_seeder_detaches_but_does_not_delete_obsolete_driver_permissions(): void
-    {
-        $permission = Permission::findOrCreate('driver_journeys.start', 'web');
-        $role = Role::findByName(UserRole::SUPER_ADMIN->value, 'web');
-        $role->givePermissionTo($permission);
-
-        $this->seed(RolesAndPermissionsSeeder::class);
-
-        $this->assertDatabaseHas('permissions', [
-            'id' => $permission->id,
-            'name' => 'driver_journeys.start',
-            'guard_name' => 'web',
-        ]);
-        $this->assertFalse(
-            $role->fresh()->hasPermissionTo('driver_journeys.start', 'web'),
-        );
     }
 }

@@ -5,10 +5,9 @@ namespace App\Services\Dashboard;
 use App\Enums\PermissionName;
 use App\Filament\Resources\StockBalances\StockBalanceResource;
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
-
 use App\Models\CustomerPayment;
-use App\Models\DistributionRoute;
 use App\Models\DailyClosing;
+use App\Models\DistributionRoute;
 use App\Models\SalesInvoice;
 use App\Models\SalesReturn;
 use App\Models\User;
@@ -134,8 +133,7 @@ class ExecutiveDashboardService
 
         $overdue = app(OverdueCustomerReportService::class)
             ->filteredSummaries(
-                creditDays:
-                    OverdueCustomerReportService::DEFAULT_CREDIT_DAYS,
+                creditDays: OverdueCustomerReportService::DEFAULT_CREDIT_DAYS,
                 asOf: $today,
                 criteria: ['scope' => 'overdue'],
             );
@@ -179,8 +177,7 @@ class ExecutiveDashboardService
             'today_returns' => $todayReturnAmount,
             'today_net_sales' => $todaySales - $todayReturnAmount,
             'today_invoice_count' => (clone $todayInvoices)->count(),
-            'today_collections' =>
-                $todayInvoiceCash + $todayPaymentsAmount,
+            'today_collections' => $todayInvoiceCash + $todayPaymentsAmount,
 
             'month_sales' => $monthSales,
             'month_returns' => $monthReturnAmount,
@@ -188,12 +185,10 @@ class ExecutiveDashboardService
             'month_invoice_count' => (clone $monthInvoices)->count(),
             'month_invoice_cash' => $monthInvoiceCash,
             'month_customer_payments' => $monthPaymentsAmount,
-            'month_total_collections' =>
-                $monthInvoiceCash + $monthPaymentsAmount,
+            'month_total_collections' => $monthInvoiceCash + $monthPaymentsAmount,
             'month_expenses' => $monthExpenseAmount,
             'month_approximate_profit' => $monthProfit,
-            'month_net_contribution' =>
-                $monthProfit - $monthExpenseAmount,
+            'month_net_contribution' => $monthProfit - $monthExpenseAmount,
 
             'overdue_customers_count' => $overdue->count(),
             'overdue_amount' => (float) $overdue->sum(
@@ -202,10 +197,8 @@ class ExecutiveDashboardService
 
             'today_closing_count' => $todayClosingCount,
             'today_confirmed_closings' => $todayConfirmedClosings,
-            'today_activity_warehouses' =>
-                $activityWarehouses->count(),
-            'today_missing_closing_warehouses' =>
-                $missingClosingWarehouses->count(),
+            'today_activity_warehouses' => $activityWarehouses->count(),
+            'today_missing_closing_warehouses' => $missingClosingWarehouses->count(),
         ];
     }
 
@@ -397,8 +390,7 @@ class ExecutiveDashboardService
                     'url' => route(
                         'reports.route-performance.print',
                         [
-                            'distributionRoute' =>
-                                $row['route_id'],
+                            'distributionRoute' => $row['route_id'],
                         ],
                     ),
                 ];
@@ -609,8 +601,7 @@ class ExecutiveDashboardService
                         'amount' => (float) (
                             $closing->total_sales_amount
                         ),
-                        'icon' =>
-                            'heroicon-o-clipboard-document-check',
+                        'icon' => 'heroicon-o-clipboard-document-check',
                         'color' => abs(
                             (float) $closing->cash_difference
                         ) > 0.0001
@@ -711,8 +702,7 @@ class ExecutiveDashboardService
                             ]
                         )
                         ->filter(
-                            fn (array $document): bool =>
-                                $document['days'] <= 30
+                            fn (array $document): bool => $document['days'] <= 30
                         )
                         ->sortBy('days')
                         ->values();
@@ -733,8 +723,7 @@ class ExecutiveDashboardService
                             : $nearest['days'].' يوم',
                         'description' => $documents
                             ->map(
-                                fn (array $document): string =>
-                                    $document['label']
+                                fn (array $document): string => $document['label']
                                     .': '.$document['date']
                             )
                             ->implode(' — '),
@@ -756,8 +745,7 @@ class ExecutiveDashboardService
                     'title' => 'خطوط نشطة دون سيارة',
                     'value' => number_format($routesWithoutVehicles)
                         .' خط',
-                    'description' =>
-                        'يلزم تعيين سيارة للخطوط التشغيلية النشطة.',
+                    'description' => 'يلزم تعيين سيارة للخطوط التشغيلية النشطة.',
                     'icon' => 'heroicon-o-map-pin',
                     'url' => route(
                         'filament.admin.resources.distribution-routes.index'
@@ -796,8 +784,7 @@ class ExecutiveDashboardService
                         'level' => 'danger',
                         'title' => $warehouse->name,
                         'value' => 'غير مغلق',
-                        'description' =>
-                            'توجد حركة تشغيلية اليوم دون إغلاق معتمد.',
+                        'description' => 'توجد حركة تشغيلية اليوم دون إغلاق معتمد.',
                         'icon' => 'heroicon-o-building-storefront',
                         'url' => route(
                             'filament.admin.resources.daily-closings.index'
@@ -850,8 +837,7 @@ class ExecutiveDashboardService
                         'value' => number_format(
                             (int) $warehouse->risk_count
                         ).' رصيد',
-                        'description' =>
-                            'أرصدة منتهية أو قريبة من الانتهاء.',
+                        'description' => 'أرصدة منتهية أو قريبة من الانتهاء.',
                         'icon' => 'heroicon-o-clock',
                         'url' => route(
                             'filament.admin.resources.expiry-risk-reports.index'
@@ -887,8 +873,7 @@ class ExecutiveDashboardService
         if ($user->canManageSalesAndCollections()) {
             $overdue = app(OverdueCustomerReportService::class)
                 ->filteredSummaries(
-                    creditDays:
-                        OverdueCustomerReportService::DEFAULT_CREDIT_DAYS,
+                    creditDays: OverdueCustomerReportService::DEFAULT_CREDIT_DAYS,
                     asOf: $today,
                     criteria: ['scope' => 'overdue'],
                 );
@@ -1019,7 +1004,7 @@ class ExecutiveDashboardService
 
         if ($user->canManageDistribution()) {
             $vehicleLoadDiscrepancies = VehicleLoad::query()
-                ->with(['vehicle:id,name', 'driver:id,name'])
+                ->with(['vehicle:id,name', 'salesRepresentative:id,name'])
                 ->where('handover_status', 'discrepancy')
                 ->latest('handover_at')
                 ->latest('id')
@@ -1033,7 +1018,7 @@ class ExecutiveDashboardService
                     'value' => $vehicleLoad->load_number,
                     'description' => collect([
                         $vehicleLoad->vehicle?->name,
-                        $vehicleLoad->driver?->name,
+                        $vehicleLoad->salesRepresentative?->name,
                         $vehicleLoad->handover_at?->format('Y-m-d H:i'),
                     ])->filter(fn (mixed $value): bool => filled($value))->implode(' - '),
                     'icon' => 'heroicon-o-exclamation-triangle',

@@ -8,13 +8,13 @@ use App\Http\Requests\Api\V1\Operational\OperationalIndexRequest;
 use App\Http\Resources\Api\V1\Operational\StockBalanceResource;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
-use App\Models\VehicleLoad;
 use App\Models\User;
+use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use App\Services\Authorization\AccessScopeService;
 use App\Support\Api\ApiResponse;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -125,11 +125,9 @@ class StockBalanceController extends Controller
 
     private function isFieldUser(User $user): bool
     {
-        return $user->hasAnyRole([
-            User::ROLE_DRIVER,
-            User::ROLE_SALES_REPRESENTATIVE,
-        ]);
+        return $user->hasRole(User::ROLE_SALES_REPRESENTATIVE);
     }
+
     /**
      * @param  Collection<int, StockBalance>  $balances
      */
@@ -225,5 +223,4 @@ class StockBalanceController extends Controller
 
         return implode('|', [$warehouseId, $productId, $batch, $expiry]);
     }
-
 }

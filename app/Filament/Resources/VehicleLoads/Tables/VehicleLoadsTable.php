@@ -5,7 +5,6 @@ namespace App\Filament\Resources\VehicleLoads\Tables;
 use App\Filament\Resources\VehicleLoads\Actions\VehicleLoadActions;
 use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
 use App\Models\VehicleLoad;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use App\Support\Formatting\QuantityFormatter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -97,12 +96,6 @@ class VehicleLoadsTable
                         default => 'gray',
                     }),
 
-                TextColumn::make('driver.name')
-                    ->label('السائق')
-                    ->searchable()
-                    ->placeholder('-')
-                    ->toggleable(isToggledHiddenByDefault: true),
-
                 TextColumn::make('salesRepresentative.name')
                     ->label('مندوب المبيعات')
                     ->searchable()
@@ -147,7 +140,6 @@ class VehicleLoadsTable
                 ActionGroup::make([
                     ViewAction::make()->label('عرض التفاصيل'),
                     EditAction::make()
-                        ->mutateDataUsing(fn (array $data, VehicleLoad $record): array => AdminOperationalDriverGuard::sanitize($data, $record))
                         ->label('تعديل المسودة')
                         ->visible(fn (VehicleLoad $record): bool => auth()->user()?->can('update', $record) === true),
                     VehicleLoadActions::approve(),

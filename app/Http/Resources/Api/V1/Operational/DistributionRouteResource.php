@@ -22,10 +22,6 @@ class DistributionRouteResource extends OperationalResource
                 $this->vehicle,
                 ['id', 'code', 'plate_number', 'name'],
             )),
-            'driver' => $this->whenLoaded('driver', fn () => $this->reference(
-                $this->driver,
-                ['id', 'employee_code', 'name', 'phone'],
-            )),
             'sales_representative' => $this->whenLoaded(
                 'salesRepresentative',
                 fn () => $this->reference(

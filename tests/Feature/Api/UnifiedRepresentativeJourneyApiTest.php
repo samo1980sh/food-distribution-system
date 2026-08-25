@@ -24,7 +24,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_representative_runs_the_unified_field_day_without_driver_journey(): void
+    public function test_representative_runs_the_unified_field_day(): void
     {
         $context = $this->context('PRIMARY', 1);
         $user = $this->representativeUser($context['representative']);
@@ -35,15 +35,12 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->postJson('/api/v1/operational/sales-journeys/open-today')
             ->assertCreated()
             ->assertJsonPath('data.status', 'ready')
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.route.id', $context['route']->id)
             ->assertJsonPath('data.vehicle.id', $context['vehicle']->id)
             ->assertJsonPath('data.warehouse.id', $context['warehouse']->id);
 
         $journeyId = (int) $opened->json('data.id');
         $visitId = (int) $opened->json('data.visits.0.id');
-
-        $this->assertDatabaseCount('driver_journeys', 0);
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
@@ -95,7 +92,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'payment_method' => 'cash',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.operation_source', 'mobile_sales');
 
         $this->withFreshToken($token)
@@ -138,12 +134,9 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
-            'driver_id' => null,
             'inventory_submitted_by' => $user->id,
             'cash_submitted_by' => $user->id,
         ]);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDatabaseCount('driver_deliveries', 0);
     }
 
     public function test_representative_runs_a_complete_unified_day_end_to_end(): void
@@ -185,7 +178,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         }
 
         $user = $this->representativeUser($context['representative']);
-        $user->assignRole(User::ROLE_DRIVER);
         $load = $this->pendingLoad($context);
 
         $login = $this->postJson('/api/v1/auth/login', [
@@ -205,17 +197,12 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.field_workspace.role', User::ROLE_SALES_REPRESENTATIVE)
             ->assertJsonPath('data.field_workspace.unified', true)
             ->assertJsonPath('data.field_workspace.legacy', false)
-            ->assertJsonPath('data.sync.registry_version', 8)
-            ->assertJsonMissingPath('data.modules.driver_journeys')
-            ->assertJsonMissingPath('data.modules.driver_deliveries')
-            ->assertJsonMissingPath('data.write.driver_journeys.open_today')
-            ->assertJsonMissingPath('data.write.driver_deliveries.submit_outcome');
+            ->assertJsonPath('data.sync.registry_version', 8);
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
             ->assertCreated()
             ->assertJsonPath('data.status', 'ready')
-            ->assertJsonPath('data.driver', null)
             ->assertJsonCount(1, 'data.visits');
         $journeyId = (int) $opened->json('data.id');
         $visitId = (int) $opened->json('data.visits.0.id');
@@ -240,8 +227,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
             ->assertOk()
-            ->assertJsonPath('data.status', 'in_progress')
-            ->assertJsonPath('data.driver', null);
+            ->assertJsonPath('data.status', 'in_progress');
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
             ->assertOk()
@@ -402,7 +388,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'payment_method' => 'cash',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.operation_source', 'mobile_sales');
@@ -410,7 +395,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->withFreshToken($token)
             ->getJson('/api/v1/operational/today')
             ->assertOk()
-            ->assertJsonPath('data.contexts.driver', null)
             ->assertJsonPath('data.contexts.sales_representative.summary.journey.id', $journeyId)
             ->assertJsonPath('data.contexts.sales_representative.summary.journey.status', 'in_progress')
             ->assertJsonPath('data.contexts.sales_representative.summary.load_custody.status', 'received');
@@ -420,7 +404,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'route_id' => $context['route']->id,
             ])
             ->assertCreated()
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.expected_cash_amount', '424.00');
         $closingId = (int) $closing->json('data.id');
@@ -454,8 +437,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
             ->assertOk()
-            ->assertJsonPath('data.status', 'completed')
-            ->assertJsonPath('data.driver', null);
+            ->assertJsonPath('data.status', 'completed');
 
         $varianceItems = $inventoryItems;
         $varianceItems[0]['actual_quantity']++;
@@ -491,7 +473,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'inventory_submitted_by' => $user->id,
             'cash_submitted_by' => $user->id,
@@ -508,7 +489,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         ]);
         $this->assertDatabaseHas('vehicle_expenses', [
             'id' => (int) $expense->json('data.id'),
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'status' => 'pending',
         ]);
@@ -539,9 +519,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->assertSame(0, StockBalance::query()->where('quantity', '<', 0)->count());
         $this->assertSame(16.0, app(CustomerFinancialService::class)->customerBalance($customer));
         $this->assertDatabaseCount('sales_invoices', 4);
-        $this->assertDatabaseCount('driver_journeys', 0);
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
     }
 
     public function test_representative_cannot_start_a_conflicting_or_unauthorized_journey(): void
@@ -580,7 +557,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertNotFound();
 
-        $this->assertDatabaseCount('driver_journeys', 0);
     }
 
     /** @return array<string, mixed> */
@@ -618,7 +594,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'UNIFIED-ROUTE-'.$suffix,
             'name' => 'Route '.$suffix,
@@ -682,7 +657,6 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'load_number' => 'UNIFIED-LOAD',
             'vehicle_id' => $context['vehicle']->id,
             'route_id' => $context['route']->id,
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'from_warehouse_id' => $context['sourceWarehouse']->id,
             'to_warehouse_id' => $context['warehouse']->id,

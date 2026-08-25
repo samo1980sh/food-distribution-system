@@ -34,7 +34,6 @@ footer{display:flex;justify-content:space-between;gap:20px;margin-top:18px;paddi
 <div class="box"><span>المنطقة</span><strong>{{ $s['route']['area'] ?: '-' }}</strong></div>
 <div class="box"><span>السيارة</span><strong>{{ $s['route']['vehicle'] ?: '-' }}</strong></div>
 <div class="box"><span>النشاط</span><strong>{{ $s['has_activity'] ? 'يوجد نشاط' : 'دون نشاط' }}</strong></div>
-<div class="box"><span>السائق</span><strong>{{ $s['route']['driver'] ?: '-' }}</strong></div>
 <div class="box"><span>المندوب</span><strong>{{ $s['route']['sales_representative'] ?: '-' }}</strong></div>
 <div class="box"><span>الفترة</span><strong>{{ $set['from'] }} — {{ $set['until'] }}</strong></div>
 <div class="box"><span>حالة الخط</span><strong>{{ RoutePerformanceReportService::statusLabel($s['route']['status']) }}</strong></div>

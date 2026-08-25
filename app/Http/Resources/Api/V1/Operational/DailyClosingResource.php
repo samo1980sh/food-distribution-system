@@ -103,9 +103,6 @@ class DailyClosingResource extends OperationalResource
             'warehouse' => $this->whenLoaded('warehouse', fn () => $this->warehouse
                 ? WarehouseResource::make($this->warehouse)->resolve($request)
                 : null),
-            'driver' => $this->whenLoaded('driver', fn () => $this->driver
-                ? EmployeeSummaryResource::make($this->driver)->resolve($request)
-                : null),
             'sales_representative' => $this->whenLoaded('salesRepresentative', fn () => $this->salesRepresentative
                 ? EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request)
                 : null),

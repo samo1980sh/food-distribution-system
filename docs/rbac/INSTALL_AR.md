@@ -85,7 +85,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\rbac-git-add.ps1
 - لا تضف `vendor` أو `.env` أو ملفات ZIP إلى Git.
 - لا تشغّل `filament:upgrade` ضمن هذا التغيير؛ لا توجد حاجة لتحديث أصول Filament.
 - لا تستخدم `composer update --with-all-dependencies` لأنه يحدّث Laravel وحزمًا أخرى خارج نطاق RBAC.
-- السائق والمندوب لا يدخلان لوحة Filament، ويستخدمان Mobile API عبر Sanctum وفق الصلاحيات والنطاقات نفسها.
+- مندوب المبيعات لا يدخل لوحة Filament، ويستخدم Mobile API عبر Sanctum وفق الصلاحيات والنطاقات نفسها.
 - طبقة تقييد البيانات حسب المنطقة والخط والمستودع والسيارة منفذة في Role Data Scopes.
 
 ## التراجع

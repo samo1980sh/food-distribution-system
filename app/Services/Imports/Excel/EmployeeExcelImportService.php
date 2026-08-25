@@ -2,6 +2,7 @@
 
 namespace App\Services\Imports\Excel;
 
+use App\Enums\EmployeeType;
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -24,14 +25,6 @@ class EmployeeExcelImportService
         'user_email',
         'status',
         'notes',
-    ];
-
-    /** @var list<string> */
-    public const TYPES = [
-        'sales_representative',
-        'warehouse_keeper',
-        'accountant',
-        'supervisor',
     ];
 
     /** @var list<string> */
@@ -106,7 +99,7 @@ class EmployeeExcelImportService
                         'name' => ['required', 'string', 'max:255'],
                         'phone' => ['nullable', 'string', 'max:255'],
                         'job_title' => ['nullable', 'string', 'max:255'],
-                        'type' => ['required', Rule::in(self::TYPES)],
+                        'type' => ['required', Rule::in(EmployeeType::values())],
                         'user_email' => ['nullable', 'string', 'max:255'],
                         'status' => ['required', Rule::in(self::STATUSES)],
                         'notes' => ['nullable', 'string'],

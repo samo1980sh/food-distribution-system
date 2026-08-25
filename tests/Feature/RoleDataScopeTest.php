@@ -53,7 +53,6 @@ class RoleDataScopeTest extends TestCase
         $this->assertFalse($supervisor->can('view', $second['invoice']));
     }
 
-
     public function test_shared_warehouse_does_not_expand_supervisor_sales_visibility(): void
     {
         $first = $this->createOperationalContext('A');
@@ -110,7 +109,6 @@ class RoleDataScopeTest extends TestCase
             'load_number' => 'LOAD-CROSS',
             'vehicle_id' => $second['vehicle']->id,
             'route_id' => $second['route']->id,
-            'driver_id' => $second['driver']->id,
             'sales_representative_id' => $second['representative']->id,
             'from_warehouse_id' => $first['sourceWarehouse']->id,
             'to_warehouse_id' => $second['warehouse']->id,
@@ -150,86 +148,6 @@ class RoleDataScopeTest extends TestCase
         $this->assertSame([$first['customer']->id], Customer::query()->pluck('id')->all());
         $this->assertSame([$first['invoice']->id], SalesInvoice::query()->pluck('id')->all());
         $this->assertFalse(SalesInvoice::query()->whereKey($second['invoice']->id)->exists());
-    }
-
-
-    public function test_driver_scope_is_derived_from_linked_employee_and_route_team(): void
-    {
-        $first = $this->createOperationalContext('A');
-        $second = $this->createOperationalContext('B');
-
-        $driverUser = User::factory()->create([
-            'role' => User::ROLE_DRIVER,
-        ]);
-
-        $first['driver']->update([
-            'user_id' => $driverUser->id,
-        ]);
-
-        $this->actingAs($driverUser);
-
-        $this->assertSame([$first['route']->id], DistributionRoute::query()->pluck('id')->all());
-        $this->assertSame([$first['vehicle']->id], Vehicle::query()->pluck('id')->all());
-        $this->assertEqualsCanonicalizing(
-            [$first['warehouse']->id, $first['sourceWarehouse']->id],
-            Warehouse::query()->pluck('id')->all(),
-        );
-        $this->assertEqualsCanonicalizing(
-            [$first['driver']->id, $first['representative']->id],
-            Employee::query()->pluck('id')->all(),
-        );
-        $this->assertTrue(VehicleLoad::query()->whereKey($first['load']->id)->exists());
-        $this->assertFalse(VehicleLoad::query()->whereKey($second['load']->id)->exists());
-    }
-
-    public function test_driver_and_sales_roles_merge_linked_employee_route_scopes(): void
-    {
-        $driverContext = $this->createOperationalContext('DUAL-DRIVER');
-        $salesContext = $this->createOperationalContext('DUAL-SALES');
-
-        $fieldUser = User::factory()->create([
-            'role' => User::ROLE_DRIVER,
-        ]);
-        $fieldUser->assignRole(User::ROLE_SALES_REPRESENTATIVE);
-
-        $driverContext['driver']->update([
-            'user_id' => $fieldUser->id,
-        ]);
-
-        $salesContext['route']->update([
-            'sales_representative_id' => $driverContext['driver']->id,
-        ]);
-        $salesContext['invoice']->update([
-            'sales_representative_id' => $driverContext['driver']->id,
-        ]);
-
-        $this->assertTrue(
-            $driverContext['driver']
-                ->fresh()
-                ->canFulfillOperationalRole(User::ROLE_DRIVER),
-        );
-        $this->assertTrue(
-            $driverContext['driver']
-                ->fresh()
-                ->canFulfillOperationalRole(User::ROLE_SALES_REPRESENTATIVE),
-        );
-
-        $this->actingAs($fieldUser);
-
-        $scope = app(AccessScopeService::class)->for($fieldUser);
-
-        $this->assertEqualsCanonicalizing(
-            [$driverContext['route']->id, $salesContext['route']->id],
-            $scope->routeIds,
-        );
-        $this->assertEqualsCanonicalizing(
-            [$driverContext['route']->id, $salesContext['route']->id],
-            DistributionRoute::query()->pluck('id')->all(),
-        );
-        $this->assertEqualsCanonicalizing(
-            [$driverContext['invoice']->id, $salesContext['invoice']->id],
-            SalesInvoice::query()->pluck('id')->all(),
-        );
     }
 
     public function test_accountant_keeps_global_financial_visibility(): void
@@ -295,7 +213,6 @@ class RoleDataScopeTest extends TestCase
 
         app(AccessScopeService::class)->forget($user);
     }
-
 
     public function test_dashboard_report_caches_and_profit_query_are_isolated_by_scope(): void
     {
@@ -380,8 +297,7 @@ class RoleDataScopeTest extends TestCase
         string $suffix,
         string $invoiceStatus = 'draft',
         float $invoiceAmount = 0,
-    ): array
-    {
+    ): array {
         $area = Area::query()->create([
             'code' => 'AREA-'.$suffix,
             'name_ar' => 'منطقة '.$suffix,
@@ -409,13 +325,6 @@ class RoleDataScopeTest extends TestCase
             'status' => 'active',
         ]);
 
-        $driver = Employee::query()->create([
-            'employee_code' => 'DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
-
         $representative = Employee::query()->create([
             'employee_code' => 'REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -426,7 +335,6 @@ class RoleDataScopeTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -463,7 +371,6 @@ class RoleDataScopeTest extends TestCase
             'load_number' => 'LOAD-'.$suffix,
             'vehicle_id' => $vehicle->id,
             'route_id' => $route->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $warehouse->id,
@@ -476,7 +383,6 @@ class RoleDataScopeTest extends TestCase
             'vehicle',
             'warehouse',
             'sourceWarehouse',
-            'driver',
             'representative',
             'route',
             'customer',

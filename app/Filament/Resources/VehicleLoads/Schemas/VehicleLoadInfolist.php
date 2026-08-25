@@ -31,7 +31,6 @@ class VehicleLoadInfolist
                         TextEntry::make('load_date')->label('تاريخ التحميل')->date('Y-m-d'),
                         TextEntry::make('vehicle.name')->label('السيارة'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
-                        TextEntry::make('driver.name')->label('السائق')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),
                         TextEntry::make('fromWarehouse.name')->label('المستودع المصدر'),
                         TextEntry::make('toWarehouse.name')->label('مستودع السيارة'),

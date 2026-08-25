@@ -45,7 +45,6 @@ class DailyClosingInfolist
                         TextEntry::make('warehouse.name')->label('المستودع'),
                         TextEntry::make('vehicle.name')->label('السيارة')->placeholder('-'),
                         TextEntry::make('route.name')->label('خط التوزيع')->placeholder('-'),
-                        TextEntry::make('driver.name')->label('السائق')->placeholder('-'),
                         TextEntry::make('salesRepresentative.name')->label('مندوب المبيعات')->placeholder('-'),
                         TextEntry::make('creator.name')->label('أنشأه')->placeholder('-'),
                         TextEntry::make('confirmer.name')->label('اعتمده')->placeholder('-'),
@@ -53,9 +52,8 @@ class DailyClosingInfolist
                         TextEntry::make('updated_at')->label('آخر تحديث')->dateTime('Y-m-d H:i'),
                     ]),
 
-
                 Section::make('حالة التسليم الميداني')
-                    ->description('يعتمد الإغلاق الميداني بعد أن يسلّم السائق الجرد ويسلّم مندوب المبيعات النقد.')
+                    ->description('يعتمد الإغلاق الميداني بعد أن يسلّم مندوب المبيعات الجرد والنقد.')
                     ->icon('heroicon-o-device-phone-mobile')
                     ->columns(4)
                     ->columnSpanFull()
@@ -64,7 +62,7 @@ class DailyClosingInfolist
                         TextEntry::make('inventory_submitted_at')
                             ->label('تسليم جرد السيارة')
                             ->badge()
-                            ->formatStateUsing(fn (mixed $state): string => $state ? 'تم التسليم' : 'بانتظار السائق')
+                            ->formatStateUsing(fn (mixed $state): string => $state ? 'تم التسليم' : 'بانتظار المندوب')
                             ->color(fn (mixed $state): string => $state ? 'success' : 'warning'),
                         TextEntry::make('inventorySubmitter.name')
                             ->label('سلّمه')

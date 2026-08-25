@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Services\Operations\OperationalContextValidator;
 use App\Services\Distribution\VehicleLoadService;
+use App\Services\Operations\OperationalContextValidator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,7 +15,6 @@ class VehicleLoad extends Model
         'load_number',
         'vehicle_id',
         'route_id',
-        'driver_id',
         'sales_representative_id',
         'from_warehouse_id',
         'to_warehouse_id',
@@ -87,11 +86,6 @@ class VehicleLoad extends Model
     public function route(): BelongsTo
     {
         return $this->belongsTo(DistributionRoute::class, 'route_id');
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(Employee::class, 'driver_id');
     }
 
     public function salesRepresentative(): BelongsTo

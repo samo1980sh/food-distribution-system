@@ -23,7 +23,6 @@ class SalesJourneyResource extends OperationalResource
             'vehicle' => $this->whenLoaded('vehicle', fn () => $this->vehicle ? VehicleResource::make($this->vehicle)->resolve($request) : null),
             'warehouse' => $this->whenLoaded('warehouse', fn () => $this->warehouse ? WarehouseResource::make($this->warehouse)->resolve($request) : null),
             'sales_representative' => $this->whenLoaded('salesRepresentative', fn () => EmployeeSummaryResource::make($this->salesRepresentative)->resolve($request)),
-            'driver' => $this->whenLoaded('driver', fn () => $this->driver ? EmployeeSummaryResource::make($this->driver)->resolve($request) : null),
             'visits' => $this->whenLoaded('visits', fn () => SalesVisitResource::collection($this->visits)->resolve($request)),
             'summary' => [
                 'total' => (int) ($this->visits_count ?? $this->visits->count()),

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EmployeeType;
 use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,10 @@ use Illuminate\Validation\ValidationException;
 
 class Employee extends Model
 {
+    protected $attributes = [
+        'type' => EmployeeType::SALES_REPRESENTATIVE->value,
+    ];
+
     protected $fillable = [
         'user_id',
         'employee_code',
@@ -25,6 +30,14 @@ class Employee extends Model
     protected static function booted(): void
     {
         static::saving(function (self $employee): void {
+            $employeeType = EmployeeType::tryFrom((string) $employee->type);
+
+            if ($employeeType === null) {
+                throw ValidationException::withMessages([
+                    'type' => 'نوع الموظف المحدد غير مدعوم.',
+                ]);
+            }
+
             if (! $employee->isDirty(['user_id', 'type'])) {
                 return;
             }
@@ -33,18 +46,7 @@ class Employee extends Model
                 return;
             }
 
-            $expectedRole = match ($employee->type) {
-                'driver' => UserRole::DRIVER,
-                'sales_representative' => UserRole::SALES_REPRESENTATIVE,
-                'warehouse_keeper' => UserRole::WAREHOUSE_KEEPER,
-                'accountant' => UserRole::ACCOUNTANT,
-                'supervisor' => UserRole::SUPERVISOR,
-                default => null,
-            };
-
-            if ($expectedRole === null) {
-                return;
-            }
+            $expectedRole = $employeeType->userRole();
 
             $user = User::query()->find($employee->user_id);
 
@@ -91,18 +93,9 @@ class Employee extends Model
             );
     }
 
-    public function driverRoutes(): HasMany
-    {
-        return $this->hasMany(DistributionRoute::class, 'driver_id');
-    }
-
     public function salesRoutes(): HasMany
     {
         return $this->hasMany(DistributionRoute::class, 'sales_representative_id');
-    }
-    public function driverVehicleExpenses(): HasMany
-    {
-        return $this->hasMany(VehicleExpense::class, 'driver_id');
     }
 
     public function salesRepresentativeVehicleExpenses(): HasMany

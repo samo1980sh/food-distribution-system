@@ -4,7 +4,6 @@ namespace App\Filament\Resources\VehicleExpenses\Pages;
 
 use App\Enums\OperationSource;
 use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
-use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
@@ -32,7 +31,6 @@ class ManageVehicleExpenses extends ManageRecords
                 ->modalDescription('استخدم هذا المسار فقط عند تعذر تسجيل المصروف من تطبيق مندوب المبيعات، مع توثيق السبب.')
                 ->slideOver()
                 ->mutateDataUsing(function (array $data): array {
-                    $data = AdminOperationalDriverGuard::sanitize($data);
                     $data['operation_source'] = OperationSource::ADMIN_EXCEPTION;
                     $data['administrative_reason'] = trim((string) ($data['administrative_reason'] ?? ''));
 

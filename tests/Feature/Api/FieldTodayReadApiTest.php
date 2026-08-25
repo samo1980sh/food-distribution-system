@@ -15,9 +15,6 @@ use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Models\VehicleExpense;
-use App\Models\VehicleLoad;
-use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -52,7 +49,6 @@ class FieldTodayReadApiTest extends TestCase
     {
         $first = $this->context('A', ['monday']);
         $second = $this->context('B', ['monday']);
-        $first['route']->update(['driver_id' => null]);
         $user = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $first['representative']);
 
         $this->invoice($first, 'A-DRAFT', 'draft', 25);
@@ -66,7 +62,6 @@ class FieldTodayReadApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.date', '2026-07-27')
             ->assertJsonPath('data.available_roles.0', User::ROLE_SALES_REPRESENTATIVE)
-            ->assertJsonPath('data.contexts.driver', null)
             ->assertJsonPath('data.contexts.sales_representative.status', 'ready')
             ->assertJsonPath('data.contexts.sales_representative.readiness.ready', true)
             ->assertJsonPath('data.contexts.sales_representative.route.id', $first['route']->id)
@@ -76,40 +71,6 @@ class FieldTodayReadApiTest extends TestCase
             ->assertJsonPath('data.contexts.sales_representative.summary.invoices.confirmed_amount', '125.00')
             ->assertJsonPath('data.contexts.sales_representative.summary.payments.confirmed_amount', '50.00')
             ->assertJsonPath('data.contexts.sales_representative.summary.returns.confirmed_amount', '15.00');
-    }
-
-    public function test_unified_representative_workspace_takes_priority_for_dual_role_user(): void
-    {
-        $context = $this->context('DUAL', ['monday']);
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
-        $user->syncRoles([
-            User::ROLE_DRIVER,
-            User::ROLE_SALES_REPRESENTATIVE,
-        ]);
-        $context['driver']->update([
-            'user_id' => $user->id,
-            'type' => User::ROLE_SALES_REPRESENTATIVE,
-        ]);
-        $context['route']->update([
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['driver']->id,
-        ]);
-
-        $this->withToken($this->tokenFor($user))
-            ->getJson('/api/v1/operational/today')
-            ->assertOk()
-            ->assertJsonCount(1, 'data.available_roles')
-            ->assertJsonPath('data.available_roles.0', User::ROLE_SALES_REPRESENTATIVE)
-            ->assertJsonPath('data.contexts.driver', null)
-            ->assertJsonPath('data.contexts.sales_representative.route.id', $context['route']->id)
-            ->assertJsonPath(
-                'data.contexts.sales_representative.route.driver.assignment_role',
-                User::ROLE_DRIVER,
-            )
-            ->assertJsonPath(
-                'data.contexts.sales_representative.route.sales_representative.assignment_role',
-                User::ROLE_SALES_REPRESENTATIVE,
-            );
     }
 
     private function context(string $suffix, array $visitDays): array
@@ -137,12 +98,6 @@ class FieldTodayReadApiTest extends TestCase
             'type' => 'main',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'TODAY-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'TODAY-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -152,7 +107,6 @@ class FieldTodayReadApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'TODAY-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -199,7 +153,6 @@ class FieldTodayReadApiTest extends TestCase
             'vehicle' => $vehicle,
             'warehouse' => $warehouse,
             'source_warehouse' => $sourceWarehouse,
-            'driver' => $driver,
             'representative' => $representative,
             'route' => $route,
             'customer' => $customer,

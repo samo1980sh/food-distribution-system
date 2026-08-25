@@ -12,7 +12,6 @@ return new class extends Migration
     private const FOREIGN_KEYS = [
         ['table' => 'distribution_routes', 'column' => 'area_id', 'parent' => 'areas', 'previous' => 'cascade'],
         ['table' => 'distribution_routes', 'column' => 'vehicle_id', 'parent' => 'vehicles', 'previous' => 'set null'],
-        ['table' => 'distribution_routes', 'column' => 'driver_id', 'parent' => 'employees', 'previous' => 'set null'],
         ['table' => 'distribution_routes', 'column' => 'sales_representative_id', 'parent' => 'employees', 'previous' => 'set null'],
 
         ['table' => 'customers', 'column' => 'area_id', 'parent' => 'areas', 'previous' => 'set null'],
@@ -31,7 +30,6 @@ return new class extends Migration
 
         ['table' => 'vehicle_loads', 'column' => 'vehicle_id', 'parent' => 'vehicles', 'previous' => 'cascade'],
         ['table' => 'vehicle_loads', 'column' => 'route_id', 'parent' => 'distribution_routes', 'previous' => 'set null'],
-        ['table' => 'vehicle_loads', 'column' => 'driver_id', 'parent' => 'employees', 'previous' => 'set null'],
         ['table' => 'vehicle_loads', 'column' => 'sales_representative_id', 'parent' => 'employees', 'previous' => 'set null'],
         ['table' => 'vehicle_loads', 'column' => 'from_warehouse_id', 'parent' => 'warehouses', 'previous' => 'cascade'],
         ['table' => 'vehicle_loads', 'column' => 'to_warehouse_id', 'parent' => 'warehouses', 'previous' => 'cascade'],
@@ -68,7 +66,6 @@ return new class extends Migration
         ['table' => 'vehicle_expenses', 'column' => 'vehicle_id', 'parent' => 'vehicles', 'previous' => 'cascade'],
         ['table' => 'vehicle_expenses', 'column' => 'warehouse_id', 'parent' => 'warehouses', 'previous' => 'cascade'],
         ['table' => 'vehicle_expenses', 'column' => 'route_id', 'parent' => 'distribution_routes', 'previous' => 'set null'],
-        ['table' => 'vehicle_expenses', 'column' => 'driver_id', 'parent' => 'employees', 'previous' => 'set null'],
         ['table' => 'vehicle_expenses', 'column' => 'sales_representative_id', 'parent' => 'employees', 'previous' => 'set null'],
     ];
 

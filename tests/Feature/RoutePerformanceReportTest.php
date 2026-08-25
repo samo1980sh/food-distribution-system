@@ -67,7 +67,7 @@ class RoutePerformanceReportTest extends TestCase
 
     public function test_row_print_action_builds_route_print_url(): void
     {
-        $route = new DistributionRoute();
+        $route = new DistributionRoute;
         $route->forceFill(['id' => 77]);
 
         $this->assertSame(
@@ -248,7 +248,6 @@ class RoutePerformanceReportTest extends TestCase
                     'vehicle_id' => 1,
                     'warehouse_id' => 1,
                     'route_id' => 101,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'expense_type' => 'fuel',
                     'amount' => $expenseAmount,
@@ -273,7 +272,6 @@ class RoutePerformanceReportTest extends TestCase
                     'load_number' => 'ROUTE-LOAD-1',
                     'vehicle_id' => 1,
                     'route_id' => 101,
-                    'driver_id' => null,
                     'sales_representative_id' => null,
                     'from_warehouse_id' => 1,
                     'to_warehouse_id' => 2,
@@ -347,7 +345,6 @@ class RoutePerformanceReportTest extends TestCase
             'id' => $id,
             'area_id' => 1,
             'vehicle_id' => null,
-            'driver_id' => null,
             'sales_representative_id' => null,
             'code' => $code,
             'name' => $name,
@@ -428,7 +425,6 @@ class RoutePerformanceReportTest extends TestCase
             'route_id' => null,
             'area_id' => null,
             'vehicle_id' => null,
-            'driver_id' => null,
             'sales_representative_id' => null,
             'minimum_net_sales' => 0,
             'minimum_contribution' => null,

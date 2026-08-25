@@ -23,7 +23,6 @@ class DailyClosingFieldHandoverController extends Controller
         'vehicle.warehouse',
         'route',
         'warehouse.vehicle',
-        'driver',
         'salesRepresentative',
         'inventorySubmitter',
         'cashSubmitter',

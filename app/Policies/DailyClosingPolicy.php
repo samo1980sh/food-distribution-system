@@ -53,14 +53,12 @@ class DailyClosingPolicy extends PermissionPolicy
         $employeeId = $user->employee()->value('id');
         $ownsAsRepresentative = $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
             && (int) $record->sales_representative_id === (int) $employeeId;
-        $ownsAsDriver = $user->hasRole(User::ROLE_DRIVER)
-            && (int) $record->driver_id === (int) $employeeId;
 
         return $employeeId !== null
             && $record->isFieldWorkflow()
             && $record->isDraft()
             && ! $record->inventorySubmitted()
-            && ($ownsAsRepresentative || $ownsAsDriver)
+            && $ownsAsRepresentative
             && $this->allowsMutation(
                 $user,
                 $record,

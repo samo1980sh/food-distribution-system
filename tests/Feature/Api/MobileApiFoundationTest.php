@@ -4,10 +4,8 @@ namespace Tests\Feature\Api;
 
 use App\Enums\PermissionName;
 use App\Enums\UserRole;
-use App\Models\Area;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -32,7 +30,7 @@ class MobileApiFoundationTest extends TestCase
 
         $response = $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
-            'driver-device-0001',
+            'field-device-0001',
         ));
 
         $response
@@ -46,41 +44,8 @@ class MobileApiFoundationTest extends TestCase
         $this->assertNotEmpty($response->json('data.token'));
         $this->assertDatabaseHas('personal_access_tokens', [
             'tokenable_id' => $user->id,
-            'device_id' => 'driver-device-0001',
+            'device_id' => 'field-device-0001',
             'platform' => 'android',
-        ]);
-    }
-
-    public function test_driver_only_user_cannot_login_even_with_api_permission(): void
-    {
-        $user = $this->createUser(UserRole::DRIVER);
-
-        $this->postJson('/api/v1/auth/login', $this->loginPayload(
-            $user->email,
-            'driver-only-device-0001',
-        ))
-            ->assertForbidden()
-            ->assertJsonPath('success', false)
-            ->assertJsonPath('code', 'mobile_role_denied');
-
-        $this->assertDatabaseCount('personal_access_tokens', 0);
-    }
-
-    public function test_user_with_driver_and_sales_roles_can_login(): void
-    {
-        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
-        $user->assignRole(UserRole::DRIVER->value);
-
-        $this->postJson('/api/v1/auth/login', $this->loginPayload(
-            $user->email,
-            'dual-field-device-0001',
-        ))
-            ->assertOk()
-            ->assertJsonPath('success', true);
-
-        $this->assertDatabaseHas('personal_access_tokens', [
-            'tokenable_id' => $user->id,
-            'device_id' => 'dual-field-device-0001',
         ]);
     }
 
@@ -117,68 +82,12 @@ class MobileApiFoundationTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
-    public function test_existing_driver_only_token_is_denied_after_legacy_runtime_retirement(): void
-    {
-        $user = $this->createUser(UserRole::DRIVER);
-
-        $token = $user->createToken(
-            'mobile:android:legacy-driver-retirement',
-            [(string) config('mobile_api.token_ability')],
-        )->plainTextToken;
-
-        $this->withToken($token)
-            ->getJson('/api/v1/auth/me')
-            ->assertForbidden()
-            ->assertJsonPath('success', false)
-            ->assertJsonPath('code', 'mobile_role_denied');
-
-        $this->assertDatabaseCount('personal_access_tokens', 0);
-    }
-
-    public function test_existing_dual_role_token_remains_valid_as_unified_representative(): void
-    {
-        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
-        $user->assignRole(UserRole::DRIVER->value);
-
-        $token = $user->createToken(
-            'mobile:android:dual-role-retirement',
-            [(string) config('mobile_api.token_ability')],
-        )->plainTextToken;
-
-        $this->withToken($token)
-            ->getJson('/api/v1/auth/me')
-            ->assertOk()
-            ->assertJsonPath(
-                'data.user.role',
-                UserRole::SALES_REPRESENTATIVE->value,
-            );
-    }
-
-    public function test_retired_driver_operational_routes_are_not_registered(): void
-    {
-        $retiredRoutes = [
-            'api.v1.operational.driver-journeys.open-today',
-            'api.v1.operational.driver-journeys.show',
-            'api.v1.operational.driver-journeys.start',
-            'api.v1.operational.driver-journeys.finish',
-            'api.v1.operational.driver-deliveries.show',
-            'api.v1.operational.driver-deliveries.submit-outcome',
-        ];
-
-        foreach ($retiredRoutes as $routeName) {
-            $this->assertFalse(
-                Route::has($routeName),
-                "Retired legacy driver route is still registered: {$routeName}",
-            );
-        }
-    }
-
     public function test_invalid_credentials_use_standard_validation_response(): void
     {
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
         $this->postJson('/api/v1/auth/login', [
-            ...$this->loginPayload($user->email, 'driver-device-0002'),
+            ...$this->loginPayload($user->email, 'field-device-0002'),
             'password' => 'wrong-password',
         ])
             ->assertUnprocessable()
@@ -218,7 +127,7 @@ class MobileApiFoundationTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
-            'driver-device-0003',
+            'field-device-0003',
         ))
             ->assertForbidden()
             ->assertJsonPath('code', 'account_inactive');
@@ -236,7 +145,7 @@ class MobileApiFoundationTest extends TestCase
 
         $this->postJson('/api/v1/auth/login', $this->loginPayload(
             $user->email,
-            'driver-device-0004',
+            'field-device-0004',
         ))
             ->assertForbidden()
             ->assertJsonPath('code', 'api_access_denied');
@@ -248,7 +157,7 @@ class MobileApiFoundationTest extends TestCase
 
         $token = $this->loginAndGetToken(
             $user,
-            'driver-device-me-0001',
+            'field-device-me-0001',
         );
 
         $response = $this->withToken($token)
@@ -271,8 +180,8 @@ class MobileApiFoundationTest extends TestCase
     {
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
-        $first = $this->loginAndGetToken($user, 'driver-device-rotate');
-        $second = $this->loginAndGetToken($user, 'driver-device-rotate');
+        $first = $this->loginAndGetToken($user, 'field-device-rotate');
+        $second = $this->loginAndGetToken($user, 'field-device-rotate');
 
         $this->assertNotSame($first, $second);
         $this->assertSame(1, $user->tokens()->count());
@@ -283,14 +192,14 @@ class MobileApiFoundationTest extends TestCase
         config()->set('mobile_api.max_sessions', 2);
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
-        $this->loginAndGetToken($user, 'driver-device-limit-1');
-        $this->loginAndGetToken($user, 'driver-device-limit-2');
-        $this->loginAndGetToken($user, 'driver-device-limit-3');
+        $this->loginAndGetToken($user, 'field-device-limit-1');
+        $this->loginAndGetToken($user, 'field-device-limit-2');
+        $this->loginAndGetToken($user, 'field-device-limit-3');
 
         $this->assertSame(2, $user->tokens()->count());
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->id,
-            'device_id' => 'driver-device-limit-1',
+            'device_id' => 'field-device-limit-1',
         ]);
     }
 
@@ -299,12 +208,12 @@ class MobileApiFoundationTest extends TestCase
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
         $other = $this->createUser(UserRole::SALES_REPRESENTATIVE);
 
-        $currentToken = $this->loginAndGetToken($user, 'driver-device-session-1');
-        $this->loginAndGetToken($user, 'driver-device-session-2');
+        $currentToken = $this->loginAndGetToken($user, 'field-device-session-1');
+        $this->loginAndGetToken($user, 'field-device-session-2');
         $this->loginAndGetToken($other, 'sales-device-session-1');
 
         $sessionToRevoke = $user->tokens()
-            ->where('device_id', 'driver-device-session-2')
+            ->where('device_id', 'field-device-session-2')
             ->firstOrFail();
         $otherSession = $other->tokens()->firstOrFail();
 
@@ -333,7 +242,7 @@ class MobileApiFoundationTest extends TestCase
     public function test_logout_and_logout_all_revoke_mobile_tokens(): void
     {
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
-        $first = $this->loginAndGetToken($user, 'driver-device-logout-1');
+        $first = $this->loginAndGetToken($user, 'field-device-logout-1');
 
         $this->withToken($first)
             ->postJson('/api/v1/auth/logout')
@@ -341,8 +250,8 @@ class MobileApiFoundationTest extends TestCase
 
         $this->assertSame(0, $user->tokens()->count());
 
-        $second = $this->loginAndGetToken($user, 'driver-device-logout-2');
-        $this->loginAndGetToken($user, 'driver-device-logout-3');
+        $second = $this->loginAndGetToken($user, 'field-device-logout-2');
+        $this->loginAndGetToken($user, 'field-device-logout-3');
 
         $this->withToken($second)
             ->postJson('/api/v1/auth/logout-all')
@@ -366,8 +275,8 @@ class MobileApiFoundationTest extends TestCase
     public function test_password_change_revokes_all_mobile_tokens(): void
     {
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
-        $this->loginAndGetToken($user, 'driver-device-password-change-1');
-        $this->loginAndGetToken($user, 'driver-device-password-change-2');
+        $this->loginAndGetToken($user, 'field-device-password-change-1');
+        $this->loginAndGetToken($user, 'field-device-password-change-2');
 
         $this->assertSame(2, $user->tokens()->count());
 
@@ -379,7 +288,7 @@ class MobileApiFoundationTest extends TestCase
     public function test_token_is_revoked_when_account_becomes_inactive(): void
     {
         $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
-        $token = $this->loginAndGetToken($user, 'driver-device-inactive');
+        $token = $this->loginAndGetToken($user, 'field-device-inactive');
         $user->update(['status' => User::STATUS_INACTIVE]);
 
         $this->assertSame(0, $user->tokens()->count());

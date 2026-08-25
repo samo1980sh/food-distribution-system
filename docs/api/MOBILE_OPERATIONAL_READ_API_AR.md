@@ -1,36 +1,47 @@
-# Mobile Operational API — Phase 1
-
-هذه المرحلة تضيف واجهة قراءة تشغيلية آمنة لتطبيق Flutter تحت المسار:
-
-`/api/v1/operational`
+# Mobile Operational Read API
 
 ## النطاق
 
-- بيانات الخطوط والسيارات والمستودعات والمنتجات.
-- العملاء وأرصدة المخزون.
-- أوامر التحميل والفواتير والتحصيلات والمرتجعات والمصاريف والإغلاقات.
-- Pagination موحّدة وفلاتر بحث وتاريخ وحالة ومعرّفات العلاقات.
-- تفاصيل السجل مع العناصر التابعة عند الطلب.
-- إخفاء السجلات خارج نطاق المستخدم كـ 404.
-- حقول التكلفة لا تظهر إلا لمن يملك `reports.profit`.
-- لا توجد عمليات إنشاء أو تعديل في هذه المرحلة.
+تقع واجهات القراءة تحت:
 
-## المسارات
+```text
+/api/v1/operational
+```
 
-ابدأ بـ `GET /api/v1/operational/bootstrap` لمعرفة الوحدات المتاحة والسياق التشغيلي لليوم، ثم استخدم مسارات القوائم والتفاصيل الموجودة في OpenAPI.
+ابدأ بـ`GET /bootstrap` لمعرفة modules والصلاحيات والسياق، واستخدم `GET /today` لمساحة عمل المندوب اليومية.
 
-## الأدوار الميدانية
+## الوحدات
 
-تم منح السائق والمندوب صلاحيات قراءة ضرورية للتطبيق فقط: المنتجات، الخطوط، السيارات، والمستودعات. تبقى بقية الوحدات خاضعة لمصفوفة RBAC الحالية.
+- routes، vehicles، warehouses، products.
+- customers وstock-balances.
+- vehicle-loads.
+- sales-journeys وsales-visits.
+- sales-invoices وcustomer-payments وsales-returns.
+- vehicle-expenses وdaily-closings.
 
-## قاعدة البيانات
+القوائم تدعم pagination وفلاتر البحث والتاريخ والحالة ومعرفات العلاقات وفق OpenAPI. تفاصيل المستندات تعيد العناصر التابعة عند الحاجة.
 
-لا توجد Migration جديدة في هذه المرحلة.
+## النطاق والأمان
 
-## المرحلة التالية المكتملة
+- Model binding يخفي السجل خارج النطاق كـ404.
+- مندوب المبيعات يرى فقط خطه وعملاءه وسيارته ومستودعها والعمليات المرتبطة بها.
+- حقول التكلفة والربح لا تظهر إلا بصلاحيات التقارير المناسبة.
+- الـResources تعيد `actions` محسوبة من حالة السجل وPolicy الحالية.
 
-تمت إضافة الكتابة التشغيلية Online First في وثيقة `MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md`. أصبحت القراءة والكتابة الأساس الذي تعتمد عليه مرحلة Mobile Offline Sync Foundation.
+## المزامنة
 
-## المزامنة غير المتصلة
+للمزامنة الدورية استخدم:
 
-تمت إضافة سجل تغييرات Cursor-based وTombstones في مرحلة `Mobile Offline Sync Foundation — Phase 1`. يفضّل تطبيق Flutter استخدام `/operational/sync/pull` للمزامنة الدورية بدل تشغيل جميع قوائم القراءة منفردة.
+```text
+GET /api/v1/operational/sync/status
+GET /api/v1/operational/sync/pull
+POST /api/v1/operational/sync/push
+```
+
+يدعم pull cursor وtombstones. يجب حفظ `context_key` وregistry version وعدم دمج snapshots من نطاقات مختلفة.
+
+## المراجع
+
+- الكتابة: `MOBILE_OPERATIONAL_WRITE_API_PHASE1_AR.md`.
+- Field Today: `MOBILE_FIELD_TODAY_READ_AR.md`.
+- OpenAPI: `docs/api/openapi.yaml`.

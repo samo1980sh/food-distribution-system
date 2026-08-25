@@ -7,10 +7,26 @@ use App\Models\DistributionRoute;
 
 class DistributionRouteController extends AbstractReadOnlyController
 {
-    protected function modelClass(): string { return DistributionRoute::class; }
-    protected function resourceClass(): string { return DistributionRouteResource::class; }
-    protected function indexRelations(): array { return ['area', 'vehicle', 'driver', 'salesRepresentative']; }
-    protected function searchColumns(): array { return ['code', 'name']; }
+    protected function modelClass(): string
+    {
+        return DistributionRoute::class;
+    }
+
+    protected function resourceClass(): string
+    {
+        return DistributionRouteResource::class;
+    }
+
+    protected function indexRelations(): array
+    {
+        return ['area', 'vehicle', 'salesRepresentative'];
+    }
+
+    protected function searchColumns(): array
+    {
+        return ['code', 'name'];
+    }
+
     protected function exactFilters(): array
     {
         return [
@@ -19,5 +35,9 @@ class DistributionRouteController extends AbstractReadOnlyController
             'vehicle_id' => 'vehicle_id',
         ];
     }
-    protected function sortColumns(): array { return ['id', 'code', 'name', 'status', 'updated_at']; }
+
+    protected function sortColumns(): array
+    {
+        return ['id', 'code', 'name', 'status', 'updated_at'];
+    }
 }

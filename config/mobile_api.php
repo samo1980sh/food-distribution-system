@@ -26,7 +26,6 @@ return [
     'token_name_prefix' => 'mobile:',
 
     'allowed_roles' => [
-        'driver',
         'sales_representative',
     ],
 

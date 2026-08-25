@@ -10,7 +10,6 @@ enum UserRole: string
     case WAREHOUSE_KEEPER = 'warehouse_keeper';
     case ACCOUNTANT = 'accountant';
     case SALES_REPRESENTATIVE = 'sales_representative';
-    case DRIVER = 'driver';
 
     public function label(): string
     {
@@ -21,7 +20,6 @@ enum UserRole: string
             self::WAREHOUSE_KEEPER => 'أمين مستودع',
             self::ACCOUNTANT => 'محاسب',
             self::SALES_REPRESENTATIVE => 'مندوب مبيعات',
-            self::DRIVER => 'سائق',
         };
     }
 
@@ -34,7 +32,6 @@ enum UserRole: string
             self::WAREHOUSE_KEEPER => 'warning',
             self::ACCOUNTANT => 'success',
             self::SALES_REPRESENTATIVE => 'gray',
-            self::DRIVER => 'gray',
         };
     }
 

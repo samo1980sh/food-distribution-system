@@ -10,11 +10,6 @@ return new class extends Migration
     {
         Schema::table('daily_closings', function (Blueprint $table): void {
             $table->boolean('field_workflow')->default(false)->after('sales_representative_id');
-            $table->foreignId('driver_id')
-                ->nullable()
-                ->after('field_workflow')
-                ->constrained('employees')
-                ->nullOnDelete();
 
             $table->foreignId('inventory_submitted_by')
                 ->nullable()
@@ -50,7 +45,6 @@ return new class extends Migration
             $table->dropConstrainedForeignId('inventory_submitted_by');
             $table->dropColumn('inventory_submitted_at');
 
-            $table->dropConstrainedForeignId('driver_id');
             $table->dropColumn('field_workflow');
         });
     }

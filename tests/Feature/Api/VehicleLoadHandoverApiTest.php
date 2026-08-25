@@ -71,11 +71,9 @@ class VehicleLoadHandoverApiTest extends TestCase
         $this->assertSame($movementCount, StockMovement::query()->count());
     }
 
-    public function test_representative_acknowledges_discrepant_load_without_driver_assignment(): void
+    public function test_representative_acknowledges_discrepant_load(): void
     {
         $context = $this->handoverContext('REPRESENTATIVE');
-        $context['route']->update(['driver_id' => null]);
-        $context['load']->update(['driver_id' => null]);
         $sales = User::factory()->create([
             'role' => User::ROLE_SALES_REPRESENTATIVE,
         ]);
@@ -99,14 +97,12 @@ class VehicleLoadHandoverApiTest extends TestCase
                 ],
             )
             ->assertOk()
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.handover_status', 'discrepancy')
             ->assertJsonPath('data.different_items_count', 1);
 
         $this->assertDatabaseHas('vehicle_loads', [
             'id' => $context['load']->id,
-            'driver_id' => null,
             'sales_representative_id' => $context['representative']->id,
             'handover_by' => $sales->id,
             'handover_status' => 'discrepancy',
@@ -247,12 +243,6 @@ class VehicleLoadHandoverApiTest extends TestCase
             'status' => 'active',
         ]);
         $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'HAND-DRV-'.$suffix,
-            'name' => 'سائق الاستلام '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'HAND-REP-'.$suffix,
             'name' => 'مندوب الاستلام '.$suffix,
@@ -263,7 +253,6 @@ class VehicleLoadHandoverApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'HAND-ROUTE-'.$suffix,
             'name' => 'خط الاستلام '.$suffix,
@@ -294,7 +283,6 @@ class VehicleLoadHandoverApiTest extends TestCase
             'load_number' => 'HAND-LOAD-'.$suffix,
             'vehicle_id' => $vehicle->id,
             'route_id' => $route->id,
-            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $vehicleWarehouse->id,
@@ -319,7 +307,6 @@ class VehicleLoadHandoverApiTest extends TestCase
             'vehicleWarehouse',
             'sourceWarehouse',
             'user',
-            'driver',
             'representative',
             'route',
             'product',

@@ -5,7 +5,6 @@ namespace App\Enums;
 enum OperationSource: string
 {
     case MOBILE_SALES = 'mobile_sales';
-    case MOBILE_DRIVER = 'mobile_driver';
     case OFFICE = 'office';
     case ADMIN_EXCEPTION = 'admin_exception';
     case SYSTEM = 'system';
@@ -15,7 +14,6 @@ enum OperationSource: string
     {
         return match ($this) {
             self::MOBILE_SALES => 'تطبيق مندوب المبيعات',
-            self::MOBILE_DRIVER => 'تطبيق السائق',
             self::OFFICE => 'إدخال مكتبي',
             self::ADMIN_EXCEPTION => 'إدخال إداري استثنائي',
             self::SYSTEM => 'النظام',
@@ -26,7 +24,7 @@ enum OperationSource: string
     public function color(): string
     {
         return match ($this) {
-            self::MOBILE_SALES, self::MOBILE_DRIVER => 'info',
+            self::MOBILE_SALES => 'info',
             self::OFFICE => 'success',
             self::ADMIN_EXCEPTION => 'warning',
             self::SYSTEM => 'primary',
@@ -37,7 +35,7 @@ enum OperationSource: string
     public function icon(): string
     {
         return match ($this) {
-            self::MOBILE_SALES, self::MOBILE_DRIVER => 'heroicon-o-device-phone-mobile',
+            self::MOBILE_SALES => 'heroicon-o-device-phone-mobile',
             self::OFFICE => 'heroicon-o-building-office-2',
             self::ADMIN_EXCEPTION => 'heroicon-o-exclamation-triangle',
             self::SYSTEM => 'heroicon-o-cog-6-tooth',
@@ -78,8 +76,6 @@ enum OperationSource: string
 
     public static function mobileForEntity(string $entity): self
     {
-        return $entity === 'vehicle_expenses'
-            ? self::MOBILE_DRIVER
-            : self::MOBILE_SALES;
+        return self::MOBILE_SALES;
     }
 }

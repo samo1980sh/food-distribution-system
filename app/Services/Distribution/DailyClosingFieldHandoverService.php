@@ -3,10 +3,8 @@
 namespace App\Services\Distribution;
 
 use App\Enums\OperationSource;
-use App\Enums\UserRole;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
-use App\Models\DriverJourney;
 use App\Models\SalesJourney;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -51,17 +49,10 @@ class DailyClosingFieldHandoverService
                 throw new RuntimeException('السيارة المحددة لا تملك مستودع سيارة فعّالًا.');
             }
 
-            $ownerRole = $this->fieldOwnerRole($user, $route, (int) $employeeId);
+            $this->ensureFieldOwner($user, $route, (int) $employeeId);
 
-            if ($ownerRole === UserRole::SALES_REPRESENTATIVE && $route->sales_representative_id === null) {
+            if ($route->sales_representative_id === null) {
                 throw new RuntimeException('يجب تعيين مندوب المبيعات على خط التوزيع قبل فتح الإغلاق الميداني.');
-            }
-
-            if (
-                $ownerRole === UserRole::DRIVER
-                && ($route->driver_id === null || $route->sales_representative_id === null)
-            ) {
-                throw new RuntimeException('يجب تعيين السائق ومندوب المبيعات على خط التوزيع قبل فتح الإغلاق الميداني.');
             }
 
             $date = today()->toDateString();
@@ -86,33 +77,24 @@ class DailyClosingFieldHandoverService
 
                 $representativeChanged = (int) $existing->sales_representative_id
                     !== (int) $route->sales_representative_id;
-                $legacyDriverChanged = $ownerRole === UserRole::DRIVER
-                    && (int) $existing->driver_id !== (int) $route->driver_id;
-
-                if ($representativeChanged || $legacyDriverChanged) {
+                if ($representativeChanged) {
                     throw new RuntimeException('تغيّر فريق الخط بعد فتح إغلاق اليوم. يجب أن تراجع الإدارة الإغلاق الموجود قبل المتابعة.');
                 }
 
                 return $existing->load($this->relations());
             }
 
-            $representativeWorkflow = $ownerRole === UserRole::SALES_REPRESENTATIVE;
-            $source = $representativeWorkflow
-                ? OperationSource::MOBILE_SALES
-                : OperationSource::MOBILE_DRIVER;
-
             $closing = DailyClosing::withoutGlobalScopes()->create([
                 'closing_date' => $date,
                 'vehicle_id' => $vehicle->getKey(),
                 'route_id' => $route->getKey(),
                 'warehouse_id' => $warehouse->getKey(),
-                'driver_id' => $representativeWorkflow ? null : $route->driver_id,
                 'sales_representative_id' => $route->sales_representative_id,
                 'field_workflow' => true,
                 'status' => 'draft',
                 'actual_cash_amount' => 0,
                 'created_by' => $user->getKey(),
-                'operation_source' => $source,
+                'operation_source' => OperationSource::MOBILE_SALES,
             ]);
 
             $closing = $this->dailyClosingService->refreshTotals($closing);
@@ -134,13 +116,8 @@ class DailyClosingFieldHandoverService
                 ->findOrFail($dailyClosing->getKey());
 
             $this->ensureFieldDraft($closing);
-            $ownerRole = $this->ensureResponsibleEmployee($closing, $user, 'inventory');
-
-            if ($ownerRole === UserRole::SALES_REPRESENTATIVE) {
-                $this->ensureSalesJourneyCompleted($closing);
-            } else {
-                $this->ensureDriverJourneyCompletedWhenPresent($closing);
-            }
+            $this->ensureResponsibleEmployee($closing, $user, 'inventory');
+            $this->ensureSalesJourneyCompleted($closing);
 
             if ($closing->inventorySubmitted()) {
                 throw new RuntimeException('تم تسليم جرد السيارة سابقاً ولا يمكن استبداله من التطبيق الميداني.');
@@ -249,69 +226,37 @@ class DailyClosingFieldHandoverService
         DailyClosing $closing,
         User $user,
         string $section,
-    ): UserRole {
+    ): void {
         $employeeId = $user->employee()->value('id');
 
         if (
             $employeeId !== null
-            && $user->hasRole(UserRole::SALES_REPRESENTATIVE->value)
+            && $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
             && (int) $closing->sales_representative_id === (int) $employeeId
         ) {
-            return UserRole::SALES_REPRESENTATIVE;
-        }
-
-        if (
-            $section === 'inventory'
-            && $employeeId !== null
-            && $user->hasRole(UserRole::DRIVER->value)
-            && (int) $closing->driver_id === (int) $employeeId
-        ) {
-            return UserRole::DRIVER;
+            return;
         }
 
         throw new RuntimeException(
             $section === 'inventory'
-                ? 'جرد السيارة متاح للمندوب المسؤول عن الخط، مع الإبقاء على توافق السائق للسجلات القديمة.'
+                ? 'جرد السيارة متاح لمندوب المبيعات المسؤول عن هذا الخط فقط.'
                 : 'تسليم النقد متاح لمندوب المبيعات المسؤول عن هذا الخط فقط.',
         );
     }
 
-    private function fieldOwnerRole(
+    private function ensureFieldOwner(
         User $user,
         DistributionRoute $route,
         int $employeeId,
-    ): UserRole {
+    ): void {
         if (
-            $user->hasRole(UserRole::SALES_REPRESENTATIVE->value)
+            $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
             && (int) $route->sales_representative_id === $employeeId
         ) {
-            return UserRole::SALES_REPRESENTATIVE;
-        }
-
-        if (
-            $user->hasRole(UserRole::DRIVER->value)
-            && (int) $route->driver_id === $employeeId
-        ) {
-            return UserRole::DRIVER;
+            return;
         }
 
         throw new RuntimeException('المستخدم ليس مسؤولاً عن السياق الميداني لخط التوزيع المحدد.');
-    }
-
-    private function ensureDriverJourneyCompletedWhenPresent(DailyClosing $closing): void
-    {
-        $journey = DriverJourney::withoutGlobalScopes()
-            ->whereDate('journey_date', $closing->closing_date)
-            ->where('route_id', $closing->route_id)
-            ->where('driver_id', $closing->driver_id)
-            ->lockForUpdate()
-            ->first();
-
-        if ($journey !== null && ! $journey->isCompleted()) {
-            throw new RuntimeException(
-                'يجب إنهاء رحلة السائق ومعالجة جميع التسليمات قبل تسليم جرد السيارة.',
-            );
-        }
     }
 
     private function ensureSalesJourneyCompleted(DailyClosing $closing): void
@@ -323,10 +268,7 @@ class DailyClosingFieldHandoverService
             ->lockForUpdate()
             ->first();
 
-        $requiresUnifiedJourney = $closing->operation_source === OperationSource::MOBILE_SALES
-            || $closing->driver_id === null;
-
-        if ($journey === null && $requiresUnifiedJourney) {
+        if ($journey === null) {
             throw new RuntimeException(
                 'يجب إكمال رحلة المندوب الموحدة قبل تسليم الجرد أو النقد.',
             );
@@ -346,7 +288,6 @@ class DailyClosingFieldHandoverService
             'vehicle.warehouse',
             'route',
             'warehouse.vehicle',
-            'driver',
             'salesRepresentative',
             'inventorySubmitter',
             'cashSubmitter',

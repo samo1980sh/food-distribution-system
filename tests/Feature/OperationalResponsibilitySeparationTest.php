@@ -8,18 +8,18 @@ use App\Filament\Resources\CustomerPayments\CustomerPaymentResource;
 use App\Filament\Resources\CustomerPayments\Pages\ManageCustomerPayments;
 use App\Filament\Resources\DailyClosings\DailyClosingResource;
 use App\Filament\Resources\DailyClosings\Pages\ListDailyClosings;
-use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Filament\Resources\SalesInvoices\Pages\ListSalesInvoices;
+use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
 use App\Filament\Resources\SalesReturns\Pages\ListSalesReturns;
+use App\Filament\Resources\SalesReturns\SalesReturnResource;
 use App\Filament\Resources\VehicleExpenses\Pages\ManageVehicleExpenses;
+use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
-use App\Models\SalesReturn;
-use App\Models\VehicleExpense;
-use App\Filament\Resources\SalesReturns\SalesReturnResource;
-use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
 use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\User;
+use App\Models\VehicleExpense;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
@@ -94,7 +94,6 @@ class OperationalResponsibilitySeparationTest extends TestCase
         $writeService = file_get_contents(app_path('Services/Api/MobileOperationalWriteService.php'));
 
         $this->assertStringContainsString('OperationSource::MOBILE_SALES', $writeService);
-        $this->assertStringContainsString('OperationSource::MOBILE_DRIVER', $writeService);
 
         foreach ([
             'SalesInvoiceResource.php',
@@ -178,5 +177,4 @@ class OperationalResponsibilitySeparationTest extends TestCase
             ->assertActionVisible('create')
             ->assertActionHasLabel('create', 'مصروف إداري استثنائي');
     }
-
 }

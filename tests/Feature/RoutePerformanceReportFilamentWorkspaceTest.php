@@ -16,9 +16,9 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
         );
 
         foreach ([
-            "protected string \$view =",
+            'protected string $view =',
             "public string \$analysisView = 'executive';",
-            "public function setAnalysisView(string \$view): void",
+            'public function setAnalysisView(string $view): void',
             'public function getAnalysisViews(): array',
             'public function getAnalysisViewDescription(): string',
             "'executive' => [",
@@ -29,8 +29,8 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
             "'المبيعات والربحية'",
             "'التحصيل والتسوية'",
             "'التغطية والتشغيل'",
-            "array_key_exists(\$view, \$this->getAnalysisViews())",
-            "\$this->analysisView = \$view;",
+            'array_key_exists($view, $this->getAnalysisViews())',
+            '$this->analysisView = $view;',
             "Action::make('printFiltered')",
             "'filters' => \$this->tableFilters ?? []",
         ] as $needle) {
@@ -68,7 +68,6 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
             "TextColumn::make('activity_report')",
             "TextColumn::make('area.name_ar')",
             "TextColumn::make('vehicle.name')",
-            "TextColumn::make('driver.name')",
             "TextColumn::make('salesRepresentative.name')",
             "TextColumn::make('assigned_customers_report')",
             "TextColumn::make('served_customers_report')",
@@ -128,7 +127,6 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
             "Select::make('route_id')",
             "Select::make('area_id')",
             "Select::make('vehicle_id')",
-            "Select::make('driver_id')",
             "Select::make('sales_representative_id')",
             "TextInput::make('minimum_net_sales')",
             "TextInput::make('minimum_contribution')",
@@ -167,12 +165,12 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
             '->default()',
             "Action::make('print')",
             "route('reports.route-performance.print'",
-            "PermissionName::REPORT_ROUTE_PERFORMANCE->value",
+            'PermissionName::REPORT_ROUTE_PERFORMANCE->value',
             "'performance_settings'",
             '->summaryForRoute(',
             '->rankings(self::settingsFromLivewire($livewire))',
             "->whereIn('route_id', \$ids)",
-            "->sum(\$field)",
+            '->sum($field)',
             "'assigned_active_customers'",
             "'served_customers'",
             "'service_coverage_percent'",
@@ -197,7 +195,7 @@ class RoutePerformanceReportFilamentWorkspaceTest extends TestCase
 
         foreach ([
             "'reports.route-performance.print-filtered'",
-            "PermissionName::REPORT_ROUTE_PERFORMANCE->value",
+            'PermissionName::REPORT_ROUTE_PERFORMANCE->value',
             "'filters' => \$this->tableFilters ?? []",
         ] as $needle) {
             $this->assertStringContainsString($needle, $page);

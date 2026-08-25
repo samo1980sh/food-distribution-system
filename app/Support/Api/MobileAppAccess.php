@@ -31,12 +31,8 @@ final class MobileAppAccess
 
     public static function activeFieldRole(User $user): ?string
     {
-        if ($user->hasRole(User::ROLE_SALES_REPRESENTATIVE)) {
-            return User::ROLE_SALES_REPRESENTATIVE;
-        }
-
-        return $user->hasRole(User::ROLE_DRIVER)
-            ? User::ROLE_DRIVER
+        return $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)
+            ? User::ROLE_SALES_REPRESENTATIVE
             : null;
     }
 
@@ -48,18 +44,13 @@ final class MobileAppAccess
         return [
             'role' => $role,
             'unified' => $role === User::ROLE_SALES_REPRESENTATIVE,
-            'legacy' => $role === User::ROLE_DRIVER,
+            'legacy' => false,
         ];
     }
 
     public static function usesUnifiedRepresentativeWorkspace(User $user): bool
     {
         return self::activeFieldRole($user) === User::ROLE_SALES_REPRESENTATIVE;
-    }
-
-    public static function usesLegacyDriverWorkspace(User $user): bool
-    {
-        return self::activeFieldRole($user) === User::ROLE_DRIVER;
     }
 
     private function __construct() {}

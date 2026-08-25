@@ -27,7 +27,6 @@ class VehicleLoadController extends Controller
             ->with([
                 'vehicle.warehouse',
                 'route',
-                'driver',
                 'salesRepresentative',
                 'fromWarehouse.vehicle',
                 'toWarehouse.vehicle',
@@ -72,13 +71,11 @@ class VehicleLoadController extends Controller
         Request $request,
         VehicleLoad $vehicleLoad,
         MobileSyncVersionService $versionService,
-    ): JsonResponse
-    {
+    ): JsonResponse {
         Gate::authorize('view', $vehicleLoad);
         $vehicleLoad->loadMissing([
             'vehicle.warehouse',
             'route',
-            'driver',
             'salesRepresentative',
             'fromWarehouse.vehicle',
             'toWarehouse.vehicle',
@@ -108,6 +105,7 @@ class VehicleLoadController extends Controller
             'تم تحميل تفاصيل السجل.',
         );
     }
+
     public function acknowledge(
         VehicleLoadHandoverRequest $request,
         VehicleLoad $vehicleLoad,
@@ -124,7 +122,6 @@ class VehicleLoadController extends Controller
             $record->loadMissing([
                 'vehicle.warehouse',
                 'route',
-                'driver',
                 'salesRepresentative',
                 'fromWarehouse.vehicle',
                 'toWarehouse.vehicle',

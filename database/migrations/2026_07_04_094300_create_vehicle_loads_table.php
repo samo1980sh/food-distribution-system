@@ -14,7 +14,6 @@ return new class extends Migration
 
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
             $table->foreignId('route_id')->nullable()->constrained('distribution_routes')->nullOnDelete();
-            $table->foreignId('driver_id')->nullable()->constrained('employees')->nullOnDelete();
             $table->foreignId('sales_representative_id')->nullable()->constrained('employees')->nullOnDelete();
 
             $table->foreignId('from_warehouse_id')->constrained('warehouses')->cascadeOnDelete();

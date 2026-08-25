@@ -16,8 +16,8 @@ class CleanTestBaselineSeederTest extends TestCase
     {
         $this->seed(CleanTestBaselineSeeder::class);
 
-        $this->assertDatabaseCount('users', 10);
-        $this->assertDatabaseCount('employees', 8);
+        $this->assertDatabaseCount('users', 8);
+        $this->assertDatabaseCount('employees', 6);
         $this->assertDatabaseCount('customers', 20);
         $this->assertDatabaseCount('products', 15);
         $this->assertDatabaseCount('distribution_routes', 5);
@@ -37,9 +37,6 @@ class CleanTestBaselineSeederTest extends TestCase
             'daily_closings',
             'sales_visits',
             'sales_journeys',
-            'driver_delivery_items',
-            'driver_deliveries',
-            'driver_journeys',
         ] as $table) {
             if (Schema::hasTable($table)) {
                 $this->assertSame(

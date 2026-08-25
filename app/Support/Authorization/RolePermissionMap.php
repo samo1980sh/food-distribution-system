@@ -48,8 +48,6 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_APPROVE,
                 P::VEHICLE_EXPENSES_REJECT,
                 P::VEHICLE_EXPENSES_PRINT,
-                P::DRIVER_JOURNEYS_VIEW,
-                P::DRIVER_DELIVERIES_VIEW,
                 P::SALES_JOURNEYS_VIEW,
                 P::SALES_VISITS_VIEW,
                 P::DAILY_CLOSINGS_VIEW,
@@ -156,8 +154,6 @@ final class RolePermissionMap
                 P::VEHICLE_EXPENSES_VIEW,
                 P::VEHICLE_EXPENSES_CREATE,
                 P::VEHICLE_EXPENSES_UPDATE,
-                P::DRIVER_JOURNEYS_VIEW,
-                P::DRIVER_DELIVERIES_VIEW,
                 P::SALES_JOURNEYS_VIEW,
                 P::SALES_JOURNEYS_OPEN,
                 P::SALES_JOURNEYS_START,
@@ -165,21 +161,6 @@ final class RolePermissionMap
                 P::SALES_VISITS_VIEW,
                 P::SALES_VISITS_START,
                 P::SALES_VISITS_COMPLETE,
-            ]),
-            UserRole::DRIVER->value => self::values([
-                // Historical compatibility only. The standalone driver
-                // mobile/field workflow is retired.
-                P::PRODUCTS_VIEW,
-                P::DISTRIBUTION_ROUTES_VIEW,
-                P::VEHICLES_VIEW,
-                P::WAREHOUSES_VIEW,
-                P::CUSTOMERS_VIEW,
-                P::STOCK_BALANCES_VIEW,
-                P::VEHICLE_LOADS_VIEW,
-                P::DAILY_CLOSINGS_VIEW,
-                P::VEHICLE_EXPENSES_VIEW,
-                P::DRIVER_JOURNEYS_VIEW,
-                P::DRIVER_DELIVERIES_VIEW,
             ]),
         ];
     }

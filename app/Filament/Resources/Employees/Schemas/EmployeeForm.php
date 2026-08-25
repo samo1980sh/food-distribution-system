@@ -2,8 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
-use App\Models\Employee;
-use App\Rules\AllowedAdminEmployeeType;
+use App\Enums\EmployeeType;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -61,11 +60,8 @@ class EmployeeForm
                     ->schema([
                         Select::make('type')
                             ->label('نوع الموظف')
-                            ->options(fn (?Employee $record): array => self::typeOptions($record))
+                            ->options(self::typeOptions())
                             ->default('sales_representative')
-                            ->rules(fn (?Employee $record): array => [
-                                new AllowedAdminEmployeeType($record?->type),
-                            ])
                             ->required()
                             ->live()
                             ->native(false),
@@ -99,29 +95,18 @@ class EmployeeForm
 
     private static function roleForEmployeeType(?string $type): ?string
     {
-        return match ($type) {
-            'driver' => 'driver',
-            'sales_representative' => 'sales_representative',
-            'warehouse_keeper' => 'warehouse_keeper',
-            'accountant' => 'accountant',
-            'supervisor' => 'supervisor',
-            default => null,
-        };
+        return EmployeeType::tryFrom((string) $type)?->userRole()->value;
     }
 
     /** @return array<string, string> */
-    private static function typeOptions(?Employee $record): array
+    private static function typeOptions(): array
     {
         $options = [
-            'sales_representative' => 'مندوب مبيعات',
-            'warehouse_keeper' => 'أمين مستودع',
-            'accountant' => 'محاسب',
-            'supervisor' => 'مشرف',
+            EmployeeType::SALES_REPRESENTATIVE->value => 'مندوب مبيعات',
+            EmployeeType::WAREHOUSE_KEEPER->value => 'أمين مستودع',
+            EmployeeType::ACCOUNTANT->value => 'محاسب',
+            EmployeeType::SUPERVISOR->value => 'مشرف',
         ];
-
-        if ($record?->type === 'driver') {
-            return ['driver' => 'سائق (سجل تاريخي)'] + $options;
-        }
 
         return $options;
     }

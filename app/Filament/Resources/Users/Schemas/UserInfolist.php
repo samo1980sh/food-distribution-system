@@ -13,6 +13,7 @@ use App\Support\Authorization\EffectiveAccessScope;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 
 class UserInfolist
 {
@@ -41,7 +42,7 @@ class UserInfolist
                     ]),
 
                 Section::make('الموظف المرتبط')
-                    ->description('الربط بالموظف هو مصدر النطاق المشتق لحسابات السائق ومندوب المبيعات.')
+                    ->description('الربط بالموظف هو مصدر النطاق المشتق لحسابات الميدان.')
                     ->icon('heroicon-o-identification')
                     ->columns(4)
                     ->columnSpanFull()
@@ -140,7 +141,6 @@ class UserInfolist
     private static function employeeTypeLabel(?string $type): string
     {
         return match ($type) {
-            'driver' => 'سائق',
             'sales_representative' => 'مندوب مبيعات',
             'warehouse_keeper' => 'أمين مستودع',
             'accountant' => 'محاسب',
@@ -177,8 +177,8 @@ class UserInfolist
         return $scope->hasAssignments() ? 'النطاق جاهز' : 'النطاق فارغ';
     }
 
-    /** @param class-string<\Illuminate\Database\Eloquent\Model> $modelClass
-     *  @param list<int> $ids
+    /** @param class-string<Model> $modelClass
+     * @param  list<int>  $ids
      */
     private static function effectiveNames(User $record, string $modelClass, array $ids, string $column): string
     {
@@ -199,6 +199,4 @@ class UserInfolist
 
         return $values->isEmpty() ? 'لا توجد سجلات ضمن النطاق' : $values->implode('، ');
     }
-
-
 }

@@ -41,22 +41,18 @@ class RoutePerformanceReportFilteredPrintController extends Controller
 
         $filterSummary = array_filter([
             'الفترة' => $settings['from'].' — '.$settings['until'],
-            'معيار الترتيب' =>
-                RoutePerformanceReportService::rankingMetricLabel(
-                    $settings['ranking_metric']
-                ),
-            'نطاق النشاط' =>
-                RoutePerformanceReportService::scopeOptions()[
+            'معيار الترتيب' => RoutePerformanceReportService::rankingMetricLabel(
+                $settings['ranking_metric']
+            ),
+            'نطاق النشاط' => RoutePerformanceReportService::scopeOptions()[
                     $settings['scope']
                 ] ?? $settings['scope'],
-            'عدد النتائج' =>
-                RoutePerformanceReportService::limitOptions()[
+            'عدد النتائج' => RoutePerformanceReportService::limitOptions()[
                     $settings['limit']
                 ] ?? $settings['limit'],
-            'حالة الخط' =>
-                RoutePerformanceReportService::statusLabel(
-                    $settings['status']
-                ),
+            'حالة الخط' => RoutePerformanceReportService::statusLabel(
+                $settings['status']
+            ),
             'الخط' => $settings['route_id']
                 ? DistributionRoute::find($settings['route_id'])?->name
                 : null,
@@ -66,23 +62,18 @@ class RoutePerformanceReportFilteredPrintController extends Controller
             'السيارة' => $settings['vehicle_id']
                 ? Vehicle::find($settings['vehicle_id'])?->name
                 : null,
-            'السائق' => $settings['driver_id']
-                ? Employee::find($settings['driver_id'])?->name
-                : null,
             'المندوب' => $settings['sales_representative_id']
                 ? Employee::find(
                     $settings['sales_representative_id']
                 )?->name
                 : null,
-            'الحد الأدنى لصافي المبيعات' =>
-                $settings['minimum_net_sales'] > 0
+            'الحد الأدنى لصافي المبيعات' => $settings['minimum_net_sales'] > 0
                     ? number_format(
                         $settings['minimum_net_sales'],
                         2,
                     ).' ل.س'
                     : null,
-            'الحد الأدنى لصافي المساهمة' =>
-                $settings['minimum_contribution'] !== null
+            'الحد الأدنى لصافي المساهمة' => $settings['minimum_contribution'] !== null
                     ? number_format(
                         $settings['minimum_contribution'],
                         2,

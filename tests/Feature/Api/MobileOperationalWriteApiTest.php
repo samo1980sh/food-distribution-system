@@ -5,7 +5,6 @@ namespace Tests\Feature\Api;
 use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
-use App\Models\DriverJourney;
 use App\Models\Employee;
 use App\Models\Product;
 use App\Models\ProductCategory;
@@ -86,8 +85,6 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonPath('meta.idempotency.replayed', true);
 
         $this->assertDatabaseCount('sales_invoices', 1);
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
 
         $this->withToken($token)
             ->postJson('/api/v1/operational/sales-invoices', [
@@ -109,35 +106,21 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_invoice_confirmation_does_not_depend_on_completed_legacy_driver_journey(): void
+    public function test_invoice_confirmation_uses_representative_workflow(): void
     {
         $context = $this->context('COMPLETED-JOURNEY');
         $user = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
         );
-        DriverJourney::query()->create([
-            'journey_date' => today(),
-            'route_id' => $context['route']->id,
-            'vehicle_id' => $context['vehicle']->id,
-            'warehouse_id' => $context['warehouse']->id,
-            'driver_id' => $context['driver']->id,
-            'sales_representative_id' => $context['representative']->id,
-            'status' => 'completed',
-            'started_at' => now()->subHour(),
-            'finished_at' => now(),
-        ]);
-
         $this->withToken($this->tokenFor($user))
             ->postJson('/api/v1/operational/sales-invoices', $this->invoicePayload(
                 $context,
-                'invoice-after-completed-driver-journey',
+                'invoice-representative-workflow',
             ))
             ->assertCreated()
             ->assertJsonPath('data.status', 'confirmed');
 
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
@@ -145,7 +128,7 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_invoice_preserves_multi_batch_allocation_without_driver_delivery(): void
+    public function test_invoice_preserves_multi_batch_allocation(): void
     {
         $context = $this->context('MULTI-BATCH');
         $user = $this->userForEmployee(
@@ -192,8 +175,6 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonCount(2, 'data.items');
 
         $invoiceId = (int) $response->json('data.id');
-        $this->assertDatabaseCount('driver_deliveries', 0);
-        $this->assertDatabaseCount('driver_delivery_items', 0);
         $this->assertDatabaseHas('sales_invoice_items', [
             'sales_invoice_id' => $invoiceId,
             'batch_number' => 'BATCH-A',
@@ -463,7 +444,6 @@ class MobileOperationalWriteApiTest extends TestCase
     {
         $first = $this->context('EXP-REP-A');
         $second = $this->context('EXP-REP-B');
-        $first['route']->update(['driver_id' => null]);
         $user = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $first['representative'],
@@ -492,7 +472,6 @@ class MobileOperationalWriteApiTest extends TestCase
         $created = $this->withToken($token)
             ->postJson('/api/v1/operational/vehicle-expenses', $payload)
             ->assertCreated()
-            ->assertJsonPath('data.driver', null)
             ->assertJsonPath('data.sales_representative.id', $first['representative']->id)
             ->assertJsonPath('data.payment_method', 'cash')
             ->assertJsonPath('data.operation_source', 'mobile_sales');
@@ -510,7 +489,6 @@ class MobileOperationalWriteApiTest extends TestCase
             'route_id' => $first['route']->id,
             'vehicle_id' => $first['vehicle']->id,
             'warehouse_id' => $first['warehouse']->id,
-            'driver_id' => null,
             'sales_representative_id' => $first['representative']->id,
             'payment_method' => 'cash',
             'operation_source' => 'mobile_sales',
@@ -582,12 +560,6 @@ class MobileOperationalWriteApiTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
-        $driver = Employee::query()->create([
-            'employee_code' => 'WRITE-DRV-'.$suffix,
-            'name' => 'سائق '.$suffix,
-            'type' => 'driver',
-            'status' => 'active',
-        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'WRITE-REP-'.$suffix,
             'name' => 'مندوب '.$suffix,
@@ -597,7 +569,6 @@ class MobileOperationalWriteApiTest extends TestCase
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
             'sales_representative_id' => $representative->id,
             'code' => 'WRITE-ROUTE-'.$suffix,
             'name' => 'خط '.$suffix,
@@ -642,7 +613,6 @@ class MobileOperationalWriteApiTest extends TestCase
             'area',
             'vehicle',
             'warehouse',
-            'driver',
             'representative',
             'route',
             'customer',

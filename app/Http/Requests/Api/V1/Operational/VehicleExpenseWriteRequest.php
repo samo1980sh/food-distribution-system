@@ -3,8 +3,8 @@
 namespace App\Http\Requests\Api\V1\Operational;
 
 use App\Enums\UserRole;
-use App\Rules\ActiveEmployeeForOperationalRole;
 use App\Models\VehicleExpense;
+use App\Rules\ActiveEmployeeForOperationalRole;
 use Illuminate\Validation\Rule;
 
 class VehicleExpenseWriteRequest extends OperationalWriteRequest
@@ -36,12 +36,6 @@ class VehicleExpenseWriteRequest extends OperationalWriteRequest
                 Rule::exists('warehouses', 'id')->where('status', 'active'),
             ]),
             'route_id' => ['sometimes', 'nullable', 'integer', Rule::exists('distribution_routes', 'id')->where('status', 'active')],
-            'driver_id' => [
-                'sometimes',
-                'nullable',
-                'integer',
-                new ActiveEmployeeForOperationalRole(UserRole::DRIVER),
-            ],
             'sales_representative_id' => [
                 'sometimes',
                 'nullable',

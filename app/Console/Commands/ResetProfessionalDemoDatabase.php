@@ -158,8 +158,6 @@ class ResetProfessionalDemoDatabase extends Command
             'daily_closings',
             'sales_journeys',
             'sales_visits',
-            'driver_journeys',
-            'driver_deliveries',
         ];
 
         $rows = [];
@@ -240,9 +238,7 @@ class ResetProfessionalDemoDatabase extends Command
                 ['Accountant', 'accountant@demo.local', 'Financial operations and reports'],
                 ['Flutter representative', 'sales@demo.local', 'Unified representative - Damascus'],
                 ['Flutter representative', 'sales.rif@demo.local', 'Unified representative - Rif Damascus'],
-                ['Flutter representative', 'field.team@demo.local', 'Unified representative with retained legacy role'],
-                ['Legacy compatibility', 'driver@demo.local', 'Retired driver identity - no mobile runtime'],
-                ['Legacy compatibility', 'driver.rif@demo.local', 'Retired driver identity - no mobile runtime'],
+                ['Flutter representative', 'field.team@demo.local', 'Unified representative - Damascus south'],
             ],
         );
     }

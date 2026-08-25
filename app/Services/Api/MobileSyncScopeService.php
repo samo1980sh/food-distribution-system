@@ -61,10 +61,7 @@ class MobileSyncScopeService
                 'area_id' => $model->area_id,
                 'route_id' => $model->getKey(),
                 'vehicle_id' => $model->vehicle_id,
-                'employee_ids' => [
-                    $model->driver_id,
-                    $model->sales_representative_id,
-                ],
+                'employee_ids' => [$model->sales_representative_id],
             ]);
         }
 
@@ -102,10 +99,7 @@ class MobileSyncScopeService
                     $model->from_warehouse_id,
                     $model->to_warehouse_id,
                 ],
-                'employee_ids' => [
-                    $model->driver_id,
-                    $model->sales_representative_id,
-                ],
+                'employee_ids' => [$model->sales_representative_id],
             ]);
         }
 
@@ -127,10 +121,7 @@ class MobileSyncScopeService
                 'route_id' => $model->getAttribute('route_id'),
                 'vehicle_id' => $model->getAttribute('vehicle_id'),
                 'warehouse_id' => $model->getAttribute('warehouse_id'),
-                'employee_ids' => [
-                    $model->getAttribute('driver_id'),
-                    $model->getAttribute('sales_representative_id'),
-                ],
+                'employee_ids' => [$model->getAttribute('sales_representative_id')],
                 'customer_area_id' => $customer?->area_id,
                 'customer_route_id' => $customer?->route_id,
             ]);
@@ -190,10 +181,7 @@ class MobileSyncScopeService
     /** @param array<string, mixed> $snapshot */
     private function allowsStockBalance(User $user, object $scope, array $snapshot): bool
     {
-        if (! $user->hasAnyRole([
-            User::ROLE_DRIVER,
-            User::ROLE_SALES_REPRESENTATIVE,
-        ])) {
+        if (! $user->hasRole(User::ROLE_SALES_REPRESENTATIVE)) {
             return $this->contains(
                 $scope->warehouseIds,
                 $snapshot['warehouse_id'] ?? null,

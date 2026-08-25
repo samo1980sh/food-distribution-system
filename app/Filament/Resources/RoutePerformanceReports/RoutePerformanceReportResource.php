@@ -66,7 +66,6 @@ class RoutePerformanceReportResource extends Resource
         return parent::getEloquentQuery()->with([
             'area',
             'vehicle',
-            'driver',
             'salesRepresentative',
         ]);
     }
