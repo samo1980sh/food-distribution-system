@@ -183,13 +183,13 @@ class ResetProfessionalDemoDatabase extends Command
         $this->table(
             ['Domain', 'Target'],
             [
-                ['Users', '10 accounts covering all roles and 3 Flutter scenarios'],
+                ['Users', '10 accounts including unified representatives and legacy compatibility identities'],
                 ['Distribution', '4 areas, 5 routes, 4 vehicles, 7 warehouses'],
                 ['Customers', '20 customers with cash, partial, credit and overdue cases'],
                 ['Catalog', '15 products across 6 categories and 5 units'],
                 ['Inventory', 'Opening balances, vehicle stock, expiry-risk batches and weighted costs'],
                 ['Operations', 'Loads, invoices, collections, returns, expenses and daily closings'],
-                ['Flutter today', 'Ready sales and driver journeys with visits and pending deliveries for every demo field account'],
+                ['Flutter today', 'Ready unified representative journeys with visits, loads and daily field operations'],
                 ['Reports', 'Data for sales, profit, overdue, top customers, route performance and expiry risk'],
             ],
         );
@@ -222,16 +222,6 @@ class ResetProfessionalDemoDatabase extends Command
                             ->select('id'),
                     )->count(),
                 ],
-                ['Today driver journeys', DB::table('driver_journeys')->whereDate('journey_date', today())->count()],
-                [
-                    'Today driver deliveries',
-                    DB::table('driver_deliveries')->whereIn(
-                        'driver_journey_id',
-                        DB::table('driver_journeys')
-                            ->whereDate('journey_date', today())
-                            ->select('id'),
-                    )->count(),
-                ],
             ],
         );
     }
@@ -248,9 +238,11 @@ class ResetProfessionalDemoDatabase extends Command
                 ['Supervisor', 'supervisor@demo.local', 'Scoped distribution supervision'],
                 ['Warehouse', 'warehouse@demo.local', 'Warehouse operations'],
                 ['Accountant', 'accountant@demo.local', 'Financial operations and reports'],
-                ['Flutter sales', 'sales@demo.local', 'Sales representative only'],
-                ['Flutter driver', 'driver@demo.local', 'Driver only'],
-                ['Flutter dual', 'field.team@demo.local', 'Driver + sales representative'],
+                ['Flutter representative', 'sales@demo.local', 'Unified representative - Damascus'],
+                ['Flutter representative', 'sales.rif@demo.local', 'Unified representative - Rif Damascus'],
+                ['Flutter representative', 'field.team@demo.local', 'Unified representative with retained legacy role'],
+                ['Legacy compatibility', 'driver@demo.local', 'Retired driver identity - no mobile runtime'],
+                ['Legacy compatibility', 'driver.rif@demo.local', 'Retired driver identity - no mobile runtime'],
             ],
         );
     }

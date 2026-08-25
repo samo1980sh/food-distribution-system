@@ -25,7 +25,7 @@ class VehicleExpenseForm
             ->columns(2)
             ->components([
                 Section::make('إدخال إداري استثنائي')
-                    ->description('المصروف الميداني يُسجل من تطبيق السائق. استخدم الإدخال الإداري فقط عند وجود حالة طارئة موثقة.')
+                    ->description('المصروف الميداني يُسجل من تطبيق مندوب المبيعات. استخدم الإدخال الإداري فقط عند وجود حالة طارئة موثقة.')
                     ->icon('heroicon-o-exclamation-triangle')
                     ->columnSpanFull()
                     ->schema([
@@ -101,7 +101,6 @@ class VehicleExpenseForm
                             ->live()
                             ->afterStateUpdated(function (mixed $state, Set $set): void {
                                 $set('route_id', null);
-                                $set('driver_id', null);
                                 $set('sales_representative_id', null);
                                 $set('warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                             })
@@ -136,7 +135,7 @@ class VehicleExpenseForm
                             ->preload()
                             ->live()
                             ->afterStateUpdated(function (mixed $state, Set $set): void {
-                                $context = OperationalFormContext::forRoute($state);
+                                $context = OperationalFormContext::forRepresentativeRoute($state);
 
                                 if (filled($context['vehicle_id'])) {
                                     $set('vehicle_id', $context['vehicle_id']);
@@ -146,22 +145,8 @@ class VehicleExpenseForm
                                     $set('warehouse_id', $context['warehouse_id']);
                                 }
 
-                                $set('driver_id', $context['driver_id']);
                                 $set('sales_representative_id', $context['sales_representative_id']);
                             })
-                            ->native(false),
-
-                        Select::make('driver_id')
-                            ->label('السائق')
-                            ->relationship(
-                                'driver',
-                                'name',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query
-                                    ->where('status', 'active')
-                                    ->forOperationalRole(UserRole::DRIVER),
-                            )
-                            ->searchable()
-                            ->preload()
                             ->native(false),
 
                         Select::make('sales_representative_id')

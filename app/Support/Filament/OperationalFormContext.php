@@ -36,6 +36,18 @@ final class OperationalFormContext
         ];
     }
 
+    /** @return array{vehicle_id: ?int, warehouse_id: ?int, sales_representative_id: ?int} */
+    public static function forRepresentativeRoute(mixed $routeId): array
+    {
+        $route = self::route($routeId);
+
+        return [
+            'vehicle_id' => self::id($route?->vehicle_id),
+            'warehouse_id' => self::vehicleWarehouseId($route?->vehicle_id),
+            'sales_representative_id' => self::id($route?->sales_representative_id),
+        ];
+    }
+
     /** @return array{customer_id: ?int, vehicle_id: ?int, route_id: ?int, warehouse_id: ?int, sales_representative_id: ?int} */
     public static function forInvoice(mixed $invoiceId): array
     {
@@ -102,7 +114,5 @@ final class OperationalFormContext
         return (int) $value;
     }
 
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 }

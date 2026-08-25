@@ -5,6 +5,7 @@ namespace App\Filament\Resources\DistributionRoutes\Pages;
 use App\Filament\Resources\DistributionRoutes\DistributionRouteResource;
 use App\Services\Imports\Excel\DistributionRouteExcelImportService;
 use App\Services\Imports\Excel\DistributionRouteExcelTemplateService;
+use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
@@ -27,13 +28,14 @@ class ManageDistributionRoutes extends ManageRecords
 
     public function getSubheading(): ?string
     {
-        return 'ربط المنطقة والسيارة والسائق والمندوب وأيام الزيارة، مع منع أي سياق تشغيلي غير متطابق.';
+        return 'ربط المنطقة والسيارة ومندوب المبيعات وأيام الزيارة، مع منع أي سياق تشغيلي غير متطابق.';
     }
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
+                ->mutateDataUsing(fn (array $data): array => AdminOperationalDriverGuard::sanitize($data))
                 ->visible(fn (): bool => DistributionRouteResource::canCreate())
                 ->label('إضافة خط توزيع')
                 ->icon('heroicon-o-plus')
@@ -53,7 +55,7 @@ class ManageDistributionRoutes extends ManageRecords
                 ->label('استيراد Excel')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->modalHeading('استيراد خطوط التوزيع من Excel')
-                ->modalDescription('ارفع قالب .xlsx فقط. يتم التحقق من المنطقة والسيارة وأهلية السائق والمندوب وأيام الزيارة قبل إنشاء أي خط.')
+                ->modalDescription('ارفع قالب .xlsx فقط. يتم التحقق من المنطقة والسيارة وأهلية مندوب المبيعات وأيام الزيارة قبل إنشاء أي خط.')
                 ->modalWidth('7xl')
                 ->mountUsing(function (Schema $schema): void {
                     $this->distributionRouteExcelImportReady = false;

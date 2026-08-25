@@ -118,10 +118,10 @@ class RbacFoundationTest extends TestCase
         $this->assertFalse(
             $driver->can(PermissionName::ADMIN_ACCESS->value),
         );
-        $this->assertTrue(
+        $this->assertFalse(
             $driver->can(PermissionName::VEHICLE_EXPENSES_CREATE->value),
         );
-        $this->assertTrue(
+        $this->assertFalse(
             $driver->can(PermissionName::API_ACCESS->value),
         );
         $this->assertTrue(
@@ -142,10 +142,10 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::PRODUCTS_VIEW->value),
         );
-        $this->assertTrue(
+        $this->assertFalse(
             $driver->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),
         );
-        $this->assertTrue(
+        $this->assertFalse(
             $driver->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
         );
         $this->assertFalse(

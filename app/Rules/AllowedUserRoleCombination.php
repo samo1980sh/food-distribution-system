@@ -9,6 +9,10 @@ use Spatie\Permission\Models\Role;
 
 final class AllowedUserRoleCombination implements ValidationRule
 {
+    public function __construct(
+        private readonly bool $allowHistoricalDriver = true,
+    ) {}
+
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $roleIds = collect((array) $value)
@@ -32,6 +36,15 @@ final class AllowedUserRoleCombination implements ValidationRule
 
         if ($roleNames->count() !== $roleIds->count()) {
             $fail('يتضمن اختيار الأدوار قيمة غير صالحة.');
+
+            return;
+        }
+
+        if (
+            ! $this->allowHistoricalDriver
+            && $roleNames->contains(UserRole::DRIVER->value)
+        ) {
+            $fail('دور السائق مخصص للسجلات التاريخية ولا يمكن تعيينه لحساب جديد أو إضافته إلى حساب حالي.');
 
             return;
         }

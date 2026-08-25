@@ -11,8 +11,8 @@ final class RolePermissionMap
     public static function all(): array
     {
         return [
-            UserRole::SUPER_ADMIN->value => P::values(),
-            UserRole::MANAGER->value => P::values(),
+            UserRole::SUPER_ADMIN->value => self::withoutLegacyDriverMutations(P::values()),
+            UserRole::MANAGER->value => self::withoutLegacyDriverMutations(P::values()),
             UserRole::SUPERVISOR->value => self::values([
                 P::ADMIN_ACCESS,
                 P::API_ACCESS,
@@ -167,7 +167,8 @@ final class RolePermissionMap
                 P::SALES_VISITS_COMPLETE,
             ]),
             UserRole::DRIVER->value => self::values([
-                P::API_ACCESS,
+                // Historical compatibility only. The standalone driver
+                // mobile/field workflow is retired.
                 P::PRODUCTS_VIEW,
                 P::DISTRIBUTION_ROUTES_VIEW,
                 P::VEHICLES_VIEW,
@@ -176,19 +177,33 @@ final class RolePermissionMap
                 P::STOCK_BALANCES_VIEW,
                 P::VEHICLE_LOADS_VIEW,
                 P::DAILY_CLOSINGS_VIEW,
-                P::DAILY_CLOSINGS_OPEN_FIELD,
-                P::DAILY_CLOSINGS_SUBMIT_INVENTORY,
                 P::VEHICLE_EXPENSES_VIEW,
-                P::VEHICLE_EXPENSES_CREATE,
-                P::VEHICLE_EXPENSES_UPDATE,
                 P::DRIVER_JOURNEYS_VIEW,
-                P::DRIVER_JOURNEYS_OPEN,
-                P::DRIVER_JOURNEYS_START,
-                P::DRIVER_JOURNEYS_FINISH,
                 P::DRIVER_DELIVERIES_VIEW,
-                P::DRIVER_DELIVERIES_SUBMIT_OUTCOME,
             ]),
         ];
+    }
+
+    /** @param list<string> $permissions
+     * @return list<string>
+     */
+    private static function withoutLegacyDriverMutations(array $permissions): array
+    {
+        $retiredPermissions = self::values([
+            P::DRIVER_JOURNEYS_OPEN,
+            P::DRIVER_JOURNEYS_START,
+            P::DRIVER_JOURNEYS_FINISH,
+            P::DRIVER_DELIVERIES_SUBMIT_OUTCOME,
+        ]);
+
+        return array_values(array_filter(
+            $permissions,
+            static fn (string $permission): bool => ! in_array(
+                $permission,
+                $retiredPermissions,
+                true,
+            ),
+        ));
     }
 
     /** @param list<P> $permissions

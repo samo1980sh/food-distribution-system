@@ -132,7 +132,6 @@
                                     <th>الاسم</th>
                                     <th>area_code</th>
                                     <th>vehicle_code</th>
-                                    <th>driver_code</th>
                                     <th>sales_representative_code</th>
                                     <th>visit_days</th>
                                     <th>الحالة</th>
@@ -146,7 +145,6 @@
                                         <td>{{ $row['name'] }}</td>
                                         <td class="fd-ltr">{{ $row['area_code'] }}</td>
                                         <td class="fd-ltr">{{ $row['vehicle_code'] ?? '—' }}</td>
-                                        <td class="fd-ltr">{{ $row['driver_code'] ?? '—' }}</td>
                                         <td class="fd-ltr">{{ $row['sales_representative_code'] ?? '—' }}</td>
                                         <td class="fd-ltr">{{ $row['visit_days'] !== [] ? implode(',', $row['visit_days']) : '—' }}</td>
                                         <td>

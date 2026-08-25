@@ -28,7 +28,6 @@ class EmployeeExcelImportService
 
     /** @var list<string> */
     public const TYPES = [
-        'driver',
         'sales_representative',
         'warehouse_keeper',
         'accountant',
@@ -58,7 +57,7 @@ class EmployeeExcelImportService
         }
 
         try {
-            $reader = new Xlsx();
+            $reader = new Xlsx;
             $reader->setReadDataOnly(true);
             $reader->setReadEmptyCells(false);
 
@@ -94,7 +93,7 @@ class EmployeeExcelImportService
                     'name' => $this->stringValue($values[1]),
                     'phone' => $this->nullableString($values[2]),
                     'job_title' => $this->nullableString($values[3]),
-                    'type' => $this->stringValue($values[4]) ?: 'driver',
+                    'type' => $this->stringValue($values[4]) ?: 'sales_representative',
                     'user_email' => $this->nullableString($values[5]),
                     'status' => $this->stringValue($values[6]) ?: 'active',
                     'notes' => $this->nullableString($values[7]),
@@ -120,7 +119,7 @@ class EmployeeExcelImportService
                         'name.max' => 'اسم الموظف لا يجوز أن يتجاوز 255 محرفًا.',
                         'phone.max' => 'رقم الهاتف لا يجوز أن يتجاوز 255 محرفًا.',
                         'job_title.max' => 'المسمى الوظيفي لا يجوز أن يتجاوز 255 محرفًا.',
-                        'type.in' => 'نوع الموظف غير صالح. استخدم driver أو sales_representative أو warehouse_keeper أو accountant أو supervisor.',
+                        'type.in' => 'نوع الموظف غير صالح. استخدم sales_representative أو warehouse_keeper أو accountant أو supervisor.',
                         'user_email.max' => 'البريد الإلكتروني لحساب المستخدم لا يجوز أن يتجاوز 255 محرفًا.',
                         'status.in' => 'الحالة يجب أن تكون active أو inactive.',
                     ],
@@ -170,6 +169,7 @@ class EmployeeExcelImportService
 
                 if (! $user) {
                     $errorsByRow[$excelRow][] = 'حساب المستخدم بالبريد '.$row['user_email'].' غير موجود في النظام.';
+
                     continue;
                 }
 
@@ -179,6 +179,7 @@ class EmployeeExcelImportService
 
                 if ($linkedEmployee) {
                     $errorsByRow[$excelRow][] = 'حساب المستخدم '.$row['user_email'].' مرتبط مسبقًا بالموظف '.$linkedEmployee->employee_code.'.';
+
                     continue;
                 }
 
@@ -195,6 +196,7 @@ class EmployeeExcelImportService
 
                 if ($rowErrors === []) {
                     $validRows++;
+
                     continue;
                 }
 

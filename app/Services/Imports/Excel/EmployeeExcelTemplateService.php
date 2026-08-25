@@ -34,7 +34,7 @@ class EmployeeExcelTemplateService
 
     public function makeSpreadsheet(): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $spreadsheet->getProperties()
             ->setCreator(config('app.name'))
             ->setTitle('قالب استيراد الموظفين')
@@ -133,7 +133,7 @@ class EmployeeExcelTemplateService
             '=$A$2:$A$'.$userLastRow,
         ));
 
-        $typeValidation = new DataValidation();
+        $typeValidation = new DataValidation;
         $typeValidation->setType(DataValidation::TYPE_LIST);
         $typeValidation->setErrorStyle(DataValidation::STYLE_STOP);
         $typeValidation->setAllowBlank(true);
@@ -143,11 +143,11 @@ class EmployeeExcelTemplateService
         $typeValidation->setErrorTitle('نوع غير صالح');
         $typeValidation->setError('اختر نوع الموظف من القائمة فقط.');
         $typeValidation->setPromptTitle('نوع الموظف');
-        $typeValidation->setPrompt('ترك الخلية فارغة يعني driver.');
-        $typeValidation->setFormula1('"driver,sales_representative,warehouse_keeper,accountant,supervisor"');
+        $typeValidation->setPrompt('ترك الخلية فارغة يعني sales_representative.');
+        $typeValidation->setFormula1('"sales_representative,warehouse_keeper,accountant,supervisor"');
         $sheet->setDataValidation('E2:E1000', $typeValidation);
 
-        $userValidation = new DataValidation();
+        $userValidation = new DataValidation;
         $userValidation->setType(DataValidation::TYPE_LIST);
         $userValidation->setErrorStyle(DataValidation::STYLE_STOP);
         $userValidation->setAllowBlank(true);
@@ -161,7 +161,7 @@ class EmployeeExcelTemplateService
         $userValidation->setFormula1('=AVAILABLE_EMPLOYEE_USER_EMAILS');
         $sheet->setDataValidation('F2:F1000', $userValidation);
 
-        $statusValidation = new DataValidation();
+        $statusValidation = new DataValidation;
         $statusValidation->setType(DataValidation::TYPE_LIST);
         $statusValidation->setErrorStyle(DataValidation::STYLE_STOP);
         $statusValidation->setAllowBlank(true);
@@ -183,8 +183,8 @@ class EmployeeExcelTemplateService
             ['employee_code', 'رمز فريد للموظف', 'نعم', 'EMP-001'],
             ['name', 'اسم الموظف', 'نعم', 'أحمد محمد'],
             ['phone', 'رقم الهاتف', 'لا', 'يُحفظ كنص للمحافظة على الأصفار في البداية'],
-            ['job_title', 'المسمى الوظيفي', 'لا', 'سائق توزيع'],
-            ['type', 'النوع التشغيلي للموظف', 'لا', 'driver / sales_representative / warehouse_keeper / accountant / supervisor - الافتراضي driver'],
+            ['job_title', 'المسمى الوظيفي', 'لا', 'مندوب مبيعات'],
+            ['type', 'النوع التشغيلي للموظف', 'لا', 'sales_representative / warehouse_keeper / accountant / supervisor - الافتراضي sales_representative'],
             ['user_email', 'البريد الإلكتروني لحساب المستخدم المرتبط', 'لا', 'اختره من القائمة المرجعية أو اتركه فارغًا'],
             ['status', 'حالة الموظف', 'لا', 'active أو inactive - الافتراضي active'],
             ['notes', 'ملاحظات داخلية', 'لا', 'نص اختياري'],

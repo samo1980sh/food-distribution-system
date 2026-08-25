@@ -20,7 +20,8 @@ class EmployeeExcelImportTest extends TestCase
 
     public function test_employee_template_is_real_xlsx_with_dynamic_available_user_reference_list(): void
     {
-        $available = $this->makeUserWithRoles('driver.available@example.com', ['driver']);
+        $driver = $this->makeUserWithRoles('driver.available@example.com', ['driver']);
+        $available = $this->makeUserWithRoles('sales.available@example.com', ['sales_representative']);
         $dual = $this->makeUserWithRoles('dual.available@example.com', ['driver', 'sales_representative']);
         $linked = $this->makeUserWithRoles('linked@example.com', ['accountant']);
         $this->makeUserWithRoles('manager@example.com', ['manager']);
@@ -29,10 +30,11 @@ class EmployeeExcelImportTest extends TestCase
         $spreadsheet = app(EmployeeExcelTemplateService::class)->makeSpreadsheet();
         $sheet = $spreadsheet->getSheet(0);
         $references = $spreadsheet->getSheetByName('القوائم المرجعية');
+        $instructions = $spreadsheet->getSheetByName('تعليمات');
 
         $this->assertSame('الموظفون', $sheet->getTitle());
         $this->assertSame(EmployeeExcelImportService::HEADERS, $sheet->rangeToArray('A1:H1', null, true, true, false)[0]);
-        $this->assertNotNull($spreadsheet->getSheetByName('تعليمات'));
+        $this->assertNotNull($instructions);
         $this->assertNotNull($references);
         $this->assertTrue($sheet->getRightToLeft());
         $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle('A2')->getNumberFormat()->getFormatCode());
@@ -46,6 +48,7 @@ class EmployeeExcelImportTest extends TestCase
 
         $this->assertContains($available->email, $referenceEmails);
         $this->assertContains($dual->email, $referenceEmails);
+        $this->assertNotContains($driver->email, $referenceEmails);
         $this->assertNotContains('linked@example.com', $referenceEmails);
         $this->assertNotContains('manager@example.com', $referenceEmails);
         $this->assertNotNull($spreadsheet->getNamedRange('AVAILABLE_EMPLOYEE_USER_EMAILS'));
@@ -53,17 +56,26 @@ class EmployeeExcelImportTest extends TestCase
         $this->assertTrue($sheet->dataValidationExists('F2'));
         $this->assertTrue($sheet->dataValidationExists('G2'));
         $this->assertSame(DataValidation::TYPE_LIST, $sheet->getDataValidation('E2')->getType());
+        $this->assertSame(
+            '"sales_representative,warehouse_keeper,accountant,supervisor"',
+            $sheet->getDataValidation('E2')->getFormula1(),
+        );
+        $this->assertStringNotContainsString('driver', $sheet->getDataValidation('E2')->getFormula1());
+        $this->assertStringNotContainsString(
+            'driver',
+            json_encode($instructions->toArray(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+        );
         $this->assertSame('=AVAILABLE_EMPLOYEE_USER_EMAILS', $sheet->getDataValidation('F2')->getFormula1());
         $this->assertSame(DataValidation::TYPE_LIST, $sheet->getDataValidation('G2')->getType());
     }
 
     public function test_valid_employees_import_all_supported_values_and_optional_user_links(): void
     {
-        $driver = $this->makeUserWithRoles('driver@example.com', ['driver']);
+        $representative = $this->makeUserWithRoles('sales@example.com', ['sales_representative']);
         $accountant = $this->makeUserWithRoles('accountant@example.com', ['accountant']);
 
         $path = $this->makeWorkbook([
-            ['EMP-001', 'سائق تجريبي', '00963123456789', 'سائق توزيع', 'driver', 'driver@example.com', 'active', 'ميداني'],
+            ['EMP-001', 'مندوب تجريبي', '00963123456789', 'مندوب مبيعات', 'sales_representative', 'sales@example.com', 'active', 'ميداني'],
             ['EMP-002', 'محاسب تجريبي', null, 'محاسب', 'accountant', 'accountant@example.com', 'inactive', null],
             ['EMP-003', 'أمين بلا حساب', '0012345', 'أمين مستودع', 'warehouse_keeper', null, 'active', 'بدون حساب'],
         ]);
@@ -81,9 +93,9 @@ class EmployeeExcelImportTest extends TestCase
         $this->assertSame(3, $result['imported_count']);
         $this->assertDatabaseHas('employees', [
             'employee_code' => 'EMP-001',
-            'user_id' => $driver->id,
+            'user_id' => $representative->id,
             'phone' => '00963123456789',
-            'type' => 'driver',
+            'type' => 'sales_representative',
             'status' => 'active',
         ]);
         $this->assertDatabaseHas('employees', [
@@ -100,7 +112,7 @@ class EmployeeExcelImportTest extends TestCase
         ]);
     }
 
-    public function test_blank_type_and_status_default_to_driver_and_active(): void
+    public function test_blank_type_and_status_default_to_sales_representative_and_active(): void
     {
         $path = $this->makeWorkbook([
             ['EMP-DEFAULT', 'موظف افتراضي', null, null, null, null, null, null],
@@ -111,9 +123,23 @@ class EmployeeExcelImportTest extends TestCase
         $this->assertTrue($result['valid'], implode(' | ', $result['errors']));
         $this->assertDatabaseHas('employees', [
             'employee_code' => 'EMP-DEFAULT',
-            'type' => 'driver',
+            'type' => 'sales_representative',
             'status' => 'active',
         ]);
+    }
+
+    public function test_explicit_driver_type_is_rejected_without_creating_an_employee(): void
+    {
+        $path = $this->makeWorkbook([
+            ['EMP-DRIVER', 'سائق جديد', null, null, 'driver', null, 'active', null],
+        ]);
+
+        $result = app(EmployeeExcelImportService::class)->import($path, 'employees.xlsx');
+
+        $this->assertFalse($result['valid']);
+        $this->assertSame(0, $result['imported_count']);
+        $this->assertStringContainsString('نوع الموظف غير صالح', implode(' | ', $result['errors']));
+        $this->assertDatabaseMissing('employees', ['employee_code' => 'EMP-DRIVER']);
     }
 
     public function test_user_role_mismatch_is_rejected_all_or_nothing(): void
@@ -121,7 +147,7 @@ class EmployeeExcelImportTest extends TestCase
         $this->makeUserWithRoles('driver@example.com', ['driver']);
 
         $path = $this->makeWorkbook([
-            ['EMP-OK', 'موظف سليم', null, null, 'driver', null, 'active', null],
+            ['EMP-OK', 'موظف سليم', null, null, 'sales_representative', null, 'active', null],
             ['EMP-BAD', 'موظف خاطئ', null, null, 'sales_representative', 'driver@example.com', 'active', null],
         ]);
 
@@ -253,7 +279,7 @@ class EmployeeExcelImportTest extends TestCase
     public function test_preview_preserves_real_excel_row_numbers_when_blank_rows_exist(): void
     {
         $path = $this->makeWorkbook([
-            ['EMP-ROW-2', 'أول', null, null, 'driver', null, 'active', null],
+            ['EMP-ROW-2', 'أول', null, null, 'sales_representative', null, 'active', null],
             [null, null, null, null, null, null, null, null],
             ['EMP-ROW-4', 'ثان', null, null, 'accountant', null, 'active', null],
         ]);
@@ -315,7 +341,7 @@ class EmployeeExcelImportTest extends TestCase
     /** @param list<list<mixed>> $rows */
     private function makeWorkbook(array $rows): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray(EmployeeExcelImportService::HEADERS, null, 'A1');
 

@@ -91,13 +91,6 @@ class MasterDataSeeder extends Seeder
 
         $employees = [
             [
-                'employee_code' => 'EMP-001',
-                'name' => 'أحمد السائق',
-                'phone' => '0999000001',
-                'job_title' => 'سائق توزيع',
-                'type' => 'driver',
-            ],
-            [
                 'employee_code' => 'EMP-002',
                 'name' => 'محمود المندوب',
                 'phone' => '0999000002',
@@ -132,10 +125,10 @@ class MasterDataSeeder extends Seeder
 
         foreach (Vehicle::query()->get() as $vehicle) {
             Warehouse::query()->updateOrCreate(
-                ['code' => 'WH-' . $vehicle->code],
+                ['code' => 'WH-'.$vehicle->code],
                 [
                     'vehicle_id' => $vehicle->id,
-                    'name' => 'مخزون سيارة ' . $vehicle->plate_number,
+                    'name' => 'مخزون سيارة '.$vehicle->plate_number,
                     'type' => 'vehicle',
                     'status' => 'active',
                 ]
@@ -148,7 +141,6 @@ class MasterDataSeeder extends Seeder
         $vehicleOne = Vehicle::query()->where('code', 'VH-001')->first();
         $vehicleTwo = Vehicle::query()->where('code', 'VH-002')->first();
 
-        $driver = Employee::query()->where('employee_code', 'EMP-001')->first();
         $salesRep = Employee::query()->where('employee_code', 'EMP-002')->first();
 
         $routes = [
@@ -157,7 +149,7 @@ class MasterDataSeeder extends Seeder
                 'name' => 'خط المزة',
                 'area_id' => $damascus?->id,
                 'vehicle_id' => $vehicleOne?->id,
-                'driver_id' => $driver?->id,
+                'driver_id' => null,
                 'sales_representative_id' => $salesRep?->id,
                 'visit_days' => ['saturday', 'monday', 'wednesday'],
             ],
@@ -166,7 +158,7 @@ class MasterDataSeeder extends Seeder
                 'name' => 'خط جرمانا',
                 'area_id' => $rifDamascus?->id,
                 'vehicle_id' => $vehicleTwo?->id,
-                'driver_id' => $driver?->id,
+                'driver_id' => null,
                 'sales_representative_id' => $salesRep?->id,
                 'visit_days' => ['sunday', 'tuesday', 'thursday'],
             ],

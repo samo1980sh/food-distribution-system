@@ -53,16 +53,16 @@ class DriverFieldOperationsContractTest extends TestCase
     }
 
     #[Test]
-    public function legacy_driver_permissions_remain_deferred_to_admin_rbac_retirement(): void
+    public function legacy_driver_permissions_are_read_only_after_admin_rbac_retirement(): void
     {
         $permissions = RolePermissionMap::all()['driver'];
 
         $this->assertContains(PermissionName::DRIVER_JOURNEYS_VIEW->value, $permissions);
-        $this->assertContains(PermissionName::DRIVER_JOURNEYS_OPEN->value, $permissions);
-        $this->assertContains(PermissionName::DRIVER_JOURNEYS_START->value, $permissions);
-        $this->assertContains(PermissionName::DRIVER_JOURNEYS_FINISH->value, $permissions);
+        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_OPEN->value, $permissions);
+        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_START->value, $permissions);
+        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_FINISH->value, $permissions);
         $this->assertContains(PermissionName::DRIVER_DELIVERIES_VIEW->value, $permissions);
-        $this->assertContains(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value, $permissions);
+        $this->assertNotContains(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value, $permissions);
         $this->assertContains(PermissionName::CUSTOMERS_VIEW->value, $permissions);
 
         $salesPermissions = RolePermissionMap::all()['sales_representative'];

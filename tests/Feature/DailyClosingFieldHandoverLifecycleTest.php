@@ -86,7 +86,7 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         );
     }
 
-    public function test_field_closing_rejects_admin_edit_but_allows_admin_review_and_confirmation(): void
+    public function test_driver_field_closing_rejects_driver_handover_and_admin_edit(): void
     {
         $context = $this->context();
         $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
@@ -98,7 +98,7 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             $context['route']->id,
         );
 
-        $this->assertTrue($driver->can('submitInventory', $closing));
+        $this->assertFalse($driver->can('submitInventory', $closing));
         $this->assertFalse($driver->can('submitCash', $closing));
 
         $this->actingAs($manager);

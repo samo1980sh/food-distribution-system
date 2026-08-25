@@ -23,7 +23,6 @@ class DistributionRouteExcelImportService
         'name',
         'area_code',
         'vehicle_code',
-        'driver_code',
         'sales_representative_code',
         'visit_days',
         'status',
@@ -49,7 +48,7 @@ class DistributionRouteExcelImportService
      *     valid: bool,
      *     row_count: int,
      *     valid_rows: int,
-     *     rows: list<array{excel_row:int,code:string,name:string,area_code:string,vehicle_code:?string,driver_code:?string,sales_representative_code:?string,visit_days:list<string>,status:string,notes:?string}>,
+     *     rows: list<array{excel_row:int,code:string,name:string,area_code:string,vehicle_code:?string,sales_representative_code:?string,visit_days:list<string>,status:string,notes:?string}>,
      *     errors: list<string>
      * }
      */
@@ -64,7 +63,7 @@ class DistributionRouteExcelImportService
         }
 
         try {
-            $reader = new Xlsx();
+            $reader = new Xlsx;
             $reader->setReadDataOnly(true);
             $reader->setReadEmptyCells(false);
 
@@ -72,7 +71,7 @@ class DistributionRouteExcelImportService
             $sheet = $spreadsheet->getActiveSheet();
             $highestRow = max(1, $sheet->getHighestDataRow());
 
-            $headerRow = $sheet->rangeToArray('A1:I1', null, true, true, false)[0] ?? [];
+            $headerRow = $sheet->rangeToArray('A1:H1', null, true, true, false)[0] ?? [];
             $headers = array_map(fn (mixed $value): string => $this->stringValue($value), $headerRow);
 
             if ($headers !== self::HEADERS) {
@@ -86,14 +85,14 @@ class DistributionRouteExcelImportService
             $seenCodes = [];
 
             for ($excelRow = 2; $excelRow <= $highestRow; $excelRow++) {
-                $values = $sheet->rangeToArray("A{$excelRow}:I{$excelRow}", null, true, true, false)[0] ?? [];
-                $values = array_pad($values, 9, null);
+                $values = $sheet->rangeToArray("A{$excelRow}:H{$excelRow}", null, true, true, false)[0] ?? [];
+                $values = array_pad($values, 8, null);
 
                 if ($this->isEmptyRow($values)) {
                     continue;
                 }
 
-                $visitDaysInput = $this->nullableString($values[6]);
+                $visitDaysInput = $this->nullableString($values[5]);
                 $visitDaysResult = $this->parseVisitDays($visitDaysInput);
 
                 $row = [
@@ -102,11 +101,10 @@ class DistributionRouteExcelImportService
                     'name' => $this->stringValue($values[1]),
                     'area_code' => $this->stringValue($values[2]),
                     'vehicle_code' => $this->nullableString($values[3]),
-                    'driver_code' => $this->nullableString($values[4]),
-                    'sales_representative_code' => $this->nullableString($values[5]),
+                    'sales_representative_code' => $this->nullableString($values[4]),
                     'visit_days' => $visitDaysResult['days'],
-                    'status' => $this->stringValue($values[7]) ?: 'active',
-                    'notes' => $this->nullableString($values[8]),
+                    'status' => $this->stringValue($values[6]) ?: 'active',
+                    'notes' => $this->nullableString($values[7]),
                 ];
 
                 $validator = Validator::make(
@@ -116,7 +114,6 @@ class DistributionRouteExcelImportService
                         'name' => ['required', 'string', 'max:255'],
                         'area_code' => ['required', 'string', 'max:255'],
                         'vehicle_code' => ['nullable', 'string', 'max:255'],
-                        'driver_code' => ['nullable', 'string', 'max:255'],
                         'sales_representative_code' => ['nullable', 'string', 'max:255'],
                         'visit_days' => ['array'],
                         'status' => ['required', Rule::in(self::STATUSES)],
@@ -131,7 +128,6 @@ class DistributionRouteExcelImportService
                         'area_code.required' => 'رمز المنطقة مطلوب.',
                         'area_code.max' => 'رمز المنطقة لا يجوز أن يتجاوز 255 محرفًا.',
                         'vehicle_code.max' => 'رمز السيارة لا يجوز أن يتجاوز 255 محرفًا.',
-                        'driver_code.max' => 'رمز السائق لا يجوز أن يتجاوز 255 محرفًا.',
                         'sales_representative_code.max' => 'رمز مندوب المبيعات لا يجوز أن يتجاوز 255 محرفًا.',
                         'status.in' => 'الحالة يجب أن تكون active أو inactive.',
                     ],
@@ -159,7 +155,6 @@ class DistributionRouteExcelImportService
 
             $areas = $this->loadAreasByCode($this->referenceCodes($rows, 'area_code'));
             $vehicles = $this->loadVehiclesByCode($this->referenceCodes($rows, 'vehicle_code'));
-            $drivers = $this->loadEmployeesByCode($this->referenceCodes($rows, 'driver_code'));
             $representatives = $this->loadEmployeesByCode($this->referenceCodes($rows, 'sales_representative_code'));
 
             foreach ($rows as $row) {
@@ -179,18 +174,6 @@ class DistributionRouteExcelImportService
                         $errorsByRow[$excelRow][] = 'رمز السيارة '.$row['vehicle_code'].' غير موجود في النظام.';
                     } elseif ($vehicle->status !== 'active') {
                         $errorsByRow[$excelRow][] = 'السيارة '.$row['vehicle_code'].' موجودة لكنها غير فعالة.';
-                    }
-                }
-
-                if ($row['driver_code'] !== null) {
-                    $driver = $drivers->get($this->normalizeKey($row['driver_code']));
-
-                    if (! $driver) {
-                        $errorsByRow[$excelRow][] = 'رمز السائق '.$row['driver_code'].' غير موجود في النظام.';
-                    } elseif ($driver->status !== 'active') {
-                        $errorsByRow[$excelRow][] = 'السائق '.$row['driver_code'].' موجود لكنه غير فعال.';
-                    } elseif (! $driver->canFulfillOperationalRole(UserRole::DRIVER)) {
-                        $errorsByRow[$excelRow][] = 'الموظف '.$row['driver_code'].' غير مؤهل للعمل كسائق على خط التوزيع.';
                     }
                 }
 
@@ -215,6 +198,7 @@ class DistributionRouteExcelImportService
 
                 if ($rowErrors === []) {
                     $validRows++;
+
                     continue;
                 }
 
@@ -242,7 +226,7 @@ class DistributionRouteExcelImportService
      *     valid: bool,
      *     row_count: int,
      *     valid_rows: int,
-     *     rows: list<array{excel_row:int,code:string,name:string,area_code:string,vehicle_code:?string,driver_code:?string,sales_representative_code:?string,visit_days:list<string>,status:string,notes:?string}>,
+     *     rows: list<array{excel_row:int,code:string,name:string,area_code:string,vehicle_code:?string,sales_representative_code:?string,visit_days:list<string>,status:string,notes:?string}>,
      *     errors: list<string>,
      *     imported_count: int
      * }
@@ -270,10 +254,7 @@ class DistributionRouteExcelImportService
                     ->keyBy(fn (Vehicle $vehicle): string => $this->normalizeKey($vehicle->code));
 
                 $employees = Employee::query()
-                    ->whereIn('employee_code', array_values(array_unique([
-                        ...$this->referenceCodes($analysis['rows'], 'driver_code'),
-                        ...$this->referenceCodes($analysis['rows'], 'sales_representative_code'),
-                    ])))
+                    ->whereIn('employee_code', $this->referenceCodes($analysis['rows'], 'sales_representative_code'))
                     ->with('user.roles:id,name')
                     ->get()
                     ->keyBy(fn (Employee $employee): string => $this->normalizeKey($employee->employee_code));
@@ -291,19 +272,6 @@ class DistributionRouteExcelImportService
                             throw new RuntimeException('Vehicle changed while importing.');
                         }
                         $vehicleId = $vehicle->id;
-                    }
-
-                    $driverId = null;
-                    if ($row['driver_code'] !== null) {
-                        $driver = $employees->get($this->normalizeKey($row['driver_code']));
-                        if (
-                            ! $driver
-                            || $driver->status !== 'active'
-                            || ! $driver->canFulfillOperationalRole(UserRole::DRIVER)
-                        ) {
-                            throw new RuntimeException('Driver eligibility changed while importing.');
-                        }
-                        $driverId = $driver->id;
                     }
 
                     $representativeId = null;
@@ -324,7 +292,7 @@ class DistributionRouteExcelImportService
                     DistributionRoute::query()->create([
                         'area_id' => $area->id,
                         'vehicle_id' => $vehicleId,
-                        'driver_id' => $driverId,
+                        'driver_id' => null,
                         'sales_representative_id' => $representativeId,
                         'code' => $row['code'],
                         'name' => $row['name'],
@@ -414,16 +382,19 @@ class DistributionRouteExcelImportService
 
             if ($day === '') {
                 $errors[] = 'visit_days يحتوي قيمة فارغة بين الفواصل.';
+
                 continue;
             }
 
             if (! in_array($day, self::VISIT_DAYS, true)) {
                 $errors[] = 'يوم الزيارة '.$rawDay.' غير صالح. استخدم: '.implode(', ', self::VISIT_DAYS).'.';
+
                 continue;
             }
 
             if (isset($seen[$day])) {
                 $errors[] = 'يوم الزيارة '.$day.' مكرر داخل نفس الصف.';
+
                 continue;
             }
 

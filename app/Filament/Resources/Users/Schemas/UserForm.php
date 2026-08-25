@@ -40,7 +40,7 @@ class UserForm
                     ]),
 
                 Section::make('الأدوار وقناة العمل')
-                    ->description('الأدوار ثابتة ضمن مصفوفة الصلاحيات. يسمح فقط بالجمع بين السائق ومندوب المبيعات للحساب الميداني نفسه.')
+                    ->description('الأدوار ثابتة ضمن مصفوفة الصلاحيات. مندوب المبيعات هو الدور الميداني الحالي، ويُحتفظ بدور السائق للسجلات التاريخية فقط.')
                     ->icon('heroicon-o-shield-check')
                     ->columns(2)
                     ->columnSpanFull()
@@ -50,12 +50,16 @@ class UserForm
                             ->relationship(
                                 name: 'roles',
                                 titleAttribute: 'name',
-                                modifyQueryUsing: function (Builder $query): Builder {
-                                    if (auth()->user()?->isSuperAdmin() === true) {
-                                        return $query;
+                                modifyQueryUsing: function (Builder $query, ?User $record): Builder {
+                                    if ($record?->hasRole(UserRole::DRIVER->value) !== true) {
+                                        $query->where('name', '!=', UserRole::DRIVER->value);
                                     }
 
-                                    return $query->where('name', '!=', UserRole::SUPER_ADMIN->value);
+                                    if (auth()->user()?->isSuperAdmin() !== true) {
+                                        $query->where('name', '!=', UserRole::SUPER_ADMIN->value);
+                                    }
+
+                                    return $query;
                                 },
                             )
                             ->getOptionLabelFromRecordUsing(
@@ -70,7 +74,11 @@ class UserForm
                             )
                             ->multiple()
                             ->maxItems(2)
-                            ->rules([new AllowedUserRoleCombination])
+                            ->rules(fn (?User $record): array => [
+                                new AllowedUserRoleCombination(
+                                    allowHistoricalDriver: $record?->hasRole(UserRole::DRIVER->value) === true,
+                                ),
+                            ])
                             ->required()
                             ->live()
                             ->preload()
@@ -83,7 +91,7 @@ class UserForm
                             ->helperText(
                                 fn (?User $record): string => $record?->isLastActiveSuperAdmin() === true
                                     ? 'لا يمكن تغيير دور آخر مدير نظام فعّال.'
-                                    : 'الأدوار الإدارية تعمل عبر Filament، أما السائق ومندوب المبيعات فيعملان عبر تطبيق الجوال.',
+                                    : 'الأدوار الإدارية تعمل عبر Filament، ومندوب المبيعات هو الدور الميداني الحالي في تطبيق الجوال.',
                             )
                             ->columnSpanFull(),
                     ]),

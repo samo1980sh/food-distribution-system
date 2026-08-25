@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DistributionRoutes\Tables;
 
 use App\Models\DistributionRoute;
+use App\Support\Filament\AdminOperationalDriverGuard;
 use App\Support\Filament\MasterDataBulkDeleteAction;
 use App\Support\Filament\MasterDataStatusActions;
 use Filament\Actions\ActionGroup;
@@ -83,6 +84,7 @@ class DistributionRoutesTable
             ->recordActions([
                 ActionGroup::make([
                     EditAction::make()
+                        ->mutateDataUsing(fn (array $data, DistributionRoute $record): array => AdminOperationalDriverGuard::sanitize($data, $record))
                         ->label('تعديل الخط')
                         ->modalHeading('تعديل خط توزيع')
                         ->slideOver()

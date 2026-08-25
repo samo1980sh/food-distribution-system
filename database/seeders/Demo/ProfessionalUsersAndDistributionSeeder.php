@@ -47,10 +47,10 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             'warehouse' => ['name' => 'أمين المستودع الرئيسي', 'email' => 'warehouse@demo.local', 'roles' => [UserRole::WAREHOUSE_KEEPER]],
             'accountant' => ['name' => 'محاسب المبيعات', 'email' => 'accountant@demo.local', 'roles' => [UserRole::ACCOUNTANT]],
             'sales' => ['name' => 'رامي مندوب دمشق', 'email' => 'sales@demo.local', 'roles' => [UserRole::SALES_REPRESENTATIVE]],
-            'driver' => ['name' => 'سامر سائق دمشق', 'email' => 'driver@demo.local', 'roles' => [UserRole::DRIVER]],
+            'driver' => ['name' => 'حساب توافق سائق دمشق', 'email' => 'driver@demo.local', 'roles' => [UserRole::DRIVER]],
             'sales_rif' => ['name' => 'هالة مندوبة الريف', 'email' => 'sales.rif@demo.local', 'roles' => [UserRole::SALES_REPRESENTATIVE]],
-            'driver_rif' => ['name' => 'ياسر سائق الريف', 'email' => 'driver.rif@demo.local', 'roles' => [UserRole::DRIVER]],
-            'field_team' => ['name' => 'فريق ميداني مزدوج', 'email' => 'field.team@demo.local', 'roles' => [UserRole::DRIVER, UserRole::SALES_REPRESENTATIVE]],
+            'driver_rif' => ['name' => 'حساب توافق سائق الريف', 'email' => 'driver.rif@demo.local', 'roles' => [UserRole::DRIVER]],
+            'field_team' => ['name' => 'مندوب موحد بحساب توافق مزدوج', 'email' => 'field.team@demo.local', 'roles' => [UserRole::DRIVER, UserRole::SALES_REPRESENTATIVE]],
         ];
 
         $users = [];
@@ -76,7 +76,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
     }
 
     /**
-     * @param array<string, User> $users
+     * @param  array<string, User>  $users
      * @return array<string, Employee>
      */
     private function seedEmployees(array $users): array
@@ -86,10 +86,10 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             'warehouse' => ['user' => 'warehouse', 'code' => 'EMP-102', 'name' => 'مازن الحمصي', 'phone' => '0991000102', 'title' => 'أمين المستودع الرئيسي', 'type' => 'warehouse_keeper'],
             'accountant' => ['user' => 'accountant', 'code' => 'EMP-103', 'name' => 'لين العبدالله', 'phone' => '0991000103', 'title' => 'محاسب مبيعات وتحصيل', 'type' => 'accountant'],
             'sales' => ['user' => 'sales', 'code' => 'EMP-201', 'name' => 'رامي منصور', 'phone' => '0992000201', 'title' => 'مندوب مبيعات دمشق', 'type' => 'sales_representative'],
-            'driver' => ['user' => 'driver', 'code' => 'EMP-202', 'name' => 'سامر حمود', 'phone' => '0992000202', 'title' => 'سائق توزيع دمشق', 'type' => 'driver'],
+            'driver' => ['user' => 'driver', 'code' => 'EMP-202', 'name' => 'سامر حمود', 'phone' => '0992000202', 'title' => 'سائق تاريخي للتوافق', 'type' => 'driver'],
             'sales_rif' => ['user' => 'sales_rif', 'code' => 'EMP-203', 'name' => 'هالة شحادة', 'phone' => '0992000203', 'title' => 'مندوبة مبيعات الريف', 'type' => 'sales_representative'],
-            'driver_rif' => ['user' => 'driver_rif', 'code' => 'EMP-204', 'name' => 'ياسر دياب', 'phone' => '0992000204', 'title' => 'سائق توزيع الريف', 'type' => 'driver'],
-            'field_team' => ['user' => 'field_team', 'code' => 'EMP-205', 'name' => 'فراس العلي', 'phone' => '0992000205', 'title' => 'سائق ومندوب ميداني', 'type' => 'sales_representative'],
+            'driver_rif' => ['user' => 'driver_rif', 'code' => 'EMP-204', 'name' => 'ياسر دياب', 'phone' => '0992000204', 'title' => 'سائق تاريخي للتوافق', 'type' => 'driver'],
+            'field_team' => ['user' => 'field_team', 'code' => 'EMP-205', 'name' => 'فراس العلي', 'phone' => '0992000205', 'title' => 'مندوب مبيعات موحد', 'type' => 'sales_representative'],
         ];
 
         $employees = [];
@@ -110,7 +110,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
     }
 
     /**
-     * @param array<string, Employee> $employees
+     * @param  array<string, Employee>  $employees
      * @return array<string, DistributionRoute>
      */
     private function seedRoutes(array $employees): array
@@ -124,7 +124,6 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'name' => 'خط دمشق المركزي',
                 'area' => 'DAM-C',
                 'vehicle' => 'VH-101',
-                'driver' => 'driver',
                 'sales' => 'sales',
                 'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
@@ -135,18 +134,16 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'name' => 'خط دمشق الجنوبي',
                 'area' => 'DAM-S',
                 'vehicle' => 'VH-102',
-                'driver' => 'field_team',
                 'sales' => 'field_team',
                 'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
-                'notes' => 'خط تجريبي لحساب يجمع دور السائق والمندوب.',
+                'notes' => 'خط تجريبي لمندوب المبيعات ضمن مسار العمل الميداني الموحد.',
             ],
             'rif' => [
                 'code' => 'RT-RIF-E',
                 'name' => 'خط الريف الشرقي',
                 'area' => 'RIF-E',
                 'vehicle' => 'VH-103',
-                'driver' => 'driver_rif',
                 'sales' => 'sales_rif',
                 'days' => self::DAILY_OPERATION_DAYS,
                 'status' => 'active',
@@ -157,7 +154,6 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'name' => 'خط حمص المركزي',
                 'area' => 'HOMS-C',
                 'vehicle' => null,
-                'driver' => null,
                 'sales' => null,
                 'days' => ['monday', 'thursday'],
                 'status' => 'active',
@@ -168,7 +164,6 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
                 'name' => 'خط احتياط موسمي',
                 'area' => 'HOMS-C',
                 'vehicle' => 'VH-104',
-                'driver' => null,
                 'sales' => null,
                 'days' => null,
                 'status' => 'inactive',
@@ -182,7 +177,7 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
             $routes[$key] = DistributionRoute::query()->create([
                 'area_id' => $areas[$definition['area']],
                 'vehicle_id' => $definition['vehicle'] ? $vehicles[$definition['vehicle']] : null,
-                'driver_id' => $definition['driver'] ? $employees[$definition['driver']]->id : null,
+                'driver_id' => null,
                 'sales_representative_id' => $definition['sales'] ? $employees[$definition['sales']]->id : null,
                 'code' => $definition['code'],
                 'name' => $definition['name'],
@@ -249,8 +244,8 @@ class ProfessionalUsersAndDistributionSeeder extends Seeder
     }
 
     /**
-     * @param array<string, User> $users
-     * @param array<string, DistributionRoute> $routes
+     * @param  array<string, User>  $users
+     * @param  array<string, DistributionRoute>  $routes
      */
     private function seedDirectScopes(array $users, array $routes): void
     {

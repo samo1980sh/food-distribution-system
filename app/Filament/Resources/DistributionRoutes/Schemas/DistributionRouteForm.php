@@ -71,18 +71,6 @@ class DistributionRouteForm
                             ->searchable()
                             ->preload()
                             ->native(false),
-                        Select::make('driver_id')
-                            ->label('السائق')
-                            ->relationship(
-                                'driver',
-                                'name',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query
-                                    ->where('status', 'active')
-                                    ->forOperationalRole(UserRole::DRIVER),
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->native(false),
                         Select::make('sales_representative_id')
                             ->label('مندوب المبيعات')
                             ->relationship(

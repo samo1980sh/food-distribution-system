@@ -36,7 +36,7 @@ class DistributionRouteExcelTemplateService
 
     public function makeSpreadsheet(): Spreadsheet
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $spreadsheet->getProperties()
             ->setCreator(config('app.name'))
             ->setTitle('قالب استيراد خطوط التوزيع')
@@ -48,10 +48,10 @@ class DistributionRouteExcelTemplateService
         $sheet->setRightToLeft(true);
         $sheet->fromArray(DistributionRouteExcelImportService::HEADERS, null, 'A1');
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter('A1:I1000');
+        $sheet->setAutoFilter('A1:H1000');
         $sheet->getSheetView()->setZoomScale(85);
 
-        $sheet->getStyle('A1:I1')->applyFromArray([
+        $sheet->getStyle('A1:H1')->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0F766E']],
             'alignment' => [
@@ -72,16 +72,15 @@ class DistributionRouteExcelTemplateService
             'B' => 34,
             'C' => 24,
             'D' => 24,
-            'E' => 24,
-            'F' => 30,
-            'G' => 44,
-            'H' => 16,
-            'I' => 46,
+            'E' => 30,
+            'F' => 44,
+            'G' => 16,
+            'H' => 46,
         ] as $column => $width) {
             $sheet->getColumnDimension($column)->setWidth($width);
         }
 
-        foreach (['A', 'C', 'D', 'E', 'F'] as $column) {
+        foreach (['A', 'C', 'D', 'E'] as $column) {
             $sheet->getStyle($column.'2:'.$column.'1000')
                 ->getNumberFormat()
                 ->setFormatCode(NumberFormat::FORMAT_TEXT);
@@ -96,12 +95,6 @@ class DistributionRouteExcelTemplateService
             ->where('status', 'active')
             ->orderBy('code')
             ->get(['id', 'code', 'plate_number', 'name']);
-
-        $drivers = Employee::query()
-            ->where('status', 'active')
-            ->forOperationalRole(UserRole::DRIVER)
-            ->orderBy('employee_code')
-            ->get(['id', 'employee_code', 'name', 'type']);
 
         $representatives = Employee::query()
             ->where('status', 'active')
@@ -121,16 +114,13 @@ class DistributionRouteExcelTemplateService
             ['vehicle_code', 'اسم / وصف السيارة', 'رقم اللوحة'],
         ], null, 'D1');
         $references->fromArray([
-            ['driver_code', 'اسم السائق', 'نوع سجل الموظف'],
+            ['sales_representative_code', 'اسم المندوب', 'نوع سجل الموظف'],
         ], null, 'H1');
         $references->fromArray([
-            ['sales_representative_code', 'اسم المندوب', 'نوع سجل الموظف'],
-        ], null, 'L1');
-        $references->fromArray([
             ['visit_day', 'الوصف'],
-        ], null, 'P1');
+        ], null, 'L1');
 
-        foreach (['A1:B1', 'D1:F1', 'H1:J1', 'L1:N1', 'P1:Q1'] as $range) {
+        foreach (['A1:B1', 'D1:F1', 'H1:J1', 'L1:M1'] as $range) {
             $references->getStyle($range)->applyFromArray([
                 'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
                 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '334155']],
@@ -141,14 +131,13 @@ class DistributionRouteExcelTemplateService
         foreach ([
             'A' => 26, 'B' => 34,
             'D' => 26, 'E' => 26, 'F' => 34,
-            'H' => 26, 'I' => 34, 'J' => 24,
-            'L' => 32, 'M' => 34, 'N' => 24,
-            'P' => 22, 'Q' => 24,
+            'H' => 32, 'I' => 34, 'J' => 24,
+            'L' => 22, 'M' => 24,
         ] as $column => $width) {
             $references->getColumnDimension($column)->setWidth($width);
         }
 
-        foreach (['A', 'D', 'H', 'L', 'P'] as $column) {
+        foreach (['A', 'D', 'H', 'L'] as $column) {
             $references->getStyle($column.':'.$column)
                 ->getNumberFormat()
                 ->setFormatCode(NumberFormat::FORMAT_TEXT);
@@ -167,18 +156,11 @@ class DistributionRouteExcelTemplateService
             $references->setCellValue('E'.$row, $vehicle->name);
         }
 
-        foreach ($drivers as $index => $driver) {
-            $row = $index + 2;
-            $references->setCellValueExplicit('H'.$row, (string) $driver->employee_code, DataType::TYPE_STRING);
-            $references->setCellValue('I'.$row, $driver->name);
-            $references->setCellValue('J'.$row, $driver->type);
-        }
-
         foreach ($representatives as $index => $representative) {
             $row = $index + 2;
-            $references->setCellValueExplicit('L'.$row, (string) $representative->employee_code, DataType::TYPE_STRING);
-            $references->setCellValue('M'.$row, $representative->name);
-            $references->setCellValue('N'.$row, $representative->type);
+            $references->setCellValueExplicit('H'.$row, (string) $representative->employee_code, DataType::TYPE_STRING);
+            $references->setCellValue('I'.$row, $representative->name);
+            $references->setCellValue('J'.$row, $representative->type);
         }
 
         $dayLabels = [
@@ -193,13 +175,12 @@ class DistributionRouteExcelTemplateService
 
         foreach (DistributionRouteExcelImportService::VISIT_DAYS as $index => $day) {
             $row = $index + 2;
-            $references->setCellValueExplicit('P'.$row, $day, DataType::TYPE_STRING);
-            $references->setCellValue('Q'.$row, $dayLabels[$day]);
+            $references->setCellValueExplicit('L'.$row, $day, DataType::TYPE_STRING);
+            $references->setCellValue('M'.$row, $dayLabels[$day]);
         }
 
         $areaLastRow = max(2, $areas->count() + 1);
         $vehicleLastRow = max(2, $vehicles->count() + 1);
-        $driverLastRow = max(2, $drivers->count() + 1);
         $representativeLastRow = max(2, $representatives->count() + 1);
 
         if ($areas->isEmpty()) {
@@ -208,17 +189,13 @@ class DistributionRouteExcelTemplateService
         if ($vehicles->isEmpty()) {
             $references->setCellValueExplicit('D2', '', DataType::TYPE_STRING);
         }
-        if ($drivers->isEmpty()) {
-            $references->setCellValueExplicit('H2', '', DataType::TYPE_STRING);
-        }
         if ($representatives->isEmpty()) {
-            $references->setCellValueExplicit('L2', '', DataType::TYPE_STRING);
+            $references->setCellValueExplicit('H2', '', DataType::TYPE_STRING);
         }
 
         $spreadsheet->addNamedRange(new NamedRange('ACTIVE_AREA_CODES', $references, '=$A$2:$A$'.$areaLastRow));
         $spreadsheet->addNamedRange(new NamedRange('ACTIVE_VEHICLE_CODES', $references, '=$D$2:$D$'.$vehicleLastRow));
-        $spreadsheet->addNamedRange(new NamedRange('ACTIVE_DRIVER_CODES', $references, '=$H$2:$H$'.$driverLastRow));
-        $spreadsheet->addNamedRange(new NamedRange('ACTIVE_SALES_REP_CODES', $references, '=$L$2:$L$'.$representativeLastRow));
+        $spreadsheet->addNamedRange(new NamedRange('ACTIVE_SALES_REP_CODES', $references, '=$H$2:$H$'.$representativeLastRow));
 
         $areaValidation = $this->listValidation(
             '=ACTIVE_AREA_CODES',
@@ -240,16 +217,6 @@ class DistributionRouteExcelTemplateService
         );
         $sheet->setDataValidation('D2:D1000', $vehicleValidation);
 
-        $driverValidation = $this->listValidation(
-            '=ACTIVE_DRIVER_CODES',
-            true,
-            'سائق غير صالح',
-            'اختر driver_code من قائمة الموظفين الفعالين المؤهلين كسائقين أو اتركه فارغًا.',
-            'السائق',
-            'اختياري. القائمة تراعي الأهلية التشغيلية الحالية، بما فيها الحسابات ثنائية الدور.',
-        );
-        $sheet->setDataValidation('E2:E1000', $driverValidation);
-
         $representativeValidation = $this->listValidation(
             '=ACTIVE_SALES_REP_CODES',
             true,
@@ -258,7 +225,7 @@ class DistributionRouteExcelTemplateService
             'مندوب المبيعات',
             'اختياري. القائمة تراعي الأهلية التشغيلية الحالية، بما فيها الحسابات ثنائية الدور.',
         );
-        $sheet->setDataValidation('F2:F1000', $representativeValidation);
+        $sheet->setDataValidation('E2:E1000', $representativeValidation);
 
         $statusValidation = $this->listValidation(
             '"active,inactive"',
@@ -268,7 +235,7 @@ class DistributionRouteExcelTemplateService
             'الحالة',
             'ترك الخلية فارغة يعني active.',
         );
-        $sheet->setDataValidation('H2:H1000', $statusValidation);
+        $sheet->setDataValidation('G2:G1000', $statusValidation);
 
         $instructions = $spreadsheet->createSheet();
         $instructions->setTitle('تعليمات');
@@ -279,14 +246,13 @@ class DistributionRouteExcelTemplateService
             ['name', 'اسم خط التوزيع', 'نعم', 'خط وسط دمشق'],
             ['area_code', 'رمز المنطقة الفعالة', 'نعم', 'اختر من القائمة المرجعية'],
             ['vehicle_code', 'رمز السيارة الفعالة المرتبطة بالخط', 'لا', 'اختر من القائمة أو اتركه فارغًا'],
-            ['driver_code', 'رمز الموظف الفعال المؤهل كسائق', 'لا', 'اختر من القائمة أو اتركه فارغًا'],
             ['sales_representative_code', 'رمز الموظف الفعال المؤهل كمندوب مبيعات', 'لا', 'اختر من القائمة أو اتركه فارغًا'],
             ['visit_days', 'أيام الزيارة مفصولة بفاصلة إنجليزية', 'لا', 'saturday,monday,wednesday'],
             ['status', 'حالة خط التوزيع', 'لا', 'active أو inactive - الافتراضي active'],
             ['notes', 'ملاحظات تشغيلية', 'لا', 'نص اختياري'],
             ['', '', '', ''],
             ['مهم', 'visit_days يدعم الأيام الإنجليزية فقط كما تظهر في القوائم المرجعية، ويمكن تركه فارغًا.', '', ''],
-            ['مهم', 'driver_code و sales_representative_code يطبقان نفس أهلية الأدوار المستخدمة في شاشة خطوط التوزيع.', '', ''],
+            ['مهم', 'sales_representative_code يطبق أهلية مندوب المبيعات المستخدمة في شاشة خطوط التوزيع.', '', ''],
             ['مهم', 'كل المراجع تعتمد أكواد الأعمال فقط؛ لا تستخدم area_id أو vehicle_id أو employee IDs.', '', ''],
             ['مهم', 'لا تغيّر أسماء الأعمدة أو ترتيبها في ورقة خطوط التوزيع.', '', ''],
             ['سياسة الاستيراد', 'All-or-Nothing: أي خطأ في أي صف يمنع استيراد الملف كاملًا.', '', ''],
@@ -297,12 +263,12 @@ class DistributionRouteExcelTemplateService
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1D4ED8']],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
         ]);
-        $instructions->getStyle('A12:D16')->getFont()->setBold(true);
+        $instructions->getStyle('A11:D15')->getFont()->setBold(true);
         $instructions->getColumnDimension('A')->setWidth(32);
         $instructions->getColumnDimension('B')->setWidth(92);
         $instructions->getColumnDimension('C')->setWidth(18);
         $instructions->getColumnDimension('D')->setWidth(66);
-        $instructions->getStyle('A1:D16')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+        $instructions->getStyle('A1:D15')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -317,7 +283,7 @@ class DistributionRouteExcelTemplateService
         string $promptTitle,
         string $prompt,
     ): DataValidation {
-        $validation = new DataValidation();
+        $validation = new DataValidation;
         $validation->setType(DataValidation::TYPE_LIST);
         $validation->setErrorStyle(DataValidation::STYLE_STOP);
         $validation->setAllowBlank($allowBlank);

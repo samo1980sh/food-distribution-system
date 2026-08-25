@@ -43,7 +43,6 @@ class VehicleLoadForm
                             ->live()
                             ->afterStateUpdated(function (mixed $state, Set $set): void {
                                 $set('route_id', null);
-                                $set('driver_id', null);
                                 $set('sales_representative_id', null);
                                 $set('to_warehouse_id', OperationalFormContext::vehicleWarehouseId($state));
                             })
@@ -83,10 +82,9 @@ class VehicleLoadForm
                             ->preload()
                             ->live()
                             ->afterStateUpdated(function (mixed $state, Set $set): void {
-                                $context = OperationalFormContext::forRoute($state);
+                                $context = OperationalFormContext::forRepresentativeRoute($state);
                                 $set('vehicle_id', $context['vehicle_id']);
                                 $set('to_warehouse_id', $context['warehouse_id']);
-                                $set('driver_id', $context['driver_id']);
                                 $set('sales_representative_id', $context['sales_representative_id']);
                             })
                             ->native(false),
@@ -107,25 +105,6 @@ class VehicleLoadForm
                             ->native(false)
                             ->helperText('يتم تثبيت مستودع السيارة المحددة تلقائيًا.'),
 
-                        Select::make('driver_id')
-                            ->label('السائق')
-                            ->relationship(
-                                'driver',
-                                'name',
-                                modifyQueryUsing: function (Builder $query, Get $get): Builder {
-                                    $query
-                                        ->where('status', 'active')
-                                        ->forOperationalRole(UserRole::DRIVER);
-
-                                    $driverId = OperationalFormContext::forRoute($get('route_id'))['driver_id'];
-
-                                    return $driverId === null ? $query : $query->whereKey($driverId);
-                                },
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->native(false),
-
                         Select::make('sales_representative_id')
                             ->label('مندوب المبيعات')
                             ->relationship(
@@ -136,7 +115,7 @@ class VehicleLoadForm
                                         ->where('status', 'active')
                                         ->forOperationalRole(UserRole::SALES_REPRESENTATIVE);
 
-                                    $representativeId = OperationalFormContext::forRoute(
+                                    $representativeId = OperationalFormContext::forRepresentativeRoute(
                                         $get('route_id'),
                                     )['sales_representative_id'];
 

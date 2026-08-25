@@ -43,6 +43,32 @@ class UserRoleCombinationTest extends TestCase
         $this->assertTrue($this->validator([999999])->fails());
     }
 
+    public function test_admin_assignment_rejects_new_driver_roles_but_allows_current_field_role(): void
+    {
+        $driver = $this->role(UserRole::DRIVER);
+        $representative = $this->role(UserRole::SALES_REPRESENTATIVE);
+
+        $this->assertTrue($this->validator([$driver->id], false)->fails());
+        $this->assertTrue($this->validator([
+            $driver->id,
+            $representative->id,
+        ], false)->fails());
+        $this->assertFalse($this->validator([$representative->id], false)->fails());
+    }
+
+    public function test_admin_assignment_can_preserve_an_existing_historical_driver_role(): void
+    {
+        $driver = $this->role(UserRole::DRIVER);
+        $representative = $this->role(UserRole::SALES_REPRESENTATIVE);
+
+        $this->assertFalse($this->validator([$driver->id], true)->fails());
+        $this->assertFalse($this->validator([
+            $driver->id,
+            $representative->id,
+        ], true)->fails());
+        $this->assertFalse($this->validator([$representative->id], true)->fails());
+    }
+
     private function role(UserRole $role): Role
     {
         return Role::query()->firstOrCreate([
@@ -52,11 +78,16 @@ class UserRoleCombinationTest extends TestCase
     }
 
     /** @param list<int> $roleIds */
-    private function validator(array $roleIds): ValidatorContract
-    {
+    private function validator(
+        array $roleIds,
+        bool $allowHistoricalDriver = true,
+    ): ValidatorContract {
         return Validator::make(
             ['roles' => $roleIds],
-            ['roles' => ['required', new AllowedUserRoleCombination]],
+            ['roles' => [
+                'required',
+                new AllowedUserRoleCombination($allowHistoricalDriver),
+            ]],
         );
     }
 }

@@ -27,7 +27,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->makeArea('AREA-I', 'منطقة غير فعالة', 'inactive');
         $activeVehicle = $this->makeVehicle('VEH-A', 'PLATE-A');
         $this->makeVehicle('VEH-I', 'PLATE-I', 'inactive');
-        $driver = $this->makeEmployee('DRV-A', 'سائق فعال', 'driver');
+        $this->makeEmployee('DRV-A', 'سائق فعال', 'driver');
         $representative = $this->makeEmployee('REP-A', 'مندوب فعال', 'sales_representative');
         $this->makeEmployee('DRV-I', 'سائق غير فعال', 'driver', 'inactive');
         $this->makeEmployee('ACC-A', 'محاسب', 'accountant');
@@ -40,53 +40,49 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertSame('خطوط التوزيع', $sheet->getTitle());
         $this->assertSame(
             DistributionRouteExcelImportService::HEADERS,
-            $sheet->rangeToArray('A1:I1', null, true, true, false)[0],
+            $sheet->rangeToArray('A1:H1', null, true, true, false)[0],
         );
         $this->assertNotNull($spreadsheet->getSheetByName('تعليمات'));
         $this->assertNotNull($references);
         $this->assertTrue($sheet->getRightToLeft());
 
-        foreach (['A2', 'C2', 'D2', 'E2', 'F2'] as $cell) {
+        foreach (['A2', 'C2', 'D2', 'E2'] as $cell) {
             $this->assertSame(NumberFormat::FORMAT_TEXT, $sheet->getStyle($cell)->getNumberFormat()->getFormatCode());
         }
 
         $areaCodes = $this->referenceValues($references, 'A2:A20');
         $vehicleCodes = $this->referenceValues($references, 'D2:D20');
-        $driverCodes = $this->referenceValues($references, 'H2:H20');
-        $representativeCodes = $this->referenceValues($references, 'L2:L20');
+        $representativeCodes = $this->referenceValues($references, 'H2:H20');
 
         $this->assertContains($activeArea->code, $areaCodes);
         $this->assertNotContains('AREA-I', $areaCodes);
         $this->assertContains($activeVehicle->code, $vehicleCodes);
         $this->assertNotContains('VEH-I', $vehicleCodes);
-        $this->assertContains($driver->employee_code, $driverCodes);
-        $this->assertContains($dual->employee_code, $driverCodes);
-        $this->assertNotContains('DRV-I', $driverCodes);
-        $this->assertNotContains('ACC-A', $driverCodes);
         $this->assertContains($representative->employee_code, $representativeCodes);
         $this->assertContains($dual->employee_code, $representativeCodes);
+        $this->assertNotContains('DRV-A', $representativeCodes);
+        $this->assertNotContains('DRV-I', $representativeCodes);
+        $this->assertNotContains('ACC-A', $representativeCodes);
 
         $this->assertNotNull($spreadsheet->getNamedRange('ACTIVE_AREA_CODES'));
         $this->assertNotNull($spreadsheet->getNamedRange('ACTIVE_VEHICLE_CODES'));
-        $this->assertNotNull($spreadsheet->getNamedRange('ACTIVE_DRIVER_CODES'));
+        $this->assertNull($spreadsheet->getNamedRange('ACTIVE_DRIVER_CODES'));
         $this->assertNotNull($spreadsheet->getNamedRange('ACTIVE_SALES_REP_CODES'));
         $this->assertSame('=ACTIVE_AREA_CODES', $sheet->getDataValidation('C2')->getFormula1());
         $this->assertSame('=ACTIVE_VEHICLE_CODES', $sheet->getDataValidation('D2')->getFormula1());
-        $this->assertSame('=ACTIVE_DRIVER_CODES', $sheet->getDataValidation('E2')->getFormula1());
-        $this->assertSame('=ACTIVE_SALES_REP_CODES', $sheet->getDataValidation('F2')->getFormula1());
-        $this->assertSame(DataValidation::TYPE_LIST, $sheet->getDataValidation('H2')->getType());
+        $this->assertSame('=ACTIVE_SALES_REP_CODES', $sheet->getDataValidation('E2')->getFormula1());
+        $this->assertSame(DataValidation::TYPE_LIST, $sheet->getDataValidation('G2')->getType());
     }
 
     public function test_valid_distribution_routes_import_all_supported_values(): void
     {
         $area = $this->makeArea('AREA-001', 'دمشق');
         $vehicle = $this->makeVehicle('VEH-001', '001234');
-        $driver = $this->makeEmployee('DRV-001', 'السائق', 'driver');
         $representative = $this->makeEmployee('REP-001', 'المندوب', 'sales_representative');
 
         $path = $this->makeWorkbook([
-            ['ROUTE-001', 'خط أول', 'AREA-001', 'VEH-001', 'DRV-001', 'REP-001', 'saturday,monday,wednesday', 'active', 'ملاحظات'],
-            ['ROUTE-002', 'خط ثان', 'AREA-001', null, null, null, null, 'inactive', null],
+            ['ROUTE-001', 'خط أول', 'AREA-001', 'VEH-001', 'REP-001', 'saturday,monday,wednesday', 'active', 'ملاحظات'],
+            ['ROUTE-002', 'خط ثان', 'AREA-001', null, null, null, 'inactive', null],
         ]);
 
         $service = app(DistributionRouteExcelImportService::class);
@@ -104,7 +100,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $route = DistributionRoute::query()->where('code', 'ROUTE-001')->firstOrFail();
         $this->assertSame($area->id, $route->area_id);
         $this->assertSame($vehicle->id, $route->vehicle_id);
-        $this->assertSame($driver->id, $route->driver_id);
+        $this->assertNull($route->driver_id);
         $this->assertSame($representative->id, $route->sales_representative_id);
         $this->assertSame(['saturday', 'monday', 'wednesday'], $route->visit_days);
         $this->assertSame('active', $route->status);
@@ -122,7 +118,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->makeArea('AREA-001', 'دمشق');
 
         $path = $this->makeWorkbook([
-            ['ROUTE-DEFAULT', 'خط افتراضي', 'AREA-001', null, null, null, null, null, null],
+            ['ROUTE-DEFAULT', 'خط افتراضي', 'AREA-001', null, null, null, null, null],
         ]);
 
         $result = app(DistributionRouteExcelImportService::class)->import($path, 'routes.xlsx');
@@ -139,8 +135,8 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->makeArea('AREA-001', 'دمشق');
 
         $path = $this->makeWorkbook([
-            ['ROUTE-OK', 'خط سليم', 'AREA-001', null, null, null, null, 'active', null],
-            ['ROUTE-BAD', 'خط خاطئ', 'AREA-404', null, null, null, null, 'active', null],
+            ['ROUTE-OK', 'خط سليم', 'AREA-001', null, null, null, 'active', null],
+            ['ROUTE-BAD', 'خط خاطئ', 'AREA-404', null, null, null, 'active', null],
         ]);
 
         $result = app(DistributionRouteExcelImportService::class)->import($path, 'routes.xlsx');
@@ -158,7 +154,7 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-001', 'خط', 'AREA-I', null, null, null, null, 'active', null],
+                ['ROUTE-001', 'خط', 'AREA-I', null, null, null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -174,8 +170,8 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-404', 'مفقودة', 'AREA-001', 'VEH-404', null, null, null, 'active', null],
-                ['ROUTE-I', 'غير فعالة', 'AREA-001', 'VEH-I', null, null, null, 'active', null],
+                ['ROUTE-404', 'مفقودة', 'AREA-001', 'VEH-404', null, null, 'active', null],
+                ['ROUTE-I', 'غير فعالة', 'AREA-001', 'VEH-I', null, null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -186,26 +182,29 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertStringContainsString('السيارة VEH-I موجودة لكنها غير فعالة', $errors);
     }
 
-    public function test_missing_inactive_and_unqualified_driver_are_rejected(): void
+    public function test_legacy_workbook_with_driver_code_is_rejected(): void
     {
         $this->makeArea('AREA-001', 'دمشق');
-        $this->makeEmployee('DRV-I', 'غير فعال', 'driver', 'inactive');
-        $this->makeEmployee('ACC-001', 'محاسب', 'accountant');
 
-        $analysis = app(DistributionRouteExcelImportService::class)->analyze(
-            $this->makeWorkbook([
-                ['ROUTE-404', 'مفقود', 'AREA-001', null, 'DRV-404', null, null, 'active', null],
-                ['ROUTE-I', 'غير فعال', 'AREA-001', null, 'DRV-I', null, null, 'active', null],
-                ['ROUTE-U', 'غير مؤهل', 'AREA-001', null, 'ACC-001', null, null, 'active', null],
-            ]),
-            'routes.xlsx',
-        );
+        $legacyHeaders = [
+            'code',
+            'name',
+            'area_code',
+            'vehicle_code',
+            'driver_code',
+            'sales_representative_code',
+            'visit_days',
+            'status',
+            'notes',
+        ];
+        $analysis = app(DistributionRouteExcelImportService::class)->analyze($this->makeWorkbook(
+            [['ROUTE-LEGACY', 'خط قديم', 'AREA-001', null, 'DRV-001', null, null, 'active', null]],
+            $legacyHeaders,
+        ), 'routes.xlsx');
 
         $this->assertFalse($analysis['valid']);
-        $errors = implode(' | ', $analysis['errors']);
-        $this->assertStringContainsString('DRV-404', $errors);
-        $this->assertStringContainsString('السائق DRV-I موجود لكنه غير فعال', $errors);
-        $this->assertStringContainsString('ACC-001 غير مؤهل للعمل كسائق', $errors);
+        $this->assertStringContainsString('رؤوس الأعمدة غير مطابقة للقالب', implode(' | ', $analysis['errors']));
+        $this->assertDatabaseMissing('distribution_routes', ['code' => 'ROUTE-LEGACY']);
     }
 
     public function test_missing_inactive_and_unqualified_sales_representative_are_rejected(): void
@@ -216,9 +215,9 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-404', 'مفقود', 'AREA-001', null, null, 'REP-404', null, 'active', null],
-                ['ROUTE-I', 'غير فعال', 'AREA-001', null, null, 'REP-I', null, 'active', null],
-                ['ROUTE-U', 'غير مؤهل', 'AREA-001', null, null, 'DRV-001', null, 'active', null],
+                ['ROUTE-404', 'مفقود', 'AREA-001', null, 'REP-404', null, 'active', null],
+                ['ROUTE-I', 'غير فعال', 'AREA-001', null, 'REP-I', null, 'active', null],
+                ['ROUTE-U', 'غير مؤهل', 'AREA-001', null, 'DRV-001', null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -230,14 +229,14 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertStringContainsString('DRV-001 غير مؤهل للعمل كمندوب مبيعات', $errors);
     }
 
-    public function test_dual_role_employee_can_be_used_for_both_route_roles(): void
+    public function test_dual_role_employee_can_be_used_as_route_representative_without_driver_assignment(): void
     {
         $this->makeArea('AREA-001', 'دمشق');
         $dual = $this->makeDualRoleEmployee('DUAL-001', 'ثنائي الدور');
 
         $result = app(DistributionRouteExcelImportService::class)->import(
             $this->makeWorkbook([
-                ['ROUTE-DUAL', 'خط ثنائي', 'AREA-001', null, 'DUAL-001', 'DUAL-001', 'sunday', 'active', null],
+                ['ROUTE-DUAL', 'خط ثنائي', 'AREA-001', null, 'DUAL-001', 'sunday', 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -245,7 +244,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertTrue($result['valid'], implode(' | ', $result['errors']));
         $this->assertDatabaseHas('distribution_routes', [
             'code' => 'ROUTE-DUAL',
-            'driver_id' => $dual->id,
+            'driver_id' => null,
             'sales_representative_id' => $dual->id,
         ]);
     }
@@ -256,8 +255,8 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-BAD-DAY', 'يوم خاطئ', 'AREA-001', null, null, null, 'monday,holiday', 'active', null],
-                ['ROUTE-DUP-DAY', 'يوم مكرر', 'AREA-001', null, null, null, 'friday,friday', 'active', null],
+                ['ROUTE-BAD-DAY', 'يوم خاطئ', 'AREA-001', null, null, 'monday,holiday', 'active', null],
+                ['ROUTE-DUP-DAY', 'يوم مكرر', 'AREA-001', null, null, 'friday,friday', 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -274,8 +273,8 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-DUP', 'أول', 'AREA-001', null, null, null, null, 'active', null],
-                ['route-dup', 'ثان', 'AREA-001', null, null, null, null, 'active', null],
+                ['ROUTE-DUP', 'أول', 'AREA-001', null, null, null, 'active', null],
+                ['route-dup', 'ثان', 'AREA-001', null, null, null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -297,7 +296,7 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-EXISTS', 'جديد', 'AREA-001', null, null, null, null, 'active', null],
+                ['ROUTE-EXISTS', 'جديد', 'AREA-001', null, null, null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -312,7 +311,7 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-BAD', 'خط', 'AREA-001', null, null, null, null, 'paused', null],
+                ['ROUTE-BAD', 'خط', 'AREA-001', null, null, null, 'paused', null],
             ]),
             'routes.xlsx',
         );
@@ -327,9 +326,9 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                [null, 'بلا رمز', 'AREA-001', null, null, null, null, 'active', null],
-                ['ROUTE-NAMELESS', null, 'AREA-001', null, null, null, null, 'active', null],
-                ['ROUTE-AREALESS', 'بلا منطقة', null, null, null, null, null, 'active', null],
+                [null, 'بلا رمز', 'AREA-001', null, null, null, 'active', null],
+                ['ROUTE-NAMELESS', null, 'AREA-001', null, null, null, 'active', null],
+                ['ROUTE-AREALESS', 'بلا منطقة', null, null, null, null, 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -347,9 +346,9 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-ROW-2', 'أول', 'AREA-001', null, null, null, null, 'active', null],
-                [null, null, null, null, null, null, null, null, null],
-                ['ROUTE-ROW-4', 'ثان', 'AREA-001', null, null, null, 'friday', 'active', null],
+                ['ROUTE-ROW-2', 'أول', 'AREA-001', null, null, null, 'active', null],
+                [null, null, null, null, null, null, null, null],
+                ['ROUTE-ROW-4', 'ثان', 'AREA-001', null, null, 'friday', 'active', null],
             ]),
             'routes.xlsx',
         );
@@ -365,7 +364,7 @@ class DistributionRouteExcelImportTest extends TestCase
         $this->assertIsString($contents);
         $this->assertStringContainsString('area_code', $contents);
         $this->assertStringContainsString('vehicle_code', $contents);
-        $this->assertStringContainsString('driver_code', $contents);
+        $this->assertStringNotContainsString('driver_code', $contents);
         $this->assertStringContainsString('sales_representative_code', $contents);
         $this->assertStringContainsString("row['excel_row']", $contents);
         $this->assertStringContainsString('fd-route-import-preview', $contents);
@@ -377,7 +376,7 @@ class DistributionRouteExcelImportTest extends TestCase
 
         $analysis = app(DistributionRouteExcelImportService::class)->analyze(
             $this->makeWorkbook([
-                ['ROUTE-001', 'خط', 'AREA-001', null, null, null, null, 'active', null],
+                ['ROUTE-001', 'خط', 'AREA-001', null, null, null, 'active', null],
             ]),
             'routes.csv',
         );
@@ -440,16 +439,20 @@ class DistributionRouteExcelImportTest extends TestCase
         )));
     }
 
-    /** @param list<list<mixed>> $rows */
-    private function makeWorkbook(array $rows): string
+    /**
+     * @param  list<list<mixed>>  $rows
+     * @param  list<string>|null  $headers
+     */
+    private function makeWorkbook(array $rows, ?array $headers = null): string
     {
-        $spreadsheet = new Spreadsheet();
+        $headers ??= DistributionRouteExcelImportService::HEADERS;
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray(DistributionRouteExcelImportService::HEADERS, null, 'A1');
+        $sheet->fromArray($headers, null, 'A1');
 
         foreach ($rows as $index => $row) {
             $excelRow = $index + 2;
-            $row = array_pad($row, count(DistributionRouteExcelImportService::HEADERS), null);
+            $row = array_pad($row, count($headers), null);
 
             foreach ($row as $columnIndex => $value) {
                 if ($value === null) {

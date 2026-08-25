@@ -4,6 +4,7 @@ namespace App\Filament\Resources\VehicleExpenses\Pages;
 
 use App\Enums\OperationSource;
 use App\Filament\Resources\VehicleExpenses\VehicleExpenseResource;
+use App\Support\Filament\AdminOperationalDriverGuard;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
@@ -18,7 +19,7 @@ class ManageVehicleExpenses extends ManageRecords
 
     public function getSubheading(): ?string
     {
-        return 'راجع مصاريف السائقين الواردة من التطبيق واعتمدها أو ارفضها. الإدخال الإداري متاح فقط كاستثناء موثق.';
+        return 'راجع مصاريف مندوبي المبيعات الواردة من التطبيق واعتمدها أو ارفضها. الإدخال الإداري متاح فقط كاستثناء موثق.';
     }
 
     protected function getHeaderActions(): array
@@ -28,9 +29,10 @@ class ManageVehicleExpenses extends ManageRecords
                 ->label('مصروف إداري استثنائي')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('إضافة مصروف إداري استثنائي')
-                ->modalDescription('استخدم هذا المسار فقط عند تعذر تسجيل المصروف من تطبيق السائق، مع توثيق السبب.')
+                ->modalDescription('استخدم هذا المسار فقط عند تعذر تسجيل المصروف من تطبيق مندوب المبيعات، مع توثيق السبب.')
                 ->slideOver()
                 ->mutateDataUsing(function (array $data): array {
+                    $data = AdminOperationalDriverGuard::sanitize($data);
                     $data['operation_source'] = OperationSource::ADMIN_EXCEPTION;
                     $data['administrative_reason'] = trim((string) ($data['administrative_reason'] ?? ''));
 

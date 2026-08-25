@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
+use App\Models\Employee;
+use App\Rules\AllowedAdminEmployeeType;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -52,21 +54,18 @@ class EmployeeForm
                     ]),
 
                 Section::make('الدور التشغيلي وحساب المستخدم')
-                    ->description('نوع الموظف هو تصنيفه الأساسي، ويجب أن يحمل الحساب المرتبط الدور المطابق. يمكن للحساب الميداني الجمع بين السائق والمندوب.')
+                    ->description('نوع الموظف هو تصنيفه الأساسي، ويجب أن يحمل الحساب المرتبط الدور المطابق. مندوب المبيعات هو نوع الموظف الميداني الحالي.')
                     ->icon('heroicon-o-link')
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
                         Select::make('type')
                             ->label('نوع الموظف')
-                            ->options([
-                                'driver' => 'سائق',
-                                'sales_representative' => 'مندوب مبيعات',
-                                'warehouse_keeper' => 'أمين مستودع',
-                                'accountant' => 'محاسب',
-                                'supervisor' => 'مشرف',
+                            ->options(fn (?Employee $record): array => self::typeOptions($record))
+                            ->default('sales_representative')
+                            ->rules(fn (?Employee $record): array => [
+                                new AllowedAdminEmployeeType($record?->type),
                             ])
-                            ->default('driver')
                             ->required()
                             ->live()
                             ->native(false),
@@ -108,5 +107,22 @@ class EmployeeForm
             'supervisor' => 'supervisor',
             default => null,
         };
+    }
+
+    /** @return array<string, string> */
+    private static function typeOptions(?Employee $record): array
+    {
+        $options = [
+            'sales_representative' => 'مندوب مبيعات',
+            'warehouse_keeper' => 'أمين مستودع',
+            'accountant' => 'محاسب',
+            'supervisor' => 'مشرف',
+        ];
+
+        if ($record?->type === 'driver') {
+            return ['driver' => 'سائق (سجل تاريخي)'] + $options;
+        }
+
+        return $options;
     }
 }
