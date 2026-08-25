@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Enums\PermissionName;
 use App\Support\Api\MobileSyncEntityRegistry;
 use App\Support\Api\MobileSyncPushRegistry;
+use App\Support\Api\MobileSyncRetiredLegacyRegistry;
 use App\Support\Authorization\RolePermissionMap;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\Test;
@@ -34,16 +35,48 @@ class DriverFieldOperationsContractTest extends TestCase
     #[Test]
     public function legacy_driver_sync_definitions_are_retained_only_for_retirement_compatibility(): void
     {
-        $this->assertArrayHasKey('driver_journeys', MobileSyncEntityRegistry::definitions());
-        $this->assertArrayHasKey('driver_deliveries', MobileSyncEntityRegistry::definitions());
-        $this->assertArrayHasKey('driver_journeys', MobileSyncPushRegistry::definitions());
-        $this->assertArrayHasKey('driver_deliveries', MobileSyncPushRegistry::definitions());
+        $this->assertSame(8, MobileSyncEntityRegistry::VERSION);
+        $this->assertSame(5, MobileSyncPushRegistry::VERSION);
+        $this->assertArrayNotHasKey('driver_journeys', MobileSyncEntityRegistry::definitions());
+        $this->assertArrayNotHasKey('driver_deliveries', MobileSyncEntityRegistry::definitions());
+        $this->assertArrayNotHasKey('driver_journeys', MobileSyncPushRegistry::definitions());
+        $this->assertArrayNotHasKey('driver_deliveries', MobileSyncPushRegistry::definitions());
+
+        $this->assertSame(
+            ['driver_journeys', 'driver_deliveries'],
+            MobileSyncRetiredLegacyRegistry::entities(),
+        );
+        $this->assertTrue(MobileSyncRetiredLegacyRegistry::supports('driver_journeys', 'start'));
+        $this->assertTrue(MobileSyncRetiredLegacyRegistry::supports('driver_journeys', 'finish'));
+        $this->assertTrue(MobileSyncRetiredLegacyRegistry::supports('driver_deliveries', 'submit_outcome'));
+        $this->assertFalse(MobileSyncRetiredLegacyRegistry::supports('driver_journeys', 'open_today'));
+        $this->assertContains('driver_journeys', MobileSyncPushRegistry::entities());
+        $this->assertContains('driver_deliveries', MobileSyncPushRegistry::entities());
+        $this->assertTrue(MobileSyncPushRegistry::supports('driver_journeys', 'start'));
+        $this->assertTrue(MobileSyncPushRegistry::supports('driver_deliveries', 'submit_outcome'));
+
+        $entityRegistry = file_get_contents(
+            app_path('Support/Api/MobileSyncEntityRegistry.php'),
+        );
+        $pushRegistry = file_get_contents(
+            app_path('Support/Api/MobileSyncPushRegistry.php'),
+        );
 
         $service = file_get_contents(
             app_path('Services/Api/MobileSyncPushOperationService.php'),
         );
 
+        $this->assertIsString($entityRegistry);
+        $this->assertIsString($pushRegistry);
         $this->assertIsString($service);
+        $this->assertStringNotContainsString('DriverJourneyResource', $entityRegistry);
+        $this->assertStringNotContainsString('DriverDeliveryResource', $entityRegistry);
+        $this->assertStringNotContainsString('DriverJourney::class', $entityRegistry);
+        $this->assertStringNotContainsString('DriverDelivery::class', $entityRegistry);
+        $this->assertStringNotContainsString('StartDriverJourneyRequest', $pushRegistry);
+        $this->assertStringNotContainsString('SubmitDriverDeliveryOutcomeRequest', $pushRegistry);
+        $this->assertStringNotContainsString('DriverJourney::class', $pushRegistry);
+        $this->assertStringNotContainsString('DriverDelivery::class', $pushRegistry);
         $this->assertStringContainsString('representative_driver_workflow_retired', $service);
         $this->assertStringNotContainsString('DriverFieldOperationService', $service);
         $this->assertStringNotContainsString('StartDriverJourneyRequest', $service);

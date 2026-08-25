@@ -118,6 +118,25 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'returned_quantity' => 0,
             'return_required' => false,
         ]);
+        $journeyChange = MobileSyncChange::query()->create([
+            'entity' => 'driver_journeys',
+            'record_id' => $journey->id,
+            'operation' => 'upsert',
+            'scope_snapshot' => ['route_id' => $context['route']->id],
+            'changed_at' => now(),
+        ]);
+        $deliveryChange = MobileSyncChange::query()->create([
+            'entity' => 'driver_deliveries',
+            'record_id' => $delivery->id,
+            'operation' => 'upsert',
+            'scope_snapshot' => ['route_id' => $context['route']->id],
+            'changed_at' => now(),
+        ]);
+        $legacyChanges = MobileSyncChange::query()
+            ->whereKey([$journeyChange->id, $deliveryChange->id])
+            ->get()
+            ->map->getRawOriginal()
+            ->all();
 
         $representative = User::factory()->create([
             'role' => User::ROLE_SALES_REPRESENTATIVE,
@@ -159,7 +178,14 @@ class MobileOfflineSyncFoundationTest extends TestCase
         $representativeChanges = collect($representativePull->json('data.changes'));
         $this->assertFalse($representativeChanges->contains('entity', 'driver_journeys'));
         $this->assertFalse($representativeChanges->contains('entity', 'driver_deliveries'));
-
+        $this->assertSame(
+            $legacyChanges,
+            MobileSyncChange::query()
+                ->whereKey([$journeyChange->id, $deliveryChange->id])
+                ->get()
+                ->map->getRawOriginal()
+                ->all(),
+        );
     }
 
     public function test_initial_pull_returns_only_permitted_scoped_records(): void

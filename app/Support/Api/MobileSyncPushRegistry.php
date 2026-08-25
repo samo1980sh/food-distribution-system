@@ -7,17 +7,13 @@ use App\Http\Requests\Api\V1\Operational\CustomerWriteRequest;
 use App\Http\Requests\Api\V1\Operational\DailyClosingWriteRequest;
 use App\Http\Requests\Api\V1\Operational\SalesInvoiceWriteRequest;
 use App\Http\Requests\Api\V1\Operational\SalesReturnWriteRequest;
-use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
-use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseWriteRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
 use App\Models\SalesReturn;
@@ -32,11 +28,6 @@ use InvalidArgumentException;
 final class MobileSyncPushRegistry
 {
     public const VERSION = 5;
-
-    private const LEGACY_DRIVER_ENTITIES = [
-        'driver_journeys',
-        'driver_deliveries',
-    ];
 
     /**
      * @return array<string, array{
@@ -66,18 +57,6 @@ final class MobileSyncPushRegistry
                 'request' => StartSalesVisitRequest::class,
                 'route_parameter' => 'salesVisit',
                 'actions' => ['start', 'complete'],
-            ],
-            'driver_journeys' => [
-                'model' => DriverJourney::class,
-                'request' => StartDriverJourneyRequest::class,
-                'route_parameter' => 'driverJourney',
-                'actions' => ['start', 'finish'],
-            ],
-            'driver_deliveries' => [
-                'model' => DriverDelivery::class,
-                'request' => SubmitDriverDeliveryOutcomeRequest::class,
-                'route_parameter' => 'driverDelivery',
-                'actions' => ['submit_outcome'],
             ],
             'sales_invoices' => [
                 'model' => SalesInvoice::class,
@@ -130,16 +109,22 @@ final class MobileSyncPushRegistry
     /** @return list<string> */
     public static function entities(): array
     {
-        return array_keys(self::definitions());
+        return array_values(array_unique([
+            ...array_keys(self::definitions()),
+            ...MobileSyncRetiredLegacyRegistry::entities(),
+        ]));
     }
 
     /** @return list<string> */
     public static function actions(): array
     {
-        return array_values(array_unique(array_merge(...array_values(array_map(
-            static fn (array $definition): array => $definition['actions'],
-            self::definitions(),
-        )))));
+        return array_values(array_unique([
+            ...array_merge(...array_values(array_map(
+                static fn (array $definition): array => $definition['actions'],
+                self::definitions(),
+            ))),
+            ...MobileSyncRetiredLegacyRegistry::actions(),
+        ]));
     }
 
     /** @return array{model: class-string<Model>, request: class-string<FormRequest>, route_parameter: string, actions: list<string>} */
@@ -158,15 +143,21 @@ final class MobileSyncPushRegistry
     {
         $definition = self::definitions()[$entity] ?? null;
 
-        return $definition !== null && in_array($action, $definition['actions'], true);
+        return ($definition !== null && in_array($action, $definition['actions'], true))
+            || MobileSyncRetiredLegacyRegistry::supports($entity, $action);
     }
 
     public static function supportsFor(User $user, string $entity, string $action): bool
     {
-        if (in_array($entity, self::LEGACY_DRIVER_ENTITIES, true)) {
+        if (self::isRetired($entity, $action)) {
             return false;
         }
 
         return self::supports($entity, $action);
+    }
+
+    public static function isRetired(string $entity, string $action): bool
+    {
+        return MobileSyncRetiredLegacyRegistry::supports($entity, $action);
     }
 }
