@@ -3,6 +3,10 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\PermissionName;
+use App\Models\DriverDelivery;
+use App\Models\DriverJourney;
+use App\Policies\DriverDeliveryPolicy;
+use App\Policies\DriverJourneyPolicy;
 use App\Support\Api\MobileSyncEntityRegistry;
 use App\Support\Api\MobileSyncPushRegistry;
 use App\Support\Api\MobileSyncRetiredLegacyRegistry;
@@ -18,6 +22,14 @@ class DriverFieldOperationsContractTest extends TestCase
     {
         $this->assertFileDoesNotExist(
             app_path('Services/Distribution/DriverFieldOperationService.php'),
+        );
+        $this->assertSame(
+            [],
+            glob(app_path('Http/Requests/Api/V1/Operational/*Driver*.php')),
+        );
+        $this->assertSame(
+            [],
+            glob(app_path('Http/Resources/Api/V1/Operational/Driver*.php')),
         );
 
         $routes = collect(Route::getRoutes()->getRoutes());
@@ -69,19 +81,14 @@ class DriverFieldOperationsContractTest extends TestCase
         $this->assertIsString($entityRegistry);
         $this->assertIsString($pushRegistry);
         $this->assertIsString($service);
-        $this->assertStringNotContainsString('DriverJourneyResource', $entityRegistry);
-        $this->assertStringNotContainsString('DriverDeliveryResource', $entityRegistry);
+        $this->assertStringNotContainsString('Driver', $entityRegistry);
         $this->assertStringNotContainsString('DriverJourney::class', $entityRegistry);
         $this->assertStringNotContainsString('DriverDelivery::class', $entityRegistry);
-        $this->assertStringNotContainsString('StartDriverJourneyRequest', $pushRegistry);
-        $this->assertStringNotContainsString('SubmitDriverDeliveryOutcomeRequest', $pushRegistry);
+        $this->assertStringNotContainsString('Driver', $pushRegistry);
         $this->assertStringNotContainsString('DriverJourney::class', $pushRegistry);
         $this->assertStringNotContainsString('DriverDelivery::class', $pushRegistry);
         $this->assertStringContainsString('representative_driver_workflow_retired', $service);
-        $this->assertStringNotContainsString('DriverFieldOperationService', $service);
-        $this->assertStringNotContainsString('StartDriverJourneyRequest', $service);
-        $this->assertStringNotContainsString('FinishDriverJourneyRequest', $service);
-        $this->assertStringNotContainsString('SubmitDriverDeliveryOutcomeRequest', $service);
+        $this->assertStringNotContainsString('Driver', $service);
     }
 
     #[Test]
@@ -100,8 +107,7 @@ class DriverFieldOperationsContractTest extends TestCase
         foreach ([$controller, $service] as $source) {
             $this->assertStringNotContainsString("'driver_journeys'", $source);
             $this->assertStringNotContainsString("'driver_deliveries'", $source);
-            $this->assertStringNotContainsString('DRIVER_JOURNEYS_OPEN', $source);
-            $this->assertStringNotContainsString('DRIVER_DELIVERIES_SUBMIT_OUTCOME', $source);
+            $this->assertStringNotContainsString('DRIVER_', $source);
         }
     }
 
@@ -109,14 +115,35 @@ class DriverFieldOperationsContractTest extends TestCase
     public function legacy_driver_permissions_are_read_only_after_admin_rbac_retirement(): void
     {
         $permissions = RolePermissionMap::all()['driver'];
+        $retiredPermissions = [
+            'driver_journeys.open',
+            'driver_journeys.start',
+            'driver_journeys.finish',
+            'driver_deliveries.submit_outcome',
+        ];
 
         $this->assertContains(PermissionName::DRIVER_JOURNEYS_VIEW->value, $permissions);
-        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_OPEN->value, $permissions);
-        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_START->value, $permissions);
-        $this->assertNotContains(PermissionName::DRIVER_JOURNEYS_FINISH->value, $permissions);
         $this->assertContains(PermissionName::DRIVER_DELIVERIES_VIEW->value, $permissions);
-        $this->assertNotContains(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value, $permissions);
         $this->assertContains(PermissionName::CUSTOMERS_VIEW->value, $permissions);
+
+        foreach ($retiredPermissions as $permission) {
+            $this->assertNull(PermissionName::tryFrom($permission));
+
+            foreach (RolePermissionMap::all() as $rolePermissions) {
+                $this->assertNotContains($permission, $rolePermissions);
+            }
+        }
+
+        $this->assertFalse(method_exists(DriverJourneyPolicy::class, 'openToday'));
+        $this->assertFalse(method_exists(DriverJourneyPolicy::class, 'start'));
+        $this->assertFalse(method_exists(DriverJourneyPolicy::class, 'finish'));
+        $this->assertFalse(method_exists(DriverDeliveryPolicy::class, 'submitOutcome'));
+        $this->assertTrue(method_exists(DriverJourneyPolicy::class, 'viewAny'));
+        $this->assertTrue(method_exists(DriverJourneyPolicy::class, 'view'));
+        $this->assertTrue(method_exists(DriverDeliveryPolicy::class, 'viewAny'));
+        $this->assertTrue(method_exists(DriverDeliveryPolicy::class, 'view'));
+        $this->assertTrue(class_exists(DriverJourney::class));
+        $this->assertTrue(class_exists(DriverDelivery::class));
 
         $salesPermissions = RolePermissionMap::all()['sales_representative'];
         $this->assertContains(PermissionName::DRIVER_JOURNEYS_VIEW->value, $salesPermissions);

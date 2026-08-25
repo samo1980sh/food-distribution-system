@@ -62,11 +62,15 @@ class Lr4DriverRbacLockdownTest extends TestCase
     public function test_no_role_receives_retired_driver_runtime_mutation_permissions(): void
     {
         $retiredPermissions = [
-            PermissionName::DRIVER_JOURNEYS_OPEN->value,
-            PermissionName::DRIVER_JOURNEYS_START->value,
-            PermissionName::DRIVER_JOURNEYS_FINISH->value,
-            PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value,
+            'driver_journeys.open',
+            'driver_journeys.start',
+            'driver_journeys.finish',
+            'driver_deliveries.submit_outcome',
         ];
+
+        foreach ($retiredPermissions as $permission) {
+            $this->assertNull(PermissionName::tryFrom($permission));
+        }
 
         foreach (RolePermissionMap::all() as $role => $permissions) {
             foreach ($retiredPermissions as $permission) {

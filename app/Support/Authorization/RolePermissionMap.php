@@ -11,8 +11,8 @@ final class RolePermissionMap
     public static function all(): array
     {
         return [
-            UserRole::SUPER_ADMIN->value => self::withoutLegacyDriverMutations(P::values()),
-            UserRole::MANAGER->value => self::withoutLegacyDriverMutations(P::values()),
+            UserRole::SUPER_ADMIN->value => P::values(),
+            UserRole::MANAGER->value => P::values(),
             UserRole::SUPERVISOR->value => self::values([
                 P::ADMIN_ACCESS,
                 P::API_ACCESS,
@@ -182,28 +182,6 @@ final class RolePermissionMap
                 P::DRIVER_DELIVERIES_VIEW,
             ]),
         ];
-    }
-
-    /** @param list<string> $permissions
-     * @return list<string>
-     */
-    private static function withoutLegacyDriverMutations(array $permissions): array
-    {
-        $retiredPermissions = self::values([
-            P::DRIVER_JOURNEYS_OPEN,
-            P::DRIVER_JOURNEYS_START,
-            P::DRIVER_JOURNEYS_FINISH,
-            P::DRIVER_DELIVERIES_SUBMIT_OUTCOME,
-        ]);
-
-        return array_values(array_filter(
-            $permissions,
-            static fn (string $permission): bool => ! in_array(
-                $permission,
-                $retiredPermissions,
-                true,
-            ),
-        ));
     }
 
     /** @param list<P> $permissions

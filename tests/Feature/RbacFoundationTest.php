@@ -248,4 +248,22 @@ class RbacFoundationTest extends TestCase
         $this->assertSame(count(UserRole::cases()), Role::query()->count());
         $this->assertSame(count(PermissionName::cases()), Permission::query()->count());
     }
+
+    public function test_permission_seeder_detaches_but_does_not_delete_obsolete_driver_permissions(): void
+    {
+        $permission = Permission::findOrCreate('driver_journeys.start', 'web');
+        $role = Role::findByName(UserRole::SUPER_ADMIN->value, 'web');
+        $role->givePermissionTo($permission);
+
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $this->assertDatabaseHas('permissions', [
+            'id' => $permission->id,
+            'name' => 'driver_journeys.start',
+            'guard_name' => 'web',
+        ]);
+        $this->assertFalse(
+            $role->fresh()->hasPermissionTo('driver_journeys.start', 'web'),
+        );
+    }
 }
