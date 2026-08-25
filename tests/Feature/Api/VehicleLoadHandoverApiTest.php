@@ -22,7 +22,7 @@ class VehicleLoadHandoverApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_driver_acknowledges_matching_load_without_new_inventory_movement(): void
+    public function test_representative_acknowledges_matching_load_without_new_inventory_movement(): void
     {
         $context = $this->handoverContext('MATCH');
         $token = $this->tokenFor($context['user']);
@@ -246,24 +246,24 @@ class VehicleLoadHandoverApiTest extends TestCase
             'type' => 'main',
             'status' => 'active',
         ]);
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $driver = Employee::query()->create([
             'employee_code' => 'HAND-DRV-'.$suffix,
             'name' => 'سائق الاستلام '.$suffix,
             'type' => 'driver',
             'status' => 'active',
-            'user_id' => $user->id,
         ]);
         $representative = Employee::query()->create([
             'employee_code' => 'HAND-REP-'.$suffix,
             'name' => 'مندوب الاستلام '.$suffix,
             'type' => 'sales_representative',
             'status' => 'active',
+            'user_id' => $user->id,
         ]);
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
+            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'HAND-ROUTE-'.$suffix,
             'name' => 'خط الاستلام '.$suffix,
@@ -294,7 +294,7 @@ class VehicleLoadHandoverApiTest extends TestCase
             'load_number' => 'HAND-LOAD-'.$suffix,
             'vehicle_id' => $vehicle->id,
             'route_id' => $route->id,
-            'driver_id' => $driver->id,
+            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $vehicleWarehouse->id,

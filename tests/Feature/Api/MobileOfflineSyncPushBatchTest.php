@@ -32,7 +32,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
     public function test_bootstrap_and_status_expose_batch_push_contract(): void
     {
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $token = $this->tokenFor($user, 'push-contract-device');
 
         $this->withToken($token)
@@ -52,7 +52,7 @@ class MobileOfflineSyncPushBatchTest extends TestCase
 
     public function test_context_mismatch_rejects_the_entire_batch(): void
     {
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $token = $this->tokenFor($user, 'push-context-mismatch-device');
 
         $this->withToken($token)

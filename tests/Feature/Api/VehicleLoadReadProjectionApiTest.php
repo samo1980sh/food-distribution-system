@@ -20,7 +20,7 @@ class VehicleLoadReadProjectionApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_driver_receives_approved_load_counts_and_flat_item_projection(): void
+    public function test_representative_receives_approved_load_counts_and_flat_item_projection(): void
     {
         $area = Area::query()->create([
             'code' => 'AREA-READ',
@@ -46,24 +46,24 @@ class VehicleLoadReadProjectionApiTest extends TestCase
             'type' => 'main',
             'status' => 'active',
         ]);
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $driver = Employee::query()->create([
             'employee_code' => 'DRV-READ',
             'name' => 'سائق القراءة',
             'type' => 'driver',
             'status' => 'active',
-            'user_id' => $user->id,
         ]);
         $representative = Employee::query()->create([
             'employee_code' => 'REP-READ',
             'name' => 'مندوب القراءة',
             'type' => 'sales_representative',
             'status' => 'active',
+            'user_id' => $user->id,
         ]);
         $route = DistributionRoute::query()->create([
             'area_id' => $area->id,
             'vehicle_id' => $vehicle->id,
-            'driver_id' => $driver->id,
+            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'code' => 'ROUTE-READ',
             'name' => 'خط القراءة',
@@ -94,7 +94,7 @@ class VehicleLoadReadProjectionApiTest extends TestCase
             'load_number' => 'LOAD-READ',
             'vehicle_id' => $vehicle->id,
             'route_id' => $route->id,
-            'driver_id' => $driver->id,
+            'driver_id' => null,
             'sales_representative_id' => $representative->id,
             'from_warehouse_id' => $sourceWarehouse->id,
             'to_warehouse_id' => $vehicleWarehouse->id,

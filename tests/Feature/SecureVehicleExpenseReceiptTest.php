@@ -39,8 +39,12 @@ class SecureVehicleExpenseReceiptTest extends TestCase
         Storage::fake('public');
 
         $context = $this->context('PRIVATE');
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
-        $token = $this->tokenFor($driver);
+        $context['route']->update(['driver_id' => null]);
+        $representative = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($representative);
 
         $response = $this
             ->withToken($token)
@@ -50,7 +54,6 @@ class SecureVehicleExpenseReceiptTest extends TestCase
                 'vehicle_id' => $context['vehicle']->id,
                 'warehouse_id' => $context['warehouse']->id,
                 'route_id' => $context['route']->id,
-                'driver_id' => $context['driver']->id,
                 'expense_type' => 'fuel',
                 'amount' => 25,
                 'payment_method' => 'cash',

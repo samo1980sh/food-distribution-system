@@ -10,8 +10,6 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
-use App\Models\DriverDelivery;
-use App\Models\DriverJourney;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
 use App\Models\SalesReturn;
@@ -67,7 +65,6 @@ class MobileOperationalService
     {
         $today = today()->toDateString();
         $financial = $user->can(PermissionName::DASHBOARD_FINANCIAL->value);
-        $legacyDriverWorkspace = MobileAppAccess::usesLegacyDriverWorkspace($user);
 
         $invoiceQuery = SalesInvoice::query()->whereDate('invoice_date', $today);
         $paymentQuery = CustomerPayment::query()->whereDate('payment_date', $today);
@@ -75,11 +72,6 @@ class MobileOperationalService
         $expenseQuery = VehicleExpense::query()->whereDate('expense_date', $today);
         $loadQuery = VehicleLoad::query()->whereDate('load_date', $today);
         $closingQuery = DailyClosing::query()->whereDate('closing_date', $today);
-        $journeyQuery = DriverJourney::query()->whereDate('journey_date', $today);
-        $deliveryQuery = DriverDelivery::query()->whereHas(
-            'journey',
-            fn ($query) => $query->whereDate('journey_date', $today),
-        );
         $salesJourneyQuery = SalesJourney::query()->whereDate('journey_date', $today);
         $salesVisitQuery = SalesVisit::query()->whereHas(
             'journey',
@@ -147,25 +139,6 @@ class MobileOperationalService
                         : null,
                 ]
                 : null,
-            'driver_journeys' => $legacyDriverWorkspace
-                && $user->can(PermissionName::DRIVER_JOURNEYS_VIEW->value)
-                ? [
-                    'total' => (clone $journeyQuery)->count(),
-                    'ready' => (clone $journeyQuery)->where('status', 'ready')->count(),
-                    'in_progress' => (clone $journeyQuery)->where('status', 'in_progress')->count(),
-                    'completed' => (clone $journeyQuery)->where('status', 'completed')->count(),
-                ]
-                : null,
-            'driver_deliveries' => $legacyDriverWorkspace
-                && $user->can(PermissionName::DRIVER_DELIVERIES_VIEW->value)
-                ? [
-                    'total' => (clone $deliveryQuery)->count(),
-                    'pending' => (clone $deliveryQuery)->where('status', 'pending')->count(),
-                    'delivered' => (clone $deliveryQuery)->where('status', 'delivered')->count(),
-                    'partial' => (clone $deliveryQuery)->where('status', 'partial')->count(),
-                    'failed' => (clone $deliveryQuery)->where('status', 'failed')->count(),
-                ]
-                : null,
             'sales_journeys' => $user->can(PermissionName::SALES_JOURNEYS_VIEW->value)
                 ? [
                     'total' => (clone $salesJourneyQuery)->count(),
@@ -197,7 +170,6 @@ class MobileOperationalService
     /** @return array<string, mixed> */
     private function capabilities(User $user): array
     {
-        $legacyDriverWorkspace = MobileAppAccess::usesLegacyDriverWorkspace($user);
         $permissions = [
             'dashboard' => PermissionName::DASHBOARD_VIEW,
             'areas' => PermissionName::AREAS_VIEW,
@@ -213,24 +185,13 @@ class MobileOperationalService
             'sales_returns' => PermissionName::SALES_RETURNS_VIEW,
             'vehicle_expenses' => PermissionName::VEHICLE_EXPENSES_VIEW,
             'daily_closings' => PermissionName::DAILY_CLOSINGS_VIEW,
-            'driver_journeys' => PermissionName::DRIVER_JOURNEYS_VIEW,
-            'driver_deliveries' => PermissionName::DRIVER_DELIVERIES_VIEW,
             'sales_journeys' => PermissionName::SALES_JOURNEYS_VIEW,
             'sales_visits' => PermissionName::SALES_VISITS_VIEW,
         ];
 
         return [
             'read' => collect($permissions)
-                ->map(function (PermissionName $permission, string $module) use (
-                    $user,
-                    $legacyDriverWorkspace,
-                ): bool {
-                    if (in_array($module, ['driver_journeys', 'driver_deliveries'], true)) {
-                        return $legacyDriverWorkspace && $user->can($permission->value);
-                    }
-
-                    return $user->can($permission->value);
-                })
+                ->map(fn (PermissionName $permission): bool => $user->can($permission->value))
                 ->all(),
             'write' => [
                 'enabled' => false,
@@ -248,18 +209,6 @@ class MobileOperationalService
                 'sales_visits' => [
                     'start' => $user->can(PermissionName::SALES_VISITS_START->value),
                     'complete' => $user->can(PermissionName::SALES_VISITS_COMPLETE->value),
-                ],
-                'driver_journeys' => [
-                    'open_today' => $legacyDriverWorkspace
-                        && $user->can(PermissionName::DRIVER_JOURNEYS_OPEN->value),
-                    'start' => $legacyDriverWorkspace
-                        && $user->can(PermissionName::DRIVER_JOURNEYS_START->value),
-                    'finish' => $legacyDriverWorkspace
-                        && $user->can(PermissionName::DRIVER_JOURNEYS_FINISH->value),
-                ],
-                'driver_deliveries' => [
-                    'submit_outcome' => $legacyDriverWorkspace
-                        && $user->can(PermissionName::DRIVER_DELIVERIES_SUBMIT_OUTCOME->value),
                 ],
                 'daily_closings' => [
                     'open_today' => $user->can(PermissionName::DAILY_CLOSINGS_OPEN_FIELD->value),

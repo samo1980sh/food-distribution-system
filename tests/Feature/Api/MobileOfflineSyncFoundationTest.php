@@ -44,7 +44,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
     public function test_incremental_cursor_requires_a_valid_context_key(): void
     {
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $token = $this->tokenFor($user, 'sync-device-validation');
 
         $this->withToken($token)
@@ -65,7 +65,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
 
     public function test_bootstrap_and_status_expose_offline_sync_contract(): void
     {
-        $user = User::factory()->create(['role' => User::ROLE_DRIVER]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
         $token = $this->tokenFor($user, 'sync-device-bootstrap');
 
         $bootstrap = $this->withToken($token)
@@ -90,7 +90,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->assertJsonPath('data.reset_required', false);
     }
 
-    public function test_representative_pull_excludes_legacy_driver_entities_while_driver_pull_retains_them(): void
+    public function test_representative_pull_excludes_retired_legacy_driver_entities(): void
     {
         $context = $this->context('UNIFIED');
         $journey = DriverJourney::query()->create([
@@ -160,28 +160,6 @@ class MobileOfflineSyncFoundationTest extends TestCase
         $this->assertFalse($representativeChanges->contains('entity', 'driver_journeys'));
         $this->assertFalse($representativeChanges->contains('entity', 'driver_deliveries'));
 
-        $driver = User::factory()->create(['role' => User::ROLE_DRIVER]);
-        $context['driver']->update(['user_id' => $driver->id]);
-        $driverToken = $this->tokenFor($driver, 'sync-legacy-driver');
-        $this->app['auth']->forgetGuards();
-        $this->flushHeaders();
-        $driverEntities = $this->withToken($driverToken)
-            ->getJson('/api/v1/operational/sync/status')
-            ->assertOk()
-            ->json('data.entities');
-        $this->assertContains('driver_journeys', $driverEntities);
-        $this->assertContains('driver_deliveries', $driverEntities);
-
-        $driverPull = $this->withToken($driverToken)
-            ->postJson('/api/v1/operational/sync/pull', [
-                'cursor' => 0,
-                'limit' => 500,
-                'context_key' => $this->contextKey($driverToken),
-            ])
-            ->assertOk();
-        $driverChanges = collect($driverPull->json('data.changes'));
-        $this->assertTrue($driverChanges->contains('entity', 'driver_journeys'));
-        $this->assertTrue($driverChanges->contains('entity', 'driver_deliveries'));
     }
 
     public function test_initial_pull_returns_only_permitted_scoped_records(): void

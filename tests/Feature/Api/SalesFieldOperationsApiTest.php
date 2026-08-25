@@ -33,17 +33,17 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonPath('data.field_workspace.legacy', false)
             ->assertJsonPath('data.modules.sales_journeys', true)
             ->assertJsonPath('data.modules.sales_visits', true)
-            ->assertJsonPath('data.modules.driver_journeys', false)
-            ->assertJsonPath('data.modules.driver_deliveries', false)
+            ->assertJsonMissingPath('data.modules.driver_journeys')
+            ->assertJsonMissingPath('data.modules.driver_deliveries')
             ->assertJsonPath('data.write.customers.create', true)
             ->assertJsonPath('data.write.sales_journeys.open_today', true)
             ->assertJsonPath('data.write.sales_journeys.start', true)
             ->assertJsonPath('data.write.sales_journeys.finish', true)
             ->assertJsonPath('data.write.sales_visits.complete', true)
-            ->assertJsonPath('data.write.driver_journeys.open_today', false)
-            ->assertJsonPath('data.write.driver_journeys.start', false)
-            ->assertJsonPath('data.write.driver_journeys.finish', false)
-            ->assertJsonPath('data.write.driver_deliveries.submit_outcome', false);
+            ->assertJsonMissingPath('data.write.driver_journeys.open_today')
+            ->assertJsonMissingPath('data.write.driver_journeys.start')
+            ->assertJsonMissingPath('data.write.driver_journeys.finish')
+            ->assertJsonMissingPath('data.write.driver_deliveries.submit_outcome');
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')

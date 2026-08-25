@@ -163,10 +163,7 @@ final class MobileSyncPushRegistry
 
     public static function supportsFor(User $user, string $entity, string $action): bool
     {
-        if (
-            MobileAppAccess::usesUnifiedRepresentativeWorkspace($user)
-            && in_array($entity, self::LEGACY_DRIVER_ENTITIES, true)
-        ) {
+        if (in_array($entity, self::LEGACY_DRIVER_ENTITIES, true)) {
             return false;
         }
 

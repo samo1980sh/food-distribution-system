@@ -35,7 +35,7 @@ class EnsureMobileApiAccess
             );
         }
 
-        if (! MobileAppAccess::allows($user)) {
+        if (! MobileAppAccess::allowsLogin($user)) {
             $user->currentAccessToken()?->delete();
 
             return ApiResponse::error(

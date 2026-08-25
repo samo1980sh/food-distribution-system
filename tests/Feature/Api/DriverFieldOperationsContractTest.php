@@ -12,31 +12,48 @@ use Tests\TestCase;
 class DriverFieldOperationsContractTest extends TestCase
 {
     #[Test]
-    public function driver_field_entities_are_exposed_for_pull_and_push(): void
+    public function legacy_driver_sync_definitions_are_retained_only_for_retirement_compatibility(): void
     {
         $this->assertArrayHasKey('driver_journeys', MobileSyncEntityRegistry::definitions());
         $this->assertArrayHasKey('driver_deliveries', MobileSyncEntityRegistry::definitions());
-        $this->assertTrue(MobileSyncPushRegistry::supports('driver_journeys', 'start'));
-        $this->assertTrue(MobileSyncPushRegistry::supports('driver_journeys', 'finish'));
-        $this->assertTrue(MobileSyncPushRegistry::supports('driver_deliveries', 'submit_outcome'));
+        $this->assertArrayHasKey('driver_journeys', MobileSyncPushRegistry::definitions());
+        $this->assertArrayHasKey('driver_deliveries', MobileSyncPushRegistry::definitions());
+
+        $service = file_get_contents(
+            app_path('Services/Api/MobileSyncPushOperationService.php'),
+        );
+
+        $this->assertIsString($service);
+        $this->assertStringContainsString('representative_driver_workflow_retired', $service);
+        $this->assertStringNotContainsString('DriverFieldOperationService', $service);
+        $this->assertStringNotContainsString('StartDriverJourneyRequest', $service);
+        $this->assertStringNotContainsString('FinishDriverJourneyRequest', $service);
+        $this->assertStringNotContainsString('SubmitDriverDeliveryOutcomeRequest', $service);
     }
 
     #[Test]
-    public function operational_bootstrap_exposes_driver_field_modules_and_actions(): void
+    public function mobile_bootstrap_and_operational_service_do_not_expose_driver_runtime(): void
     {
         $controller = file_get_contents(
             app_path('Http/Controllers/Api/V1/Operational/OperationalBootstrapController.php'),
         );
+        $service = file_get_contents(
+            app_path('Services/Api/MobileOperationalService.php'),
+        );
 
         $this->assertIsString($controller);
-        $this->assertStringContainsString("'driver_journeys'", $controller);
-        $this->assertStringContainsString("'driver_deliveries'", $controller);
-        $this->assertStringContainsString('DRIVER_JOURNEYS_OPEN', $controller);
-        $this->assertStringContainsString('DRIVER_DELIVERIES_SUBMIT_OUTCOME', $controller);
+        $this->assertIsString($service);
+
+        foreach ([$controller, $service] as $source) {
+            $this->assertStringNotContainsString("'driver_journeys'", $source);
+            $this->assertStringNotContainsString("'driver_deliveries'", $source);
+            $this->assertStringNotContainsString('DRIVER_JOURNEYS_OPEN', $source);
+            $this->assertStringNotContainsString('DRIVER_DELIVERIES_SUBMIT_OUTCOME', $source);
+        }
     }
 
     #[Test]
-    public function driver_role_has_only_the_required_field_operation_mutations(): void
+    public function legacy_driver_permissions_remain_deferred_to_admin_rbac_retirement(): void
     {
         $permissions = RolePermissionMap::all()['driver'];
 

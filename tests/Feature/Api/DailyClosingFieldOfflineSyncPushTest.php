@@ -123,9 +123,14 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
     public function test_a_submitted_section_cannot_be_overwritten_by_a_new_operation(): void
     {
         $context = $this->context();
-        $driver = $this->userForEmployee(User::ROLE_DRIVER, $context['driver']);
-        $token = $this->tokenFor($driver, 'closing-lock-device');
+        $context['route']->update(['driver_id' => null]);
+        $sales = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($sales, 'closing-lock-device');
         $contextKey = $this->contextKey($token);
+        $this->completedJourney($context, $sales);
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/daily-closings/open-today', [

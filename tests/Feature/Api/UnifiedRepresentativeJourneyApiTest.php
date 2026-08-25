@@ -206,10 +206,10 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.field_workspace.unified', true)
             ->assertJsonPath('data.field_workspace.legacy', false)
             ->assertJsonPath('data.sync.registry_version', 8)
-            ->assertJsonPath('data.modules.driver_journeys', false)
-            ->assertJsonPath('data.modules.driver_deliveries', false)
-            ->assertJsonPath('data.write.driver_journeys.open_today', false)
-            ->assertJsonPath('data.write.driver_deliveries.submit_outcome', false);
+            ->assertJsonMissingPath('data.modules.driver_journeys')
+            ->assertJsonMissingPath('data.modules.driver_deliveries')
+            ->assertJsonMissingPath('data.write.driver_journeys.open_today')
+            ->assertJsonMissingPath('data.write.driver_deliveries.submit_outcome');
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')

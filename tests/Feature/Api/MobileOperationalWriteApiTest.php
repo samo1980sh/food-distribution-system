@@ -459,50 +459,6 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_driver_can_submit_and_update_expense_but_cannot_approve_it(): void
-    {
-        $context = $this->context('A');
-        $driver = $this->userForEmployee(
-            User::ROLE_DRIVER,
-            $context['driver'],
-        );
-        $driverToken = $this->tokenFor($driver);
-
-        $created = $this->withToken($driverToken)
-            ->postJson('/api/v1/operational/vehicle-expenses', [
-                'client_reference' => 'driver-expense-0001',
-                'expense_date' => today()->toDateString(),
-                'vehicle_id' => $context['vehicle']->id,
-                'warehouse_id' => $context['warehouse']->id,
-                'route_id' => $context['route']->id,
-                'driver_id' => $context['driver']->id,
-                'expense_type' => 'fuel',
-                'amount' => 15,
-                'payment_method' => 'cash',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.status', 'pending');
-
-        $expenseId = (int) $created->json('data.id');
-
-        $this->withToken($driverToken)
-            ->patchJson('/api/v1/operational/vehicle-expenses/'.$expenseId, [
-                'amount' => 18,
-            ])
-            ->assertOk()
-            ->assertJsonPath('data.amount', '18.00');
-
-        $this->withToken($driverToken)
-            ->postJson('/api/v1/operational/vehicle-expenses/'.$expenseId.'/approve')
-            ->assertForbidden();
-
-        $this->assertDatabaseHas('vehicle_expenses', [
-            'id' => $expenseId,
-            'status' => 'pending',
-            'amount' => 18,
-        ]);
-    }
-
     public function test_representative_owns_scoped_vehicle_expense_with_mobile_sales_semantics(): void
     {
         $first = $this->context('EXP-REP-A');

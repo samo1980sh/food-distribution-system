@@ -5,21 +5,17 @@ namespace App\Services\Api;
 use App\Exceptions\Api\OperationalApiException;
 use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
-use App\Http\Requests\Api\V1\Operational\FinishDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\FinishSalesJourneyRequest;
-use App\Http\Requests\Api\V1\Operational\StartDriverJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingInventoryRequest;
-use App\Http\Requests\Api\V1\Operational\SubmitDriverDeliveryOutcomeRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleExpenseRejectRequest;
 use App\Http\Requests\Api\V1\Operational\VehicleLoadHandoverRequest;
 use App\Models\MobileSyncPushOperation;
 use App\Models\User;
 use App\Services\Distribution\DailyClosingFieldHandoverService;
 use App\Services\Distribution\DailyClosingService;
-use App\Services\Distribution\DriverFieldOperationService;
 use App\Services\Distribution\SalesFieldOperationService;
 use App\Services\Distribution\VehicleExpenseService;
 use App\Services\Distribution\VehicleLoadHandoverService;
@@ -49,7 +45,6 @@ class MobileSyncPushOperationService
         private readonly VehicleExpenseService $vehicleExpenseService,
         private readonly VehicleLoadHandoverService $vehicleLoadHandoverService,
         private readonly DailyClosingFieldHandoverService $dailyClosingFieldHandoverService,
-        private readonly DriverFieldOperationService $driverFieldOperationService,
         private readonly SalesFieldOperationService $salesFieldOperationService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly MobileSyncVersionService $versionService,
@@ -408,48 +403,6 @@ class MobileSyncPushOperationService
             );
             $this->requestValidator->authorize($formRequest);
             $payload = $this->requestValidator->validate($formRequest);
-        } elseif ($entity === 'driver_journeys'
-            && in_array($action, ['start', 'finish'], true)) {
-            $requestClass = $action === 'start'
-                ? StartDriverJourneyRequest::class
-                : FinishDriverJourneyRequest::class;
-            $formRequest = $this->requestValidator->make(
-                $requestClass,
-                'POST',
-                $payload,
-                $user,
-                ['driverJourney' => $record],
-            );
-            Gate::forUser($user)->authorize('view', $record);
-
-            // A delivery outcome touches the parent journey so Pull receives
-            // fresh summary counts. An offline batch may therefore finish a
-            // journey with the version captured before its child outcomes.
-            // Start remains strict; finish relies on the locked journey state
-            // and the pending-delivery guard for safe reconciliation.
-            if ($action === 'start') {
-                $this->ensureVersion(
-                    $request,
-                    $entity,
-                    $record,
-                    (string) $operation['base_version'],
-                );
-            }
-
-            $this->requestValidator->authorize($formRequest);
-            $payload = $this->requestValidator->validate($formRequest);
-        } elseif ($entity === 'driver_deliveries' && $action === 'submit_outcome') {
-            $formRequest = $this->requestValidator->make(
-                SubmitDriverDeliveryOutcomeRequest::class,
-                'POST',
-                $payload,
-                $user,
-                ['driverDelivery' => $record],
-            );
-            Gate::forUser($user)->authorize('view', $record);
-            $this->ensureVersion($request, $entity, $record, (string) $operation['base_version']);
-            $this->requestValidator->authorize($formRequest);
-            $payload = $this->requestValidator->validate($formRequest);
         } elseif ($entity === 'daily_closings'
             && in_array($action, ['submit_inventory', 'submit_cash'], true)) {
             $requestClass = $action === 'submit_inventory'
@@ -481,9 +434,6 @@ class MobileSyncPushOperationService
             ['sales_journeys', 'finish'] => $this->salesFieldOperationService->finish($record, $payload),
             ['sales_visits', 'start'] => $this->salesFieldOperationService->startVisit($record, $payload),
             ['sales_visits', 'complete'] => $this->salesFieldOperationService->completeVisit($record, $payload),
-            ['driver_journeys', 'start'] => $this->driverFieldOperationService->start($record, $payload),
-            ['driver_journeys', 'finish'] => $this->driverFieldOperationService->finish($record, $payload),
-            ['driver_deliveries', 'submit_outcome'] => $this->driverFieldOperationService->submitOutcome($record, $payload),
             ['sales_invoices', 'confirm'] => $this->salesInvoiceService->confirm($record),
             ['sales_invoices', 'cancel'] => $this->salesInvoiceService->cancel($record, $payload['reason']),
             ['customer_payments', 'confirm'] => $this->customerPaymentService->confirm($record),

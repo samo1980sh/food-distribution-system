@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\Area;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -114,6 +115,62 @@ class MobileApiFoundationTest extends TestCase
             ->assertJsonPath('code', 'mobile_role_denied');
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_existing_driver_only_token_is_denied_after_legacy_runtime_retirement(): void
+    {
+        $user = $this->createUser(UserRole::DRIVER);
+
+        $token = $user->createToken(
+            'mobile:android:legacy-driver-retirement',
+            [(string) config('mobile_api.token_ability')],
+        )->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/auth/me')
+            ->assertForbidden()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'mobile_role_denied');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_existing_dual_role_token_remains_valid_as_unified_representative(): void
+    {
+        $user = $this->createUser(UserRole::SALES_REPRESENTATIVE);
+        $user->assignRole(UserRole::DRIVER->value);
+
+        $token = $user->createToken(
+            'mobile:android:dual-role-retirement',
+            [(string) config('mobile_api.token_ability')],
+        )->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath(
+                'data.user.role',
+                UserRole::SALES_REPRESENTATIVE->value,
+            );
+    }
+
+    public function test_retired_driver_operational_routes_are_not_registered(): void
+    {
+        $retiredRoutes = [
+            'api.v1.operational.driver-journeys.open-today',
+            'api.v1.operational.driver-journeys.show',
+            'api.v1.operational.driver-journeys.start',
+            'api.v1.operational.driver-journeys.finish',
+            'api.v1.operational.driver-deliveries.show',
+            'api.v1.operational.driver-deliveries.submit-outcome',
+        ];
+
+        foreach ($retiredRoutes as $routeName) {
+            $this->assertFalse(
+                Route::has($routeName),
+                "Retired legacy driver route is still registered: {$routeName}",
+            );
+        }
     }
 
     public function test_invalid_credentials_use_standard_validation_response(): void

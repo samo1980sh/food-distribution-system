@@ -311,10 +311,6 @@ final class MobileSyncEntityRegistry
     /** @return list<string> */
     public static function entitiesFor(User $user): array
     {
-        if (! MobileAppAccess::usesUnifiedRepresentativeWorkspace($user)) {
-            return self::entities();
-        }
-
         return array_values(array_diff(
             self::entities(),
             self::LEGACY_DRIVER_ENTITIES,
