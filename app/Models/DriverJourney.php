@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OperationSource;
-use App\Services\Distribution\DriverFieldOperationService;
+use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -43,8 +43,8 @@ class DriverJourney extends Model
     {
         static::creating(function (DriverJourney $journey): void {
             if (blank($journey->journey_number)) {
-                $journey->journey_number = app(DriverFieldOperationService::class)
-                    ->generateJourneyNumber();
+                $journey->journey_number = app(DocumentNumberService::class)
+                    ->next('driver_journey', 'JRN');
             }
 
             if (blank($journey->journey_date)) {

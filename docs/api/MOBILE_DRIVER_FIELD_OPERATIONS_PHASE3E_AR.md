@@ -1,4 +1,12 @@
-# Dynamic Phase 3E-1 — عقد عمليات السائق الميدانية
+# Dynamic Phase 3E-1 — عقد عمليات السائق الميدانية المتقاعد
+
+> **الحالة: RETIRED / HISTORICAL COMPATIBILITY**
+>
+> هذا المستند يصف عقدًا تاريخيًا لم يعد متاحًا كمسار تشغيل حالي. أزيلت
+> مسارات Driver المستقلة من Laravel وتطبيق Flutter. دورة العمل الحالية
+> موحدة تحت دور `sales_representative` باستخدام `SalesJourney` والتسليم
+> الفوري للفواتير. تبقى بيانات `DriverJourney` و`DriverDelivery` القديمة
+> للحفظ التاريخي والمصالحة والتوافق مع عمليات المزامنة المتقادمة فقط.
 
 ## الهدف
 
@@ -16,7 +24,7 @@ Flutter الخاصة بالتسليم والمصاريف واجهات Presentati
 - `driver_deliveries`
 - `driver_delivery_items`
 
-## دورة العمل
+## دورة العمل التاريخية
 
 1. `open-today` يفتح رحلة اليوم ويأخذ Snapshot للفواتير المعتمدة التابعة
    للخط والسيارة والمستودع.
@@ -58,7 +66,9 @@ Flutter الخاصة بالتسليم والمصاريف واجهات Presentati
 رفع الصور والتوقيع غير داخل هذه المرحلة لأن ملفات Offline تحتاج قناة رفع
 مستقلة؛ لا يتم ادعاء دعمها قبل تنفيذ ذلك بشكل آمن.
 
-## المسارات
+## المسارات التاريخية المتقاعدة
+
+المسارات التالية غير مسجلة حاليًا ولا تمثل API مدعومًا:
 
 ```text
 POST /api/v1/operational/driver-journeys/open-today
@@ -69,9 +79,9 @@ GET  /api/v1/operational/driver-deliveries/{driverDelivery}
 POST /api/v1/operational/driver-deliveries/{driverDelivery}/submit-outcome
 ```
 
-## المزامنة
+## المزامنة التاريخية
 
-Push Batch يدعم:
+كانت عمليات Push Batch القديمة تستخدم:
 
 ```text
 driver_journeys / start
@@ -79,14 +89,13 @@ driver_journeys / finish
 driver_deliveries / submit_outcome
 ```
 
-وسجل Pull يدعم `driver_journeys` و`driver_deliveries`.
-
-كما يعلن `/api/v1/operational/bootstrap` وحدتي الرحلات والتسليمات، ويعيد
-صلاحيات `open_today` و`start` و`finish` و`submit_outcome` حسب دور المستخدم.
+لا يعرض Pull أو Bootstrap الحالي `driver_journeys` أو `driver_deliveries`.
+تُحفظ تواقيع Push القديمة مؤقتًا حتى تُرفض العمليات المتقادمة بصورة
+حتمية عبر `representative_driver_workflow_retired` بدل فشل تفسير الدفعة.
 
 ## المصاريف والمرتجعات الرسمية
 
-- مصاريف السيارة تستمر عبر عقد `vehicle_expenses` الحالي، وهو يدعم السائق
-  وREST/Offline من دون إنشاء كيان مصاريف موازٍ داخل الرحلة.
+- مصاريف السيارة تستمر عبر عقد `vehicle_expenses` الحالي ضمن مساحة عمل
+  المندوب الموحدة، مع إبقاء مصدر السائق القديم قابلًا للقراءة تاريخيًا.
 - نتيجة التسليم تحفظ الدليل الميداني فقط. إنشاء المرتجع الرسمي يبقى عبر
   `sales_returns` لمندوب المبيعات أو الإدارة وفق الصلاحيات الحالية.

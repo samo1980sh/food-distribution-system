@@ -6,11 +6,31 @@ use App\Enums\PermissionName;
 use App\Support\Api\MobileSyncEntityRegistry;
 use App\Support\Api\MobileSyncPushRegistry;
 use App\Support\Authorization\RolePermissionMap;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DriverFieldOperationsContractTest extends TestCase
 {
+    #[Test]
+    public function executable_driver_runtime_service_and_routes_are_removed(): void
+    {
+        $this->assertFileDoesNotExist(
+            app_path('Services/Distribution/DriverFieldOperationService.php'),
+        );
+
+        $routes = collect(Route::getRoutes()->getRoutes());
+
+        $this->assertFalse($routes->contains(
+            fn ($route): bool => str_contains($route->uri(), 'driver-journeys')
+                || str_contains($route->uri(), 'driver-deliveries'),
+        ));
+        $this->assertFalse($routes->contains(
+            fn ($route): bool => str_contains($route->getActionName(), 'DriverJourney')
+                || str_contains($route->getActionName(), 'DriverDelivery'),
+        ));
+    }
+
     #[Test]
     public function legacy_driver_sync_definitions_are_retained_only_for_retirement_compatibility(): void
     {

@@ -23,6 +23,27 @@ class RepresentativeInvoiceImmediateDeliveryTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_historical_driver_journey_creation_preserves_numbering_and_relationships(): void
+    {
+        $firstContext = $this->context('NUMBER-A', 40);
+        $first = $this->legacyJourney($firstContext, 'ready');
+
+        $this->assertSame('JRN-'.today()->format('Ymd').'-00001', $first->journey_number);
+        $this->assertTrue($first->route->is($firstContext['route']));
+        $this->assertTrue($first->vehicle->is($firstContext['vehicle']));
+        $this->assertTrue($first->warehouse->is($firstContext['warehouse']));
+        $this->assertTrue($first->driver->is($firstContext['driver']));
+        $this->assertTrue(
+            $first->salesRepresentative->is($firstContext['representative']),
+        );
+
+        $this->app['auth']->forgetGuards();
+        $secondContext = $this->context('NUMBER-B', 40);
+        $second = $this->legacyJourney($secondContext, 'completed');
+
+        $this->assertSame('JRN-'.today()->format('Ymd').'-00002', $second->journey_number);
+    }
+
     public function test_cash_invoice_confirms_without_driver_journey_or_delivery(): void
     {
         $context = $this->context('CASH', 40);
