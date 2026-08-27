@@ -374,7 +374,8 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 ]],
             ])
             ->assertCreated()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '10.00');
 
         $expense = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/vehicle-expenses', [
@@ -492,7 +493,8 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         ]);
         $this->assertDatabaseHas('sales_returns', [
             'id' => (int) $salesReturn->json('data.id'),
-            'status' => 'draft',
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
         ]);
         $this->assertDatabaseHas('vehicle_expenses', [
             'id' => (int) $expense->json('data.id'),
@@ -504,7 +506,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
             'product_id' => $context['product']->id,
-            'quantity' => 96,
+            'quantity' => 97,
         ]);
         foreach (['BATCH-A', 'BATCH-B'] as $batchNumber) {
             $this->assertDatabaseHas('stock_balances', [
@@ -526,7 +528,8 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->whereIn('reference_id', $invoiceIds)
             ->count());
         $this->assertSame(0, StockBalance::query()->where('quantity', '<', 0)->count());
-        $this->assertSame(13.0, app(CustomerFinancialService::class)->customerBalance($customer));
+        $this->assertSame(3.0, app(CustomerFinancialService::class)->customerBalance($customer));
+        $this->assertSame(0.0, app(CustomerFinancialService::class)->customerCreditBalance($customer));
         $this->assertDatabaseCount('sales_invoices', 4);
     }
 

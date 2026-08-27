@@ -2,8 +2,9 @@
 
 namespace App\Services\Sales;
 
-use App\Models\SalesReturn;
+use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
+use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Services\Distribution\DailyClosingGuard;
 use App\Services\Inventory\InventoryMovementService;
@@ -25,7 +26,6 @@ class SalesReturnService
             $salesReturn->loadMissing([
                 'items.product',
                 'warehouse',
-                'salesInvoice',
             ]);
 
             if (! $salesReturn->isDraft()) {
@@ -36,16 +36,25 @@ class SalesReturnService
                 throw new RuntimeException('لا يمكن اعتماد مرتجع بدون مواد.');
             }
 
+            if ($salesReturn->sales_invoice_id) {
+                $invoice = SalesInvoice::query()
+                    ->lockForUpdate()
+                    ->findOrFail($salesReturn->sales_invoice_id);
+                $salesReturn->setRelation('salesInvoice', $invoice);
+            } else {
+                $salesReturn->loadMissing('salesInvoice');
+            }
+
+            $this->validateReturnScope($salesReturn);
+            $this->validateAndNormalizeAgainstOriginalInvoice($salesReturn);
             $this->recalculateTotals($salesReturn);
             $salesReturn->refresh();
-            $salesReturn->load([
+            $salesReturn->loadMissing([
                 'items.product',
                 'warehouse',
                 'salesInvoice',
             ]);
 
-            $this->validateReturnScope($salesReturn);
-            $this->validateAgainstOriginalInvoice($salesReturn);
             app(DailyClosingGuard::class)->ensureOpen($salesReturn->return_date, $salesReturn->warehouse_id);
 
             $inventory = app(InventoryMovementService::class);
@@ -172,7 +181,7 @@ class SalesReturnService
         }
     }
 
-    private function validateAgainstOriginalInvoice(SalesReturn $salesReturn): void
+    private function validateAndNormalizeAgainstOriginalInvoice(SalesReturn $salesReturn): void
     {
         if (! $salesReturn->sales_invoice_id) {
             return;
@@ -182,12 +191,16 @@ class SalesReturnService
             throw new RuntimeException('لا يمكن اعتماد مرتجع مرتبط بفاتورة غير معتمدة.');
         }
 
-        $soldQuantities = DB::table('sales_invoice_items')
+        $soldItems = DB::table('sales_invoice_items')
             ->where('sales_invoice_id', $salesReturn->sales_invoice_id)
-            ->selectRaw($this->itemKeyExpression().' as item_key, SUM(quantity) as quantity')
+            ->selectRaw(
+                $this->itemKeyExpression()
+                ." as item_key, SUM(quantity) as quantity, "
+                .'SUM(CASE WHEN line_total > 0 THEN line_total ELSE quantity * unit_price END) as line_total'
+            )
             ->groupBy('item_key')
-            ->pluck('quantity', 'item_key')
-            ->map(fn ($quantity): float => (float) $quantity);
+            ->get()
+            ->keyBy('item_key');
 
         $previousReturnQuantities = DB::table('sales_return_items')
             ->join('sales_returns', 'sales_return_items.sales_return_id', '=', 'sales_returns.id')
@@ -199,26 +212,42 @@ class SalesReturnService
             ->pluck('quantity', 'item_key')
             ->map(fn ($quantity): float => (float) $quantity);
 
-        $currentReturnQuantities = $salesReturn->items
-            ->groupBy(fn ($item): string => $this->itemKey(
+        $currentReturnItems = $salesReturn->items->groupBy(
+            fn (SalesReturnItem $item): string => $this->itemKey(
                 (int) $item->product_id,
                 $item->batch_number,
                 $item->expiry_date?->toDateString(),
-            ))
-            ->map(fn ($items): float => $items->sum(fn ($item): float => (float) $item->quantity));
+            )
+        );
 
-        foreach ($currentReturnQuantities as $itemKey => $returnQuantity) {
-            $soldQuantity = (float) ($soldQuantities[$itemKey] ?? 0);
+        foreach ($currentReturnItems as $itemKey => $items) {
+            $sold = $soldItems->get($itemKey);
+            $soldQuantity = (float) ($sold?->quantity ?? 0);
 
             if ($soldQuantity <= 0) {
                 throw new RuntimeException('يوجد منتج في المرتجع غير موجود ضمن الفاتورة الأصلية.');
             }
 
+            $returnQuantity = (float) $items->sum(
+                fn (SalesReturnItem $item): float => (float) $item->quantity
+            );
             $previousReturned = (float) ($previousReturnQuantities[$itemKey] ?? 0);
             $availableQuantity = $soldQuantity - $previousReturned;
 
-            if ($returnQuantity > $availableQuantity) {
+            if ($returnQuantity - $availableQuantity > 0.0005) {
                 throw new RuntimeException('كمية المرتجع أكبر من الكمية المتاحة للإرجاع في الفاتورة الأصلية.');
+            }
+
+            $soldLineTotal = (float) ($sold?->line_total ?? 0);
+            $effectiveUnitPrice = $soldQuantity > 0
+                ? round($soldLineTotal / $soldQuantity, 2)
+                : 0.0;
+
+            foreach ($items as $item) {
+                $item->forceFill([
+                    'unit_price' => $effectiveUnitPrice,
+                    'line_total' => round((float) $item->quantity * $effectiveUnitPrice, 2),
+                ])->saveQuietly();
             }
         }
     }

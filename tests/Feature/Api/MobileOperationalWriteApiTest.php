@@ -14,6 +14,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
+use App\Services\Sales\CustomerFinancialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -393,24 +394,29 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertJsonValidationErrors(['sales_invoice_id']);
     }
 
-    public function test_field_user_can_create_return_but_cannot_confirm_it(): void
+    public function test_field_user_linked_return_is_auto_confirmed_and_manual_confirm_remains_forbidden(): void
     {
-        $context = $this->context('A');
-        $invoice = $this->confirmedInvoice(
-            $context,
-            'return-source-invoice-0001',
-        );
+        $context = $this->context('RETURN-AUTO');
         $user = $this->userForEmployee(
             User::ROLE_SALES_REPRESENTATIVE,
             $context['representative'],
         );
         $token = $this->tokenFor($user);
 
+        $invoiceResponse = $this->withToken($token)
+            ->postJson('/api/v1/operational/sales-invoices',
+                $this->invoicePayload($context, 'return-source-invoice-0001', 'cash')
+            )
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '20.00');
+        $invoiceId = (int) $invoiceResponse->json('data.id');
+
         $salesReturn = $this->withToken($token)
             ->postJson('/api/v1/operational/sales-returns', [
                 'client_reference' => 'sales-return-0001',
                 'customer_id' => $context['customer']->id,
-                'sales_invoice_id' => $invoice->id,
+                'sales_invoice_id' => $invoiceId,
                 'vehicle_id' => $context['vehicle']->id,
                 'route_id' => $context['route']->id,
                 'warehouse_id' => $context['warehouse']->id,
@@ -420,10 +426,13 @@ class MobileOperationalWriteApiTest extends TestCase
                 'items' => [[
                     'product_id' => $context['product']->id,
                     'quantity' => 1,
-                    'unit_price' => 10,
+                    'unit_price' => 999,
                 ]],
             ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.total_amount', '10.00')
+            ->assertJsonPath('data.items.0.unit_price', '10.00');
 
         $returnId = (int) $salesReturn->json('data.id');
 
@@ -431,8 +440,52 @@ class MobileOperationalWriteApiTest extends TestCase
             ->postJson('/api/v1/operational/sales-returns/'.$returnId.'/confirm')
             ->assertForbidden();
 
+        $invoice = SalesInvoice::query()->findOrFail($invoiceId);
+
+        $this->assertSame('20.00', $invoice->paid_amount);
+        $this->assertSame('0.00', $invoice->remaining_amount);
+        $this->assertSame(10.0, app(CustomerFinancialService::class)->customerCreditBalance($context['customer']));
         $this->assertDatabaseHas('sales_returns', [
             'id' => $returnId,
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
+        ]);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $context['warehouse']->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 19,
+        ]);
+    }
+
+    public function test_field_user_standalone_return_remains_draft_for_exception_review(): void
+    {
+        $context = $this->context('RETURN-EXCEPTION');
+        $user = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+
+        $created = $this->withToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-returns', [
+                'client_reference' => 'standalone-return-0001',
+                'customer_id' => $context['customer']->id,
+                'vehicle_id' => $context['vehicle']->id,
+                'route_id' => $context['route']->id,
+                'warehouse_id' => $context['warehouse']->id,
+                'sales_representative_id' => $context['representative']->id,
+                'return_date' => today()->toDateString(),
+                'return_reason' => 'other',
+                'items' => [[
+                    'product_id' => $context['product']->id,
+                    'quantity' => 1,
+                    'unit_price' => 10,
+                ]],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertDatabaseHas('sales_returns', [
+            'id' => (int) $created->json('data.id'),
             'status' => 'draft',
         ]);
         $this->assertDatabaseHas('stock_balances', [

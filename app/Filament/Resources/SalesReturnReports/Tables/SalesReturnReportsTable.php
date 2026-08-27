@@ -198,7 +198,8 @@ class SalesReturnReportsTable
                         'draft' => 'مسودة',
                         'confirmed' => 'معتمد',
                         'cancelled' => 'ملغي',
-                    ]),
+                    ])
+                    ->default('confirmed'),
 
                 SelectFilter::make('return_reason')
                     ->label('سبب المرتجع')

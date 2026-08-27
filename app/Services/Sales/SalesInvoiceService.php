@@ -202,10 +202,9 @@ class SalesInvoiceService
 
         $netInvoiceAmount = max($netInvoiceAmount, 0);
 
-        if ($paidAmount - $netInvoiceAmount > 0.0001) {
-            throw new RuntimeException('لا يمكن أن تجعل المرتجعات صافي الفاتورة أقل من المبلغ المحصل. يجب إلغاء أو معالجة التحصيل الزائد أولاً.');
-        }
-
+        // A return may legitimately reduce the invoice below the amount already
+        // collected. The excess becomes customer credit instead of blocking the
+        // operational return. CustomerFinancialService exposes that signed balance.
         $invoice->forceFill([
             'paid_amount' => $paidAmount,
             'remaining_amount' => max($netInvoiceAmount - $paidAmount, 0),

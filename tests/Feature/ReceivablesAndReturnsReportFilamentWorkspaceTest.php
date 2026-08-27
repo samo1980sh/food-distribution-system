@@ -109,6 +109,7 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
 
         $this->assertStringContainsString("'reports.sales-returns.print'", $table);
         $this->assertStringContainsString("'reports.sales-returns.print-filtered'", $page);
+        $this->assertStringContainsString("->default('confirmed')", $table);
         $this->assertStringContainsString('->summaries(', $table);
         $this->assertStringContainsString('allTableCondition: true', $table);
     }

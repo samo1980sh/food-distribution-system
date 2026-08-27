@@ -46,34 +46,12 @@ class CustomerFinancialService
 
     public function customerBalance(Customer|int $customer): float
     {
-        $customerId = $customer instanceof Customer
-            ? (int) $customer->getKey()
-            : $customer;
+        return round(max($this->customerNetPosition($customer), 0), 2);
+    }
 
-        $invoiceDebit = (float) SalesInvoice::query()
-            ->where('customer_id', $customerId)
-            ->where('status', 'confirmed')
-            ->sum('total_amount');
-
-        $invoiceCash = (float) SalesInvoice::query()
-            ->where('customer_id', $customerId)
-            ->where('status', 'confirmed')
-            ->sum('invoice_cash_amount');
-
-        $payments = (float) CustomerPayment::query()
-            ->where('customer_id', $customerId)
-            ->where('status', 'confirmed')
-            ->sum('amount');
-
-        $returns = (float) SalesReturn::query()
-            ->where('customer_id', $customerId)
-            ->where('status', 'confirmed')
-            ->sum('total_amount');
-
-        return round(max(
-            $invoiceDebit - $invoiceCash - $payments - $returns,
-            0,
-        ), 2);
+    public function customerCreditBalance(Customer|int $customer): float
+    {
+        return round(max(-$this->customerNetPosition($customer), 0), 2);
     }
 
     public function enforceCreditLimit(
@@ -84,9 +62,10 @@ class CustomerFinancialService
             ->lockForUpdate()
             ->findOrFail($invoice->customer_id);
 
-        $before = $this->customerBalance($customer);
+        $netPositionBefore = $this->customerNetPosition($customer);
+        $before = round(max($netPositionBefore, 0), 2);
         $additionalExposure = max((float) $invoice->remaining_amount, 0);
-        $after = round($before + $additionalExposure, 2);
+        $after = round(max($netPositionBefore + $additionalExposure, 0), 2);
         $creditLimit = round(max((float) $customer->credit_limit, 0), 2);
 
         $invoice->forceFill([
@@ -142,5 +121,34 @@ class CustomerFinancialService
                 : self::DEFAULT_CREDIT_DAYS);
 
         return min(max($days ?: self::DEFAULT_CREDIT_DAYS, 1), 365);
+    }
+
+    private function customerNetPosition(Customer|int $customer): float
+    {
+        $customerId = $customer instanceof Customer
+            ? (int) $customer->getKey()
+            : $customer;
+
+        $invoiceDebit = (float) SalesInvoice::query()
+            ->where('customer_id', $customerId)
+            ->where('status', 'confirmed')
+            ->sum('total_amount');
+
+        $invoiceCash = (float) SalesInvoice::query()
+            ->where('customer_id', $customerId)
+            ->where('status', 'confirmed')
+            ->sum('invoice_cash_amount');
+
+        $payments = (float) CustomerPayment::query()
+            ->where('customer_id', $customerId)
+            ->where('status', 'confirmed')
+            ->sum('amount');
+
+        $returns = (float) SalesReturn::query()
+            ->where('customer_id', $customerId)
+            ->where('status', 'confirmed')
+            ->sum('total_amount');
+
+        return round($invoiceDebit - $invoiceCash - $payments - $returns, 2);
     }
 }

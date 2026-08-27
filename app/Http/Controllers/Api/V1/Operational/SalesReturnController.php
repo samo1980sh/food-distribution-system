@@ -73,7 +73,11 @@ class SalesReturnController extends Controller
             return $this->recordResponse(
                 $request,
                 $result->record,
-                $result->replayed ? 'تمت إعادة المرتجع المسجل سابقاً.' : 'تم إنشاء مسودة مرتجع المبيعات.',
+                $result->replayed
+                    ? 'تمت إعادة المرتجع المسجل سابقاً.'
+                    : ($result->record->isConfirmed()
+                        ? 'تم تسجيل واعتماد المرتجع الطبيعي مباشرة.'
+                        : 'تم تسجيل المرتجع الاستثنائي بانتظار المراجعة.'),
                 $result->replayed ? 200 : 201,
                 ['idempotency' => ['replayed' => $result->replayed]],
             );

@@ -16,6 +16,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
+use App\Services\Sales\CustomerFinancialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -367,6 +368,72 @@ class MobileOfflineSyncPushBatchTest extends TestCase
             'paid_amount' => 7,
             'remaining_amount' => 13,
         ]);
+    }
+
+    public function test_offline_invoice_linked_return_is_auto_confirmed_and_restores_stock(): void
+    {
+        $context = $this->context('RETURN-AUTO');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-return-autopost-device');
+        $contextKey = $this->contextKey($token);
+
+        $invoiceResponse = $this->push(
+            $token,
+            $contextKey,
+            'batch-return-invoice-0001',
+            [[
+                'operation_id' => 'operation-return-invoice-0001',
+                'entity' => 'sales_invoices',
+                'action' => 'create',
+                'payload' => $this->invoicePayload($context, 'push-return-invoice-0001'),
+            ]],
+        )->assertOk()
+            ->assertJsonPath('data.results.0.record.status', 'confirmed');
+
+        $invoiceId = (int) $invoiceResponse->json('data.results.0.record_id');
+
+        $returnResponse = $this->push(
+            $token,
+            $contextKey,
+            'batch-return-autopost-0001',
+            [[
+                'operation_id' => 'operation-return-autopost-0001',
+                'entity' => 'sales_returns',
+                'action' => 'create',
+                'payload' => [
+                    'client_reference' => 'push-return-autopost-0001',
+                    'customer_id' => $context['customer']->id,
+                    'sales_invoice_id' => $invoiceId,
+                    'vehicle_id' => $context['vehicle']->id,
+                    'route_id' => $context['route']->id,
+                    'warehouse_id' => $context['warehouse']->id,
+                    'sales_representative_id' => $context['representative']->id,
+                    'return_date' => today()->toDateString(),
+                    'return_reason' => 'damaged',
+                    'items' => [[
+                        'product_id' => $context['product']->id,
+                        'quantity' => 1,
+                        'unit_price' => 999,
+                    ]],
+                ],
+            ]],
+        )->assertOk()
+            ->assertJsonPath('data.summary.applied', 1)
+            ->assertJsonPath('data.results.0.record.status', 'confirmed')
+            ->assertJsonPath('data.results.0.record.total_amount', '10.00')
+            ->assertJsonPath('data.results.0.record.items.0.unit_price', '10.00');
+
+        $this->assertDatabaseHas('sales_returns', [
+            'id' => (int) $returnResponse->json('data.results.0.record_id'),
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
+        ]);
+        $this->assertDatabaseHas('stock_balances', [
+            'warehouse_id' => $context['warehouse']->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 19,
+        ]);
+        $this->assertSame(10.0, app(CustomerFinancialService::class)->customerCreditBalance($context['customer']));
     }
 
     public function test_partial_batch_keeps_valid_operation_and_reports_validation_failure(): void

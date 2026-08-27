@@ -180,28 +180,36 @@ class MobileOperationalWriteService
 
     public function createSalesReturn(array $data): MobileWriteResult
     {
-        $items = Arr::pull($data, 'items', []);
+        // Invoice-linked field returns are normal operational postings. Standalone
+        // returns remain drafts because they require an administrative exception review.
+        return DB::transaction(function () use ($data): MobileWriteResult {
+            $items = Arr::pull($data, 'items', []);
 
-        return $this->idempotentCreate(
-            SalesReturn::class,
-            [...$data, 'items' => $items],
-            function (string $payloadHash) use ($data, $items): SalesReturn {
-                $salesReturn = new SalesReturn([
-                    ...$data,
-                    'created_by' => Auth::id(),
-                    'client_payload_hash' => $payloadHash,
-                    'operation_source' => OperationSource::MOBILE_SALES,
-                ]);
-                $this->salesFieldOperationService->assertDocumentVisitContext($salesReturn);
-                $salesReturn->save();
+            return $this->idempotentCreate(
+                SalesReturn::class,
+                [...$data, 'items' => $items],
+                function (string $payloadHash) use ($data, $items): SalesReturn {
+                    $salesReturn = new SalesReturn([
+                        ...$data,
+                        'created_by' => Auth::id(),
+                        'client_payload_hash' => $payloadHash,
+                        'operation_source' => OperationSource::MOBILE_SALES,
+                    ]);
+                    $this->salesFieldOperationService->assertDocumentVisitContext($salesReturn);
+                    $salesReturn->save();
 
-                $salesReturn->items()->createMany($items);
-                $this->salesReturnService->recalculateTotals($salesReturn);
-                $this->salesFieldOperationService->touchVisitForDocument($salesReturn);
+                    $salesReturn->items()->createMany($items);
+                    $this->salesReturnService->recalculateTotals($salesReturn);
+                    $this->salesFieldOperationService->touchVisitForDocument($salesReturn);
 
-                return $salesReturn->refresh();
-            },
-        );
+                    if (! $salesReturn->sales_invoice_id) {
+                        return $salesReturn->refresh();
+                    }
+
+                    return $this->salesReturnService->confirm($salesReturn->refresh());
+                },
+            );
+        });
     }
 
     public function updateSalesReturn(SalesReturn $salesReturn, array $data): SalesReturn

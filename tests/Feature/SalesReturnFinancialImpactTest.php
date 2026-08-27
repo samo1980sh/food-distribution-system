@@ -9,10 +9,10 @@ use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnItem;
 use App\Models\Warehouse;
+use App\Services\Sales\CustomerFinancialService;
 use App\Services\Sales\SalesReturnService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 use Tests\TestCase;
 
 class SalesReturnFinancialImpactTest extends TestCase
@@ -34,7 +34,7 @@ class SalesReturnFinancialImpactTest extends TestCase
         $this->assertSame('0.00', $invoice->paid_amount);
     }
 
-    public function test_confirmed_return_cannot_make_invoice_net_amount_less_than_paid_amount(): void
+    public function test_confirmed_return_creates_customer_credit_when_invoice_is_overpaid(): void
     {
         [$invoice, $product] = $this->createConfirmedCreditInvoice([
             'invoice_cash_amount' => 70,
@@ -45,10 +45,33 @@ class SalesReturnFinancialImpactTest extends TestCase
         $salesReturn = $this->createSalesReturn($invoice, $product, quantity: 2);
         $this->prepareStockMovementSequence();
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('لا يمكن أن تجعل المرتجعات صافي الفاتورة أقل من المبلغ المحصل.');
-
         app(SalesReturnService::class)->confirm($salesReturn);
+
+        $invoice->refresh();
+
+        $this->assertSame('70.00', $invoice->paid_amount);
+        $this->assertSame('0.00', $invoice->remaining_amount);
+        $this->assertSame(0.0, app(CustomerFinancialService::class)->customerBalance($invoice->customer_id));
+        $this->assertSame(10.0, app(CustomerFinancialService::class)->customerCreditBalance($invoice->customer_id));
+    }
+
+    public function test_linked_return_uses_original_invoice_effective_price(): void
+    {
+        [$invoice, $product] = $this->createConfirmedCreditInvoice();
+
+        $salesReturn = $this->createSalesReturn($invoice, $product, quantity: 1);
+        $salesReturn->items()->firstOrFail()->forceFill([
+            'unit_price' => 999,
+            'line_total' => 999,
+        ])->saveQuietly();
+        $this->prepareStockMovementSequence();
+
+        $confirmed = app(SalesReturnService::class)->confirm($salesReturn);
+        $item = $confirmed->items()->firstOrFail();
+
+        $this->assertSame('20.00', $item->unit_price);
+        $this->assertSame('20.00', $item->line_total);
+        $this->assertSame('20.00', $confirmed->refresh()->total_amount);
     }
 
     /**
