@@ -71,7 +71,7 @@ class CustomerPaymentController extends Controller
             return $this->recordResponse(
                 $request,
                 $result->record,
-                $result->replayed ? 'تمت إعادة التحصيل المسجل سابقاً.' : 'تم إنشاء مسودة تحصيل العميل.',
+                $result->replayed ? 'تمت إعادة التحصيل المسجل سابقاً.' : 'تم تسجيل واعتماد تحصيل العميل مباشرة.',
                 $result->replayed ? 200 : 201,
                 ['idempotency' => ['replayed' => $result->replayed]],
             );

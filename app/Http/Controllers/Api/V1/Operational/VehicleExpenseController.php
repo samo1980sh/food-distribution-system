@@ -71,7 +71,7 @@ class VehicleExpenseController extends Controller
             return $this->recordResponse(
                 $request,
                 $result->record,
-                $result->replayed ? 'تمت إعادة المصروف المسجل سابقاً.' : 'تم إنشاء مصروف السيارة قيد المراجعة.',
+                $result->replayed ? 'تمت إعادة المصروف المسجل سابقاً.' : 'تم تسجيل واعتماد مصروف السيارة مباشرة.',
                 $result->replayed ? 200 : 201,
                 ['idempotency' => ['replayed' => $result->replayed]],
             );

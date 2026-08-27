@@ -353,7 +353,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'amount' => 3,
             ])
             ->assertCreated()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'confirmed');
 
         $salesReturn = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-returns', [
@@ -389,7 +389,8 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
-            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.expense_type', 'fuel')
+            ->assertJsonPath('data.status', 'approved')
             ->assertJsonPath('data.operation_source', 'mobile_sales');
 
         $this->withFreshToken($token)
@@ -405,7 +406,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
-            ->assertJsonPath('data.expected_cash_amount', '424.00');
+            ->assertJsonPath('data.expected_cash_amount', '412.00');
         $closingId = (int) $closing->json('data.id');
         $inventoryItems = collect($closing->json('data.items'))
             ->map(fn (array $item): array => [
@@ -457,17 +458,17 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-cash", [
-                'actual_cash_amount' => 425,
+                'actual_cash_amount' => 413,
             ])
             ->assertConflict()
             ->assertJsonPath('code', 'business_rule_violation');
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/daily-closings/{$closingId}/submit-cash", [
-                'actual_cash_amount' => 424,
+                'actual_cash_amount' => 412,
             ])
             ->assertOk()
-            ->assertJsonPath('data.expected_cash_amount', '424.00')
-            ->assertJsonPath('data.actual_cash_amount', '424.00')
+            ->assertJsonPath('data.expected_cash_amount', '412.00')
+            ->assertJsonPath('data.actual_cash_amount', '412.00')
             ->assertJsonPath('data.cash_difference', '0.00')
             ->assertJsonPath('data.field_handover.complete', true)
             ->assertJsonPath('data.status', 'confirmed')
@@ -479,14 +480,15 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'sales_representative_id' => $context['representative']->id,
             'inventory_submitted_by' => $user->id,
             'cash_submitted_by' => $user->id,
-            'expected_cash_amount' => 424,
-            'actual_cash_amount' => 424,
+            'expected_cash_amount' => 412,
+            'actual_cash_amount' => 412,
             'status' => 'confirmed',
             'confirmed_by' => $user->id,
         ]);
         $this->assertDatabaseHas('customer_payments', [
             'id' => (int) $payment->json('data.id'),
-            'status' => 'draft',
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
         ]);
         $this->assertDatabaseHas('sales_returns', [
             'id' => (int) $salesReturn->json('data.id'),
@@ -495,7 +497,9 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->assertDatabaseHas('vehicle_expenses', [
             'id' => (int) $expense->json('data.id'),
             'sales_representative_id' => $context['representative']->id,
-            'status' => 'pending',
+            'expense_type' => 'fuel',
+            'status' => 'approved',
+            'approved_by' => $user->id,
         ]);
         $this->assertDatabaseHas('stock_balances', [
             'warehouse_id' => $context['warehouse']->id,
@@ -522,7 +526,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->whereIn('reference_id', $invoiceIds)
             ->count());
         $this->assertSame(0, StockBalance::query()->where('quantity', '<', 0)->count());
-        $this->assertSame(16.0, app(CustomerFinancialService::class)->customerBalance($customer));
+        $this->assertSame(13.0, app(CustomerFinancialService::class)->customerBalance($customer));
         $this->assertDatabaseCount('sales_invoices', 4);
     }
 

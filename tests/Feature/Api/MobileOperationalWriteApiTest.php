@@ -324,7 +324,7 @@ class MobileOperationalWriteApiTest extends TestCase
         ]);
     }
 
-    public function test_field_user_can_create_payment_but_cannot_confirm_it(): void
+    public function test_field_user_payment_is_auto_confirmed_and_manual_confirm_remains_forbidden(): void
     {
         $context = $this->context('A');
         $invoice = $this->confirmedInvoice(
@@ -347,7 +347,8 @@ class MobileOperationalWriteApiTest extends TestCase
                 'amount' => 7,
                 'notes' => 'Field payment',
             ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed');
 
         $paymentId = (int) $payment->json('data.id');
 
@@ -356,11 +357,12 @@ class MobileOperationalWriteApiTest extends TestCase
             ->assertForbidden();
 
         $invoice->refresh();
-        $this->assertSame('0.00', $invoice->paid_amount);
-        $this->assertSame('20.00', $invoice->remaining_amount);
+        $this->assertSame('7.00', $invoice->paid_amount);
+        $this->assertSame('13.00', $invoice->remaining_amount);
         $this->assertDatabaseHas('customer_payments', [
             'id' => $paymentId,
-            'status' => 'draft',
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
         ]);
     }
 
@@ -473,7 +475,9 @@ class MobileOperationalWriteApiTest extends TestCase
             ->postJson('/api/v1/operational/vehicle-expenses', $payload)
             ->assertCreated()
             ->assertJsonPath('data.sales_representative.id', $first['representative']->id)
+            ->assertJsonPath('data.expense_type', 'fuel')
             ->assertJsonPath('data.payment_method', 'cash')
+            ->assertJsonPath('data.status', 'approved')
             ->assertJsonPath('data.operation_source', 'mobile_sales');
 
         $expenseId = (int) $created->json('data.id');
@@ -490,7 +494,10 @@ class MobileOperationalWriteApiTest extends TestCase
             'vehicle_id' => $first['vehicle']->id,
             'warehouse_id' => $first['warehouse']->id,
             'sales_representative_id' => $first['representative']->id,
+            'expense_type' => 'fuel',
             'payment_method' => 'cash',
+            'status' => 'approved',
+            'approved_by' => $user->id,
             'operation_source' => 'mobile_sales',
         ]);
     }

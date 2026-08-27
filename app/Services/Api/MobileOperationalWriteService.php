@@ -15,6 +15,8 @@ use App\Models\VehicleExpense;
 use App\Services\Distribution\DailyClosingService;
 use App\Services\Distribution\FieldRouteAssignmentResolver;
 use App\Services\Distribution\SalesFieldOperationService;
+use App\Services\Distribution\VehicleExpenseService;
+use App\Services\Sales\CustomerPaymentService;
 use App\Services\Sales\SalesInvoiceService;
 use App\Services\Sales\SalesReturnService;
 use App\Services\Support\DocumentNumberService;
@@ -33,7 +35,9 @@ class MobileOperationalWriteService
 {
     public function __construct(
         private readonly SalesInvoiceService $salesInvoiceService,
+        private readonly CustomerPaymentService $customerPaymentService,
         private readonly SalesReturnService $salesReturnService,
+        private readonly VehicleExpenseService $vehicleExpenseService,
         private readonly DailyClosingService $dailyClosingService,
         private readonly SalesFieldOperationService $salesFieldOperationService,
         private readonly FieldRouteAssignmentResolver $fieldRouteAssignmentResolver,
@@ -140,23 +144,26 @@ class MobileOperationalWriteService
 
     public function createCustomerPayment(array $data): MobileWriteResult
     {
-        return $this->idempotentCreate(
-            CustomerPayment::class,
-            $data,
-            function (string $payloadHash) use ($data): CustomerPayment {
-                $payment = new CustomerPayment([
-                    ...$data,
-                    'created_by' => Auth::id(),
-                    'client_payload_hash' => $payloadHash,
-                    'operation_source' => OperationSource::MOBILE_SALES,
-                ]);
-                $this->salesFieldOperationService->assertDocumentVisitContext($payment);
-                $payment->save();
-                $this->salesFieldOperationService->touchVisitForDocument($payment);
+        // Normal field collections are operational postings, not admin approval requests.
+        return DB::transaction(function () use ($data): MobileWriteResult {
+            return $this->idempotentCreate(
+                CustomerPayment::class,
+                $data,
+                function (string $payloadHash) use ($data): CustomerPayment {
+                    $payment = new CustomerPayment([
+                        ...$data,
+                        'created_by' => Auth::id(),
+                        'client_payload_hash' => $payloadHash,
+                        'operation_source' => OperationSource::MOBILE_SALES,
+                    ]);
+                    $this->salesFieldOperationService->assertDocumentVisitContext($payment);
+                    $payment->save();
+                    $this->salesFieldOperationService->touchVisitForDocument($payment);
 
-                return $payment;
-            },
-        );
+                    return $this->customerPaymentService->confirm($payment);
+                },
+            );
+        });
     }
 
     public function updateCustomerPayment(CustomerPayment $payment, array $data): CustomerPayment
@@ -226,29 +233,34 @@ class MobileOperationalWriteService
         unset($data['receipt'], $data['remove_receipt']);
         $data = $this->representativeExpenseData($data);
 
-        return $this->idempotentCreate(
-            VehicleExpense::class,
-            $this->payloadWithFileFingerprint($data, $receipt),
-            function (string $payloadHash) use ($data, $receipt): VehicleExpense {
-                $receiptPath = $this->vehicleExpenseReceipts->store($receipt);
+        // Normal representative expenses are posted immediately; admin review is for exceptions.
+        return DB::transaction(function () use ($data, $receipt): MobileWriteResult {
+            return $this->idempotentCreate(
+                VehicleExpense::class,
+                $this->payloadWithFileFingerprint($data, $receipt),
+                function (string $payloadHash) use ($data, $receipt): VehicleExpense {
+                    $receiptPath = $this->vehicleExpenseReceipts->store($receipt);
 
-                try {
-                    return VehicleExpense::query()->create([
-                        ...$data,
-                        'receipt_path' => $receiptPath,
-                        'created_by' => Auth::id(),
-                        'client_payload_hash' => $payloadHash,
-                        'operation_source' => $this->vehicleExpenseOperationSource($data),
-                    ]);
-                } catch (Throwable $exception) {
-                    if ($receiptPath) {
-                        $this->vehicleExpenseReceipts->delete($receiptPath);
+                    try {
+                        $expense = VehicleExpense::query()->create([
+                            ...$data,
+                            'receipt_path' => $receiptPath,
+                            'created_by' => Auth::id(),
+                            'client_payload_hash' => $payloadHash,
+                            'operation_source' => $this->vehicleExpenseOperationSource($data),
+                        ]);
+
+                        return $this->vehicleExpenseService->approve($expense);
+                    } catch (Throwable $exception) {
+                        if ($receiptPath) {
+                            $this->vehicleExpenseReceipts->delete($receiptPath);
+                        }
+
+                        throw $exception;
                     }
-
-                    throw $exception;
-                }
-            },
-        );
+                },
+            );
+        });
     }
 
     public function updateVehicleExpense(

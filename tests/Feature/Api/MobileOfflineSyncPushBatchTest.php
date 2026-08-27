@@ -285,6 +285,90 @@ class MobileOfflineSyncPushBatchTest extends TestCase
         $this->assertSame('Server update', $invoice->refresh()->notes);
     }
 
+    public function test_offline_payment_and_expense_creates_are_auto_posted(): void
+    {
+        $context = $this->context('AUTOPOST');
+        $user = $this->fieldUserForContext($context);
+        $token = $this->tokenFor($user, 'push-autopost-device');
+        $contextKey = $this->contextKey($token);
+
+        $invoiceResponse = $this->push(
+            $token,
+            $contextKey,
+            'batch-autopost-invoice-0001',
+            [[
+                'operation_id' => 'operation-autopost-invoice-0001',
+                'entity' => 'sales_invoices',
+                'action' => 'create',
+                'payload' => [
+                    ...$this->invoicePayload($context, 'push-autopost-invoice-0001'),
+                    'payment_type' => 'credit',
+                    'paid_amount' => 0,
+                ],
+            ]],
+        )->assertOk()
+            ->assertJsonPath('data.results.0.record.status', 'confirmed');
+
+        $invoiceId = (int) $invoiceResponse->json('data.results.0.record_id');
+
+        $this->push(
+            $token,
+            $contextKey,
+            'batch-autopost-financials-0001',
+            [
+                [
+                    'operation_id' => 'operation-autopost-payment-0001',
+                    'entity' => 'customer_payments',
+                    'action' => 'create',
+                    'payload' => [
+                        'client_reference' => 'push-autopost-payment-0001',
+                        'customer_id' => $context['customer']->id,
+                        'sales_invoice_id' => $invoiceId,
+                        'payment_date' => today()->toDateString(),
+                        'payment_method' => 'cash',
+                        'amount' => 7,
+                    ],
+                ],
+                [
+                    'operation_id' => 'operation-autopost-expense-0001',
+                    'entity' => 'vehicle_expenses',
+                    'action' => 'create',
+                    'payload' => [
+                        'client_reference' => 'push-autopost-expense-0001',
+                        'expense_date' => today()->toDateString(),
+                        'vehicle_id' => $context['vehicle']->id,
+                        'warehouse_id' => $context['warehouse']->id,
+                        'route_id' => $context['route']->id,
+                        'expense_type' => 'fuel',
+                        'amount' => 3,
+                        'payment_method' => 'cash',
+                    ],
+                ],
+            ],
+        )->assertOk()
+            ->assertJsonPath('data.summary.applied', 2)
+            ->assertJsonPath('data.results.0.record.status', 'confirmed')
+            ->assertJsonPath('data.results.1.record.status', 'approved')
+            ->assertJsonPath('data.results.1.record.expense_type', 'fuel');
+
+        $this->assertDatabaseHas('customer_payments', [
+            'client_reference' => 'push-autopost-payment-0001',
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
+        ]);
+        $this->assertDatabaseHas('vehicle_expenses', [
+            'client_reference' => 'push-autopost-expense-0001',
+            'expense_type' => 'fuel',
+            'status' => 'approved',
+            'approved_by' => $user->id,
+        ]);
+        $this->assertDatabaseHas('sales_invoices', [
+            'id' => $invoiceId,
+            'paid_amount' => 7,
+            'remaining_amount' => 13,
+        ]);
+    }
+
     public function test_partial_batch_keeps_valid_operation_and_reports_validation_failure(): void
     {
         $context = $this->context('A');
