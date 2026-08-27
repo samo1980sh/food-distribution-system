@@ -25,6 +25,7 @@ class WarehouseReplenishmentService
         ?string $expiryDate = null,
         ?string $notes = null,
         CarbonInterface|string|null $movementDate = null,
+        ?object $reference = null,
     ): StockMovement {
         $this->ensureFixedActiveWarehouse($warehouse, 'مستودع التوريد');
         $this->ensureWarehouseAllowed($warehouse);
@@ -41,6 +42,7 @@ class WarehouseReplenishmentService
             unitCost: $unitCost,
             movementType: 'stock_receipt',
             notes: trim((string) $notes),
+            reference: $reference,
             movementDate: $movementDate,
         );
     }
