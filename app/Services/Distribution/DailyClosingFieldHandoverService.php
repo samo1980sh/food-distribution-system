@@ -164,7 +164,9 @@ class DailyClosingFieldHandoverService
                 'inventory_submitted_at' => now(),
             ])->save();
 
-            return $closing->refresh()->load($this->relations());
+            $closing = $this->dailyClosingService->finalizeFieldIfBalanced($closing->refresh());
+
+            return $closing->load($this->relations());
         });
     }
 
@@ -207,7 +209,9 @@ class DailyClosingFieldHandoverService
                 'cash_submitted_at' => now(),
             ])->save();
 
-            return $closing->refresh()->load($this->relations());
+            $closing = $this->dailyClosingService->finalizeFieldIfBalanced($closing->refresh());
+
+            return $closing->load($this->relations());
         });
     }
 

@@ -48,13 +48,13 @@ final class DailyClosingActions
     public static function confirm(): Action
     {
         return Action::make('confirm')
-            ->label('اعتماد الإغلاق')
+            ->label('مراجعة واعتماد الإغلاق')
             ->icon('heroicon-o-check-circle')
             ->color('success')
             ->requiresConfirmation()
-            ->modalHeading('اعتماد إغلاق اليوم')
+            ->modalHeading('مراجعة واعتماد إغلاق اليوم')
             ->modalDescription('يجب إدخال الجرد الفعلي لجميع المواد ومراجعة فرق الصندوق قبل المتابعة. سيُثبت النظام اللقطة ويمنع العمليات اللاحقة على التاريخ والمستودع.')
-            ->modalSubmitActionLabel('اعتماد الإغلاق نهائيًا')
+            ->modalSubmitActionLabel('اعتماد الإغلاق الاستثنائي')
             ->visible(fn (DailyClosing $record): bool => auth()->user()?->can('confirm', $record) === true)
             ->action(function (DailyClosing $record): void {
                 try {

@@ -104,7 +104,10 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
             ->assertJsonPath(
                 'data.results.0.record.actions.can_submit_cash',
                 false,
-            );
+            )
+            ->assertJsonPath('data.results.0.record.status', 'confirmed')
+            ->assertJsonPath('data.results.0.record.workflow_status', 'closed')
+            ->assertJsonPath('data.results.0.record.requires_admin_review', false);
 
         $this->assertMatchesRegularExpression(
             '/^c:[1-9][0-9]*$/',
@@ -115,7 +118,8 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
             'id' => $closingId,
             'inventory_submitted_by' => $sales->id,
             'cash_submitted_by' => $sales->id,
-            'status' => 'draft',
+            'status' => 'confirmed',
+            'confirmed_by' => $sales->id,
         ]);
     }
 

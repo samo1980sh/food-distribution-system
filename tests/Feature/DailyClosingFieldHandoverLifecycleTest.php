@@ -24,11 +24,10 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_field_handover_remains_draft_until_existing_admin_confirmation(): void
+    public function test_balanced_field_handover_auto_confirms_without_admin_intervention(): void
     {
         $context = $this->context();
         $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
-        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
         $handover = app(DailyClosingFieldHandoverService::class);
         $this->completedJourney($context, $sales);
 
@@ -44,38 +43,17 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
         $this->assertTrue($closing->inventorySubmitted());
         $this->assertFalse($closing->cashSubmitted());
         $this->assertSame('draft', $closing->status);
+        $this->assertSame('in_progress', $closing->workflowStatus());
 
-        app(DailyClosingGuard::class)->ensureOpen(
-            today()->toDateString(),
-            $context['warehouse']->id,
-        );
-
-        $this->actingAs($manager);
-
-        try {
-            app(DailyClosingService::class)->confirm($closing);
-            $this->fail('Field closing must not be confirmed before both sections are submitted.');
-        } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('تسليم جرد السيارة والنقد', $exception->getMessage());
-        }
-
-        $this->actingAs($sales);
         $closing = $handover->submitCash($closing->fresh(), $sales, [
             'actual_cash_amount' => 0,
         ]);
 
         $this->assertTrue($closing->fieldHandoverComplete());
-        $this->assertSame('draft', $closing->status);
-
-        app(DailyClosingGuard::class)->ensureOpen(
-            today()->toDateString(),
-            $context['warehouse']->id,
-        );
-
-        $this->actingAs($manager);
-        $closing = app(DailyClosingService::class)->confirm($closing);
-
         $this->assertSame('confirmed', $closing->status);
+        $this->assertSame('closed', $closing->workflowStatus());
+        $this->assertFalse($closing->requiresAdministrativeReview());
+        $this->assertSame($sales->id, (int) $closing->confirmed_by);
         $this->assertNotNull($closing->confirmed_at);
 
         $this->expectException(RuntimeException::class);
@@ -83,6 +61,41 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             today()->toDateString(),
             $context['warehouse']->id,
         );
+    }
+
+    public function test_field_handover_with_variance_waits_for_exception_review(): void
+    {
+        $context = $this->context();
+        $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
+        $manager = User::factory()->create(['role' => User::ROLE_MANAGER]);
+        $handover = app(DailyClosingFieldHandoverService::class);
+        $this->completedJourney($context, $sales);
+
+        $this->actingAs($sales);
+        $closing = $handover->openToday($sales, $context['route']->id);
+        $closing = $handover->submitInventory($closing, $sales, [
+            'items' => [[
+                'product_id' => $context['product']->id,
+                'actual_quantity' => 19,
+                'notes' => 'فرق جرد مفسر للاختبار',
+            ]],
+        ]);
+        $closing = $handover->submitCash($closing->fresh(), $sales, [
+            'actual_cash_amount' => 0,
+        ]);
+
+        $this->assertTrue($closing->fieldHandoverComplete());
+        $this->assertSame('draft', $closing->status);
+        $this->assertSame('review_required', $closing->workflowStatus());
+        $this->assertTrue($closing->requiresAdministrativeReview());
+        $this->assertNull($closing->confirmed_at);
+
+        $this->actingAs($manager);
+        $closing = app(DailyClosingService::class)->confirm($closing);
+
+        $this->assertSame('confirmed', $closing->status);
+        $this->assertSame('closed', $closing->workflowStatus());
+        $this->assertSame($manager->id, (int) $closing->confirmed_by);
     }
 
     /** @return array<string, mixed> */

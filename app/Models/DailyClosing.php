@@ -229,4 +229,62 @@ class DailyClosing extends Model
     {
         return $this->inventorySubmitted() && $this->cashSubmitted();
     }
+
+    public function hasInventoryDifference(): bool
+    {
+        if ($this->relationLoaded('items')) {
+            return $this->items->contains(
+                fn (DailyClosingItem $item): bool => abs((float) $item->difference_quantity) >= 0.0005,
+            );
+        }
+
+        return $this->items()
+            ->whereRaw('ABS(difference_quantity) >= 0.0005')
+            ->exists();
+    }
+
+    public function hasCashDifference(): bool
+    {
+        return abs((float) $this->cash_difference) >= 0.005;
+    }
+
+    public function hasFieldVariance(): bool
+    {
+        return $this->hasInventoryDifference() || $this->hasCashDifference();
+    }
+
+    public function requiresAdministrativeReview(): bool
+    {
+        // Balanced field handovers are auto-confirmed by the handover service.
+        // Therefore a completed field handover that is still draft is, by
+        // definition, an exceptional closing waiting for administrative review.
+        return $this->isFieldWorkflow()
+            && $this->isDraft()
+            && $this->fieldHandoverComplete();
+    }
+
+    public function workflowStatus(): string
+    {
+        if ($this->status === 'cancelled') {
+            return 'cancelled';
+        }
+
+        if ($this->isConfirmed()) {
+            return 'closed';
+        }
+
+        if (! $this->isFieldWorkflow()) {
+            return 'administrative_draft';
+        }
+
+        if ($this->requiresAdministrativeReview()) {
+            return 'review_required';
+        }
+
+        if ($this->fieldHandoverComplete()) {
+            return 'ready_to_close';
+        }
+
+        return 'in_progress';
+    }
 }

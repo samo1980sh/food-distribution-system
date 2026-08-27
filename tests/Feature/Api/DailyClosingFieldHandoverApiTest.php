@@ -141,6 +141,9 @@ class DailyClosingFieldHandoverApiTest extends TestCase
             ->assertJsonPath('data.field_handover.complete', true)
             ->assertJsonPath('data.actions.can_submit_cash', false)
             ->assertJsonPath('data.cash_difference', '10.00')
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.workflow_status', 'review_required')
+            ->assertJsonPath('data.requires_admin_review', true)
             ->assertJsonStructure(['data' => ['sync_version']]);
 
         $this->withFreshToken($salesToken)

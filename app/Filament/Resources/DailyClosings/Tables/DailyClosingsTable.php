@@ -81,17 +81,22 @@ class DailyClosingsTable
                     }),
 
                 TextColumn::make('status')
-                    ->label('الحالة')
+                    ->label('الحالة التشغيلية')
+                    ->state(fn (DailyClosing $record): string => $record->workflowStatus())
                     ->badge()
                     ->formatStateUsing(fn (?string $state): string => match ($state) {
-                        'draft' => 'قيد المطابقة',
-                        'confirmed' => 'معتمد',
+                        'in_progress' => 'قيد الإغلاق الميداني',
+                        'review_required' => 'يحتاج مراجعة استثنائية',
+                        'ready_to_close' => 'جاهز للإغلاق',
+                        'closed' => 'مغلق',
+                        'administrative_draft' => 'مسودة إدارية',
                         'cancelled' => 'ملغي',
                         default => $state ?? '-',
                     })
                     ->color(fn (?string $state): string => match ($state) {
-                        'draft' => 'warning',
-                        'confirmed' => 'success',
+                        'closed' => 'success',
+                        'review_required' => 'warning',
+                        'in_progress', 'ready_to_close' => 'info',
                         'cancelled' => 'danger',
                         default => 'gray',
                     }),
@@ -193,8 +198,8 @@ class DailyClosingsTable
                 SelectFilter::make('status')
                     ->label('الحالة')
                     ->options([
-                        'draft' => 'قيد المطابقة',
-                        'confirmed' => 'معتمد',
+                        'draft' => 'مفتوح / يحتاج مراجعة',
+                        'confirmed' => 'مغلق',
                         'cancelled' => 'ملغي',
                     ]),
 

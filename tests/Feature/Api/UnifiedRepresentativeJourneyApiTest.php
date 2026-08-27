@@ -469,7 +469,10 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.expected_cash_amount', '424.00')
             ->assertJsonPath('data.actual_cash_amount', '424.00')
             ->assertJsonPath('data.cash_difference', '0.00')
-            ->assertJsonPath('data.field_handover.complete', true);
+            ->assertJsonPath('data.field_handover.complete', true)
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.workflow_status', 'closed')
+            ->assertJsonPath('data.requires_admin_review', false);
 
         $this->assertDatabaseHas('daily_closings', [
             'id' => $closingId,
@@ -478,6 +481,8 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'cash_submitted_by' => $user->id,
             'expected_cash_amount' => 424,
             'actual_cash_amount' => 424,
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
         ]);
         $this->assertDatabaseHas('customer_payments', [
             'id' => (int) $payment->json('data.id'),

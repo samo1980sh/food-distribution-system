@@ -189,6 +189,26 @@ class DailyClosingService
         });
     }
 
+    public function finalizeFieldIfBalanced(DailyClosing $closing): DailyClosing
+    {
+        if (
+            ! $closing->isFieldWorkflow()
+            || ! $closing->isDraft()
+            || ! $closing->fieldHandoverComplete()
+        ) {
+            return $closing->refresh();
+        }
+
+        $closing = $this->refreshTotals($closing);
+        $closing->loadMissing('items');
+
+        if ($closing->hasFieldVariance()) {
+            return $closing;
+        }
+
+        return $this->confirm($closing);
+    }
+
     public function confirm(DailyClosing $closing): DailyClosing
     {
         return DB::transaction(function () use ($closing): DailyClosing {

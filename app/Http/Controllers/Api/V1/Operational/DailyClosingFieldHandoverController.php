@@ -59,16 +59,25 @@ class DailyClosingFieldHandoverController extends Controller
         DailyClosingFieldHandoverService $service,
         MobileSyncVersionService $versionService,
     ): JsonResponse {
-        return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
+        return $this->handleOperationalWrite(function () use (
             $request,
-            $service->submitInventory(
+            $dailyClosing,
+            $service,
+            $versionService,
+        ): JsonResponse {
+            $closing = $service->submitInventory(
                 $dailyClosing,
                 $request->user(),
                 $request->validated(),
-            ),
-            'تم تسليم جرد السيارة للإدارة.',
-            versionService: $versionService,
-        ));
+            );
+
+            return $this->recordResponse(
+                $request,
+                $closing,
+                $this->handoverMessage($closing, 'inventory'),
+                versionService: $versionService,
+            );
+        });
     }
 
     public function submitCash(
@@ -77,16 +86,40 @@ class DailyClosingFieldHandoverController extends Controller
         DailyClosingFieldHandoverService $service,
         MobileSyncVersionService $versionService,
     ): JsonResponse {
-        return $this->handleOperationalWrite(fn (): JsonResponse => $this->recordResponse(
+        return $this->handleOperationalWrite(function () use (
             $request,
-            $service->submitCash(
+            $dailyClosing,
+            $service,
+            $versionService,
+        ): JsonResponse {
+            $closing = $service->submitCash(
                 $dailyClosing,
                 $request->user(),
                 $request->validated(),
-            ),
-            'تم تسليم النقد للإدارة.',
-            versionService: $versionService,
-        ));
+            );
+
+            return $this->recordResponse(
+                $request,
+                $closing,
+                $this->handoverMessage($closing, 'cash'),
+                versionService: $versionService,
+            );
+        });
+    }
+
+    private function handoverMessage(DailyClosing $closing, string $section): string
+    {
+        if ($closing->isConfirmed()) {
+            return 'تم إكمال التسليم الميداني وإغلاق اليوم تلقائياً دون الحاجة إلى اعتماد إداري.';
+        }
+
+        if ($closing->requiresAdministrativeReview()) {
+            return 'تم إكمال التسليم الميداني، ويحتاج الإغلاق إلى مراجعة إدارية بسبب وجود فرق استثنائي.';
+        }
+
+        return $section === 'inventory'
+            ? 'تم تسليم جرد السيارة بنجاح.'
+            : 'تم تسليم النقد بنجاح.';
     }
 
     private function recordResponse(

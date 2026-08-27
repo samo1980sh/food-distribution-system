@@ -91,6 +91,8 @@ class FieldTodayResource extends OperationalResource
             'closing_number' => $closing->closing_number,
             'closing_date' => $this->date($closing->closing_date),
             'status' => $closing->status,
+            'workflow_status' => $closing->workflowStatus(),
+            'requires_admin_review' => $closing->requiresAdministrativeReview(),
             'field_workflow' => (bool) $closing->field_workflow,
             'inventory_submitted' => $closing->inventorySubmitted(),
             'cash_submitted' => $closing->cashSubmitted(),

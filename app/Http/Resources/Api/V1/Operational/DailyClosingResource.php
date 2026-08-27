@@ -27,6 +27,8 @@ class DailyClosingResource extends OperationalResource
             'closing_number' => $this->closing_number,
             'closing_date' => $this->date($this->closing_date),
             'status' => $this->status,
+            'workflow_status' => $this->workflowStatus(),
+            'requires_admin_review' => $this->requiresAdministrativeReview(),
             'cancellation_reason' => $this->cancellation_reason,
             'cancelled_by' => $this->cancelled_by === null ? null : (int) $this->cancelled_by,
             'cancelled_at' => $this->dateTime($this->cancelled_at),
