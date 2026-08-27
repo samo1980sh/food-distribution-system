@@ -377,8 +377,8 @@ class OpeningInventoryExcelImportTest extends TestCase
         $this->assertIsString($preview);
         $this->assertStringContainsString('fd-opening-inventory-import-preview', $preview);
         $this->assertStringContainsString('معاينة الرصيد الافتتاحي', $preview);
-        $this->assertStringContainsString("->label('حركة مخزون إدارية')", $page);
-        $this->assertStringContainsString("->modalHeading('إضافة حركة مخزون إدارية')", $page);
+        $this->assertStringContainsString("->label('تسوية مخزون إدارية')", $page);
+        $this->assertStringContainsString("->modalHeading('إضافة تسوية مخزون إدارية')", $page);
         $this->assertStringContainsString("->label('تحميل قالب الرصيد الافتتاحي')", $page);
         $this->assertStringContainsString("->label('استيراد رصيد افتتاحي')", $page);
         $this->assertStringContainsString("->label('سبب الحركة الإدارية')", $form);

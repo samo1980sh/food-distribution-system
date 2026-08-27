@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\StockBalances\Pages;
 
 use App\Filament\Resources\StockBalances\StockBalanceResource;
+use App\Services\Inventory\WarehouseStockAlertService;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageStockBalances extends ManageRecords
@@ -16,7 +17,12 @@ class ManageStockBalances extends ManageRecords
 
     public function getSubheading(): ?string
     {
-        return 'الكميات الحالية الفعلية حسب المستودع والمنتج والتشغيلة والصلاحية، مع متوسط التكلفة وقيمة المخزون.';
+        $summary = app(WarehouseStockAlertService::class)->mainWarehouseSummary();
+
+        return 'الكميات الحالية الفعلية حسب المستودع والمنتج والتشغيلة والصلاحية. '
+            .'تنبيهات المستودع الرئيسي: '
+            .$summary['out_of_stock'].' نافد، '
+            .$summary['low_stock'].' منخفض.';
     }
 
     protected function getHeaderActions(): array

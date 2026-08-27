@@ -29,14 +29,17 @@ class InventoryWorkspaceNavigationTest extends TestCase
         $inventoryService = file_get_contents(app_path('Services/Inventory/InventoryMovementService.php'));
 
         foreach ([
+            "Action::make('receiveStock')",
+            "Action::make('transferWarehouseStock')",
             "'opening_balance' => \$service->addStock(",
             "'manual_out' => \$service->removeStock(",
-            "'warehouse_transfer' => \$service->transfer(",
+            'WarehouseReplenishmentService::class',
         ] as $expected) {
             $this->assertStringContainsString($expected, $movementsPage);
         }
 
-        $this->assertStringContainsString("'opening_balance' => 'رصيد افتتاحي / إدخال'", $movementForm);
+        $this->assertStringContainsString("'opening_balance' => 'رصيد افتتاحي'", $movementForm);
+        $this->assertStringNotContainsString("'warehouse_transfer' => 'تحويل بين المستودعات'", $movementForm);
         $this->assertStringContainsString('class InventoryMovementService', $inventoryService);
     }
 

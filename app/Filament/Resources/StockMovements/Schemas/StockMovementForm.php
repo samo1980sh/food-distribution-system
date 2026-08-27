@@ -25,9 +25,8 @@ class StockMovementForm
                 Select::make('movement_type')
                     ->label('نوع الحركة')
                     ->options([
-                        'opening_balance' => 'رصيد افتتاحي / إدخال',
-                        'manual_out' => 'إخراج يدوي',
-                        'warehouse_transfer' => 'تحويل بين المستودعات',
+                        'opening_balance' => 'رصيد افتتاحي',
+                        'manual_out' => 'إخراج يدوي / تسوية سالبة',
                     ])
                     ->default('opening_balance')
                     ->required()
@@ -49,7 +48,7 @@ class StockMovementForm
                     ->preload()
                     ->native(false)
                     ->hidden(fn ($get): bool => $get('movement_type') === 'opening_balance')
-                    ->required(fn ($get): bool => in_array($get('movement_type'), ['manual_out', 'warehouse_transfer'], true)),
+                    ->required(fn ($get): bool => $get('movement_type') === 'manual_out'),
 
                 Select::make('to_warehouse_id')
                     ->label('إلى المستودع')
@@ -58,7 +57,7 @@ class StockMovementForm
                     ->preload()
                     ->native(false)
                     ->hidden(fn ($get): bool => $get('movement_type') === 'manual_out')
-                    ->required(fn ($get): bool => in_array($get('movement_type'), ['opening_balance', 'warehouse_transfer'], true)),
+                    ->required(fn ($get): bool => $get('movement_type') === 'opening_balance'),
 
                 TextInput::make('batch_number')
                     ->label('رقم التشغيلة')
@@ -80,14 +79,14 @@ class StockMovementForm
                     ->minValue(0)
                     ->hidden(fn ($get): bool => $get('movement_type') !== 'opening_balance')
                     ->required(fn ($get): bool => $get('movement_type') === 'opening_balance')
-                    ->helperText('تُدخل في الرصيد الافتتاحي فقط؛ الإخراج والتحويل يستخدمان متوسط تكلفة الرصيد تلقائيًا.'),
+                    ->helperText('يُستخدم للرصيد الافتتاحي فقط. التوريد والتحويل لهما إجراءات مستقلة وواضحة أعلى الصفحة.'),
 
                 Textarea::make('notes')
                     ->label('سبب الحركة الإدارية')
                     ->required()
                     ->minLength(10)
                     ->maxLength(2000)
-                    ->helperText('سبب إلزامي للتدقيق. لا تستخدم هذه الشاشة بدل العمليات التشغيلية التي ينشئها النظام تلقائيًا.')
+                    ->helperText('سبب إلزامي للتدقيق. استخدم إجراءات التوريد والتحويل المخصصة، ولا تستخدم هذه التسوية بدل العمليات التشغيلية.')
                     ->columnSpanFull(),
             ]);
     }

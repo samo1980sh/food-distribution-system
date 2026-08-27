@@ -67,6 +67,14 @@ class StockBalancesTable
                     ->badge()
                     ->color(fn (StockBalance $record): string => ((float) $record->quantity) > 0 ? 'success' : 'gray'),
 
+
+                TextColumn::make('replenishment_status')
+                    ->label('حالة التزويد')
+                    ->state(fn (StockBalance $record): string => self::stockLevelLabel($record))
+                    ->badge()
+                    ->color(fn (StockBalance $record): string => self::stockLevelColor($record))
+                    ->tooltip(fn (StockBalance $record): string => self::stockLevelTooltip($record)),
+
                 TextColumn::make('average_unit_cost')
                     ->label('متوسط تكلفة الوحدة')
                     ->money('SYP')
@@ -103,5 +111,63 @@ class StockBalancesTable
             ->recordActions([])
             ->toolbarActions([])
             ->defaultSort('updated_at', 'desc');
+    }
+
+    private static function stockLevelState(StockBalance $record): string
+    {
+        if ($record->warehouse?->type === 'vehicle') {
+            return 'operational';
+        }
+
+        $quantity = (float) ($record->getAttribute('warehouse_product_quantity') ?? $record->quantity);
+        $minimum = (float) ($record->product?->min_stock ?? 0);
+
+        if ($quantity <= 0) {
+            return 'out_of_stock';
+        }
+
+        if ($minimum > 0 && $quantity <= $minimum) {
+            return 'low_stock';
+        }
+
+        return 'healthy';
+    }
+
+    private static function stockLevelLabel(StockBalance $record): string
+    {
+        return match (self::stockLevelState($record)) {
+            'out_of_stock' => 'نافد',
+            'low_stock' => 'منخفض',
+            'healthy' => 'متاح',
+            default => 'تشغيلي',
+        };
+    }
+
+    private static function stockLevelColor(StockBalance $record): string
+    {
+        return match (self::stockLevelState($record)) {
+            'out_of_stock' => 'danger',
+            'low_stock' => 'warning',
+            'healthy' => 'success',
+            default => 'gray',
+        };
+    }
+
+    private static function stockLevelTooltip(StockBalance $record): string
+    {
+        if ($record->warehouse?->type === 'vehicle') {
+            return 'مخزون السيارة تشغيلي ويُغذّى عبر حمولة السيارة المعتمدة.';
+        }
+
+        $quantity = (float) ($record->getAttribute('warehouse_product_quantity') ?? $record->quantity);
+        $minimum = (float) ($record->product?->min_stock ?? 0);
+
+        return 'إجمالي المنتج في المستودع: '.self::formatQuantity($quantity)
+            .' | الحد الأدنى: '.self::formatQuantity($minimum);
+    }
+
+    private static function formatQuantity(float $quantity): string
+    {
+        return rtrim(rtrim(number_format($quantity, 3, '.', ''), '0'), '.');
     }
 }

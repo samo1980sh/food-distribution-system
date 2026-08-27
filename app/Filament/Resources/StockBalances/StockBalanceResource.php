@@ -10,6 +10,8 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class StockBalanceResource extends Resource
 {
@@ -44,6 +46,18 @@ class StockBalanceResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return static::canViewAny();
+    }
+
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->addSelect([
+                'warehouse_product_quantity' => DB::table('stock_balances as warehouse_product_totals')
+                    ->selectRaw('COALESCE(SUM(warehouse_product_totals.quantity), 0)')
+                    ->whereColumn('warehouse_product_totals.warehouse_id', 'stock_balances.warehouse_id')
+                    ->whereColumn('warehouse_product_totals.product_id', 'stock_balances.product_id'),
+            ]);
     }
 
     public static function form(Schema $schema): Schema

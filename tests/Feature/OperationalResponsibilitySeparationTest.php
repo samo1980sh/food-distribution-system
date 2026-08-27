@@ -134,7 +134,7 @@ class OperationalResponsibilitySeparationTest extends TestCase
         $this->assertStringContainsString('return [];', $invoicePage);
         $this->assertStringContainsString('تسجيل تحصيل مكتبي', $paymentPage);
         $this->assertStringContainsString('مصروف إداري استثنائي', $expensePage);
-        $this->assertStringContainsString('حركة مخزون إدارية', $stockPage);
+        $this->assertStringContainsString('تسوية مخزون إدارية', $stockPage);
         $this->assertStringContainsString('سبب الحركة الإدارية', $stockForm);
         $this->assertStringContainsString('->required()', $stockForm);
     }

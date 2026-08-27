@@ -17,6 +17,7 @@ class AdministrativeStockMovementService
     /** @var list<string> */
     public const ADMINISTRATIVE_TYPES = [
         'opening_balance',
+        'stock_receipt',
         'manual_out',
         'warehouse_transfer',
     ];
@@ -56,7 +57,8 @@ class AdministrativeStockMovementService
             $notes = 'عكس إداري للحركة '.$movement->movement_number.': '.trim($reason);
 
             return match ($movement->movement_type) {
-                'opening_balance' => $inventory->removeStock(
+                'opening_balance',
+                'stock_receipt' => $inventory->removeStock(
                     warehouse: $this->requiredWarehouse($movement->to_warehouse_id),
                     product: $product,
                     quantity: $movement->quantity,
@@ -174,14 +176,15 @@ class AdministrativeStockMovementService
                 : null;
 
             $newMovement = match ($movement->movement_type) {
-                'opening_balance' => $inventory->addStock(
+                'opening_balance',
+                'stock_receipt' => $inventory->addStock(
                     warehouse: $toWarehouse ?? throw new RuntimeException('المستودع الهدف مطلوب للتصحيح.'),
                     product: $product,
                     quantity: $quantity,
                     batchNumber: $batchNumber,
                     expiryDate: $expiryDate,
                     unitCost: $corrected['unit_cost'] ?? 0,
-                    movementType: 'opening_balance',
+                    movementType: $movement->movement_type,
                     notes: $notes,
                     reference: $movement,
                     movementDate: $movementDate,
@@ -281,6 +284,9 @@ class AdministrativeStockMovementService
             'opening_balance' => $toWarehouse instanceof Warehouse
                 ? true
                 : throw new RuntimeException('المستودع الهدف مطلوب للرصيد الافتتاحي المصحح.'),
+            'stock_receipt' => $toWarehouse instanceof Warehouse
+                ? true
+                : throw new RuntimeException('المستودع الهدف مطلوب لتوريد المخزون المصحح.'),
             'manual_out' => $fromWarehouse instanceof Warehouse
                 ? true
                 : throw new RuntimeException('المستودع المصدر مطلوب للإخراج المصحح.'),
@@ -295,6 +301,26 @@ class AdministrativeStockMovementService
             && $fromWarehouse?->is($toWarehouse)
         ) {
             throw new RuntimeException('لا يمكن أن يكون مستودع المصدر والهدف متطابقين.');
+        }
+
+        if ($movementType === 'stock_receipt') {
+            $this->ensureFixedWarehouse($toWarehouse);
+        }
+
+        if ($movementType === 'warehouse_transfer') {
+            $this->ensureFixedWarehouse($fromWarehouse);
+            $this->ensureFixedWarehouse($toWarehouse);
+        }
+    }
+
+    private function ensureFixedWarehouse(?Warehouse $warehouse): void
+    {
+        if (! $warehouse instanceof Warehouse) {
+            return;
+        }
+
+        if (! in_array($warehouse->type, ['main', 'branch'], true)) {
+            throw new RuntimeException('مخزون السيارة يُدار عبر حمولة السيارة المعتمدة، وليس عبر التوريد أو التحويل الإداري.');
         }
     }
 

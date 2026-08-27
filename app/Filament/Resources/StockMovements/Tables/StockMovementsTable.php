@@ -109,7 +109,8 @@ class StockMovementsTable
                 SelectFilter::make('movement_type')
                     ->label('نوع الحركة')
                     ->options([
-                        'opening_balance' => 'رصيد افتتاحي / إدخال',
+                        'opening_balance' => 'رصيد افتتاحي',
+                        'stock_receipt' => 'توريد / استلام مخزون',
                         'manual_out' => 'إخراج يدوي',
                         'warehouse_transfer' => 'تحويل بين المستودعات',
                         'administrative_reversal' => 'عكس حركة إدارية',
@@ -397,17 +398,17 @@ class StockMovementsTable
         if (in_array($record->movement_type, ['manual_out', 'warehouse_transfer'], true)) {
             $fields[] = Select::make('from_warehouse_id')
                 ->label('من المستودع')
-                ->options(self::warehouseOptions())
+                ->options(self::warehouseOptions($record->movement_type === 'warehouse_transfer'))
                 ->searchable()
                 ->preload()
                 ->required()
                 ->native(false);
         }
 
-        if (in_array($record->movement_type, ['opening_balance', 'warehouse_transfer'], true)) {
+        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt', 'warehouse_transfer'], true)) {
             $fields[] = Select::make('to_warehouse_id')
                 ->label('إلى المستودع')
-                ->options(self::warehouseOptions())
+                ->options(self::warehouseOptions(in_array($record->movement_type, ['stock_receipt', 'warehouse_transfer'], true)))
                 ->searchable()
                 ->preload()
                 ->required()
@@ -429,7 +430,7 @@ class StockMovementsTable
             ->step('0.001')
             ->required();
 
-        if ($record->movement_type === 'opening_balance') {
+        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt'], true)) {
             $fields[] = TextInput::make('unit_cost')
                 ->label('تكلفة الوحدة الصحيحة')
                 ->numeric()
@@ -474,6 +475,7 @@ class StockMovementsTable
     {
         return match ($state) {
             'opening_balance' => 'success',
+            'stock_receipt' => 'success',
             'manual_out' => 'danger',
             'warehouse_transfer' => 'info',
             'administrative_reversal' => 'warning',
@@ -498,10 +500,11 @@ class StockMovementsTable
     }
 
     /** @return array<int|string, string> */
-    private static function warehouseOptions(): array
+    private static function warehouseOptions(bool $fixedOnly = false): array
     {
         $query = Warehouse::withoutGlobalScopes()
             ->where('status', 'active')
+            ->when($fixedOnly, fn ($query) => $query->whereIn('type', ['main', 'branch']))
             ->orderBy('name');
 
         $user = auth()->user();
@@ -555,6 +558,7 @@ class StockMovementsTable
     {
         return match ($state) {
             'opening_balance' => 'رصيد افتتاحي',
+            'stock_receipt' => 'توريد مخزون',
             'manual_out' => 'إخراج يدوي',
             'warehouse_transfer' => 'تحويل',
             'administrative_reversal' => 'عكس حركة إدارية',
