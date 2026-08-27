@@ -240,6 +240,158 @@ class OperationalInventoryImpactTest extends TestCase
         );
     }
 
+    public function test_vehicle_load_approval_rejects_insufficient_stock_without_inventory_movement(): void
+    {
+        $suffix = uniqid();
+
+        $vehicle = Vehicle::query()->create([
+            'code' => 'V-LOAD-SHORT-'.$suffix,
+            'plate_number' => 'LOAD-SHORT-'.$suffix,
+            'status' => 'active',
+        ]);
+
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'W-LOAD-SHORT-SRC-'.$suffix,
+            'name' => 'Load Short Source '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
+        $vehicleWarehouse = Warehouse::query()->create([
+            'code' => 'W-LOAD-SHORT-VEH-'.$suffix,
+            'name' => 'Load Short Vehicle '.$suffix,
+            'type' => 'vehicle',
+            'vehicle_id' => $vehicle->id,
+            'status' => 'active',
+        ]);
+
+        $product = $this->createProduct('LOAD-SHORT-'.$suffix);
+
+        app(InventoryMovementService::class)->addStock(
+            warehouse: $sourceWarehouse,
+            product: $product,
+            quantity: 2,
+            movementType: 'opening_balance',
+        );
+
+        $vehicleLoad = VehicleLoad::query()->create([
+            'load_number' => 'VLD-SHORT-'.$suffix,
+            'vehicle_id' => $vehicle->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $vehicleWarehouse->id,
+            'load_date' => now()->toDateString(),
+            'status' => 'draft',
+        ]);
+
+        VehicleLoadItem::query()->create([
+            'vehicle_load_id' => $vehicleLoad->id,
+            'product_id' => $product->id,
+            'quantity' => 3,
+            'unit_cost' => 0,
+            'total_cost' => 0,
+        ]);
+
+        $movementCountBeforeApproval = StockMovement::query()->count();
+
+        try {
+            app(VehicleLoadService::class)->approve($vehicleLoad);
+            $this->fail('Insufficient source stock must not approve a vehicle load.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('لا يكفي', $exception->getMessage());
+            $this->assertStringContainsString('المطلوب 3', $exception->getMessage());
+            $this->assertStringContainsString('المتاح 2', $exception->getMessage());
+        }
+
+        $this->assertSame('draft', $vehicleLoad->refresh()->status);
+        $this->assertEqualsWithDelta(2, $this->balanceQuantity($sourceWarehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(0, $this->balanceQuantity($vehicleWarehouse, $product), 0.0001);
+        $this->assertSame($movementCountBeforeApproval, StockMovement::query()->count());
+        $this->assertSame(1, $vehicleLoad->items()->count());
+    }
+
+    public function test_vehicle_load_approval_cannot_post_inventory_twice(): void
+    {
+        $suffix = uniqid();
+
+        $vehicle = Vehicle::query()->create([
+            'code' => 'V-LOAD-LOCK-'.$suffix,
+            'plate_number' => 'LOAD-LOCK-'.$suffix,
+            'status' => 'active',
+        ]);
+
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'W-LOAD-LOCK-SRC-'.$suffix,
+            'name' => 'Load Lock Source '.$suffix,
+            'type' => 'main',
+            'status' => 'active',
+        ]);
+
+        $vehicleWarehouse = Warehouse::query()->create([
+            'code' => 'W-LOAD-LOCK-VEH-'.$suffix,
+            'name' => 'Load Lock Vehicle '.$suffix,
+            'type' => 'vehicle',
+            'vehicle_id' => $vehicle->id,
+            'status' => 'active',
+        ]);
+
+        $product = $this->createProduct('LOAD-LOCK-'.$suffix);
+
+        app(InventoryMovementService::class)->addStock(
+            warehouse: $sourceWarehouse,
+            product: $product,
+            quantity: 10,
+            movementType: 'opening_balance',
+        );
+
+        $vehicleLoad = VehicleLoad::query()->create([
+            'load_number' => 'VLD-LOCK-'.$suffix,
+            'vehicle_id' => $vehicle->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $vehicleWarehouse->id,
+            'load_date' => now()->toDateString(),
+            'status' => 'draft',
+        ]);
+
+        VehicleLoadItem::query()->create([
+            'vehicle_load_id' => $vehicleLoad->id,
+            'product_id' => $product->id,
+            'quantity' => 4,
+            'unit_cost' => 0,
+            'total_cost' => 0,
+        ]);
+
+        $firstCopy = VehicleLoad::query()->findOrFail($vehicleLoad->id);
+        $staleCopy = VehicleLoad::query()->findOrFail($vehicleLoad->id);
+
+        app(VehicleLoadService::class)->approve($firstCopy);
+
+        $postedMovementCount = StockMovement::query()
+            ->where('movement_type', 'vehicle_load_transfer')
+            ->where('reference_type', VehicleLoad::class)
+            ->where('reference_id', $vehicleLoad->id)
+            ->count();
+
+        $this->assertGreaterThan(0, $postedMovementCount);
+
+        try {
+            app(VehicleLoadService::class)->approve($staleCopy);
+            $this->fail('A stale vehicle load instance must not apply inventory twice.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame(
+                'لا يمكن اعتماد أمر تحميل ليس بحالة مسودة.',
+                $exception->getMessage(),
+            );
+        }
+
+        $this->assertEqualsWithDelta(6, $this->balanceQuantity($sourceWarehouse, $product), 0.0001);
+        $this->assertEqualsWithDelta(4, $this->balanceQuantity($vehicleWarehouse, $product), 0.0001);
+        $this->assertSame($postedMovementCount, StockMovement::query()
+            ->where('movement_type', 'vehicle_load_transfer')
+            ->where('reference_type', VehicleLoad::class)
+            ->where('reference_id', $vehicleLoad->id)
+            ->count());
+    }
+
     public function test_sales_invoice_confirmation_and_cancellation_updates_stock_balance(): void
     {
         $suffix = uniqid();

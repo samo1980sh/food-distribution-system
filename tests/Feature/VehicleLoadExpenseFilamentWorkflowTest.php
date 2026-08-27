@@ -19,8 +19,15 @@ class VehicleLoadExpenseFilamentWorkflowTest extends TestCase
         $this->assertStringContainsString("'view' => ViewVehicleLoad::route('/{record}')", $resource);
         $this->assertStringContainsString("'edit' => EditVehicleLoad::route('/{record}/edit')", $resource);
         $this->assertStringContainsString('VehicleLoadInfolist::configure', $resource);
-        $this->assertStringContainsString('CreateAction::make()', $listPage);
-        $this->assertStringContainsString('->slideOver()', $listPage);
+        $this->assertSame(2, substr_count($listPage, 'CreateAction::make('));
+        $this->assertStringContainsString("CreateAction::make('createAndApprove')", $listPage);
+        $this->assertStringContainsString("->label('حفظ واعتماد الحمولة')", $listPage);
+        $this->assertStringContainsString("Gate::authorize('approve', \$record);", $listPage);
+        $this->assertStringContainsString('app(VehicleLoadService::class)->approve($record);', $listPage);
+        $this->assertStringContainsString('->successNotification(null)', $listPage);
+        $this->assertStringContainsString("CreateAction::make('createDraft')", $listPage);
+        $this->assertStringContainsString("->label('حفظ كمسودة')", $listPage);
+        $this->assertSame(2, substr_count($listPage, '->slideOver()'));
     }
 
     public function test_vehicle_load_actions_refresh_the_record_after_approval_and_cancellation(): void

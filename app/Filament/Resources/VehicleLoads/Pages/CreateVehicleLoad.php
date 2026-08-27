@@ -16,7 +16,7 @@ class CreateVehicleLoad extends CreateRecord
 
     public function getSubheading(): ?string
     {
-        return 'حدد السيارة والمستودع المصدر والمواد، ثم احفظ الأمر كمسودة لمراجعته قبل نقل المخزون.';
+        return 'حدد السيارة والمستودع المصدر والمواد. يمكنك حفظ الأمر كمسودة أو حفظه واعتماده مباشرة بعد فحص الرصيد.';
     }
 
     protected function getRedirectUrl(): string
