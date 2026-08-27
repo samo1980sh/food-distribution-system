@@ -81,6 +81,10 @@ class DailyClosingFieldHandoverService
                     throw new RuntimeException('تغيّر فريق الخط بعد فتح إغلاق اليوم. يجب أن تراجع الإدارة الإغلاق الموجود قبل المتابعة.');
                 }
 
+                if ($existing->isDraft()) {
+                    $existing = $this->dailyClosingService->refreshTotals($existing);
+                }
+
                 return $existing->load($this->relations());
             }
 

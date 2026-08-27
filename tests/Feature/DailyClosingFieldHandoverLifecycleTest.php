@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OperationSource;
 use App\Models\Area;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
@@ -11,6 +12,7 @@ use App\Models\SalesJourney;
 use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\VehicleExpense;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
 use App\Services\Distribution\DailyClosingFieldHandoverService;
@@ -61,6 +63,44 @@ class DailyClosingFieldHandoverLifecycleTest extends TestCase
             today()->toDateString(),
             $context['warehouse']->id,
         );
+    }
+
+    public function test_reopening_draft_field_closing_refreshes_live_financial_totals(): void
+    {
+        $context = $this->context();
+        $sales = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
+        $handover = app(DailyClosingFieldHandoverService::class);
+        $this->completedJourney($context, $sales);
+
+        $this->actingAs($sales);
+        $closing = $handover->openToday($sales, $context['route']->id);
+
+        $this->assertSame(0.0, (float) $closing->total_vehicle_expenses_amount);
+        $this->assertSame(0.0, (float) $closing->expected_cash_amount);
+
+        VehicleExpense::query()->create([
+            'expense_number' => 'EXP-LIVE-CLOSING-001',
+            'expense_date' => today(),
+            'vehicle_id' => $context['vehicle']->id,
+            'warehouse_id' => $context['warehouse']->id,
+            'route_id' => $context['route']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'expense_type' => 'fuel',
+            'amount' => 25,
+            'payment_method' => 'cash',
+            'status' => 'approved',
+            'created_by' => $sales->id,
+            'approved_by' => $sales->id,
+            'approved_at' => now(),
+            'operation_source' => OperationSource::MOBILE_SALES,
+        ]);
+
+        $reopened = $handover->openToday($sales, $context['route']->id);
+
+        $this->assertSame($closing->id, $reopened->id);
+        $this->assertSame(25.0, (float) $reopened->total_vehicle_expenses_amount);
+        $this->assertSame(-25.0, (float) $reopened->expected_cash_amount);
+        $this->assertSame('draft', $reopened->status);
     }
 
     public function test_field_handover_with_variance_waits_for_exception_review(): void
