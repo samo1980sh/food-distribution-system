@@ -37,6 +37,10 @@ class VehicleExpenseInfolist
                             ->badge()
                             ->formatStateUsing(fn (?string $state): string => self::typeLabel($state)),
                         TextEntry::make('amount')->label('المبلغ')->money('SYP')->weight('bold'),
+                        TextEntry::make('odometer_reading')
+                            ->label('قراءة العداد')
+                            ->suffix(' كم')
+                            ->placeholder('-'),
                         TextEntry::make('payment_method')
                             ->label('طريقة الدفع')
                             ->badge()

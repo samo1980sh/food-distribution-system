@@ -51,6 +51,7 @@ class SalesFieldOperationsApiTest extends TestCase
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", [
+                'start_odometer' => 1000,
                 'notes' => 'بدء مسار الزيارات.',
             ])
             ->assertOk()
@@ -131,7 +132,7 @@ class SalesFieldOperationsApiTest extends TestCase
         }
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", ['end_odometer' => 1010])
             ->assertOk()
             ->assertJsonPath('data.status', 'completed')
             ->assertJsonPath('data.summary.pending', 0)
@@ -170,7 +171,7 @@ class SalesFieldOperationsApiTest extends TestCase
             ->assertJsonCount(1, 'data.visits');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 1000])
             ->assertOk()
             ->assertJsonCount(1, 'data.visits');
 
@@ -203,7 +204,7 @@ class SalesFieldOperationsApiTest extends TestCase
         $visitId = (int) $opened->json('data.visits.0.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 1000])
             ->assertOk();
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
@@ -235,11 +236,11 @@ class SalesFieldOperationsApiTest extends TestCase
         $journeyId = (int) $opened->json('data.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 1000])
             ->assertOk();
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", ['end_odometer' => 1010])
             ->assertConflict()
             ->assertJsonPath('code', 'sales_visits_pending');
     }
@@ -258,7 +259,7 @@ class SalesFieldOperationsApiTest extends TestCase
         $otherCustomerId = (int) $opened->json('data.visits.1.customer.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 1000])
             ->assertOk();
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
@@ -299,7 +300,7 @@ class SalesFieldOperationsApiTest extends TestCase
         $customerId = (int) $opened->json('data.visits.0.customer.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 1000])
             ->assertOk();
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-visits/{$visitId}/start")
@@ -330,7 +331,7 @@ class SalesFieldOperationsApiTest extends TestCase
     private function context(int $customerCount): array
     {
         $area = Area::query()->create(['code' => 'SLS-AREA', 'name_ar' => 'منطقة المبيعات', 'status' => 'active']);
-        $vehicle = Vehicle::query()->create(['code' => 'SLS-VEH', 'plate_number' => 'SLS-PLATE', 'status' => 'active']);
+        $vehicle = Vehicle::query()->create(['code' => 'SLS-VEH', 'plate_number' => 'SLS-PLATE', 'status' => 'active', 'current_odometer' => 1000]);
         $warehouse = Warehouse::query()->create([
             'vehicle_id' => $vehicle->id,
             'code' => 'SLS-WH',

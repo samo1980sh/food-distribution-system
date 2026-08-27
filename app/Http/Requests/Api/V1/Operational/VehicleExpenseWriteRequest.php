@@ -45,6 +45,7 @@ class VehicleExpenseWriteRequest extends OperationalWriteRequest
             'expense_type' => $this->requiredOrSometimes([Rule::in(['fuel', 'maintenance', 'washing', 'fees', 'parking', 'emergency', 'other'])]),
             'amount' => $this->requiredOrSometimes(['numeric', 'gt:0']),
             'payment_method' => $this->requiredOrSometimes([Rule::in(['cash', 'bank_transfer', 'cheque', 'other'])]),
+            'odometer_reading' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'receipt' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.(int) config('mobile_api.expense_receipt_max_kb', 5120)],
             'remove_receipt' => ['sometimes', 'boolean'],
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],

@@ -9,6 +9,7 @@ use App\Models\DistributionRoute;
 use App\Models\SalesJourney;
 use App\Models\SalesVisit;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Models\VehicleLoad;
 use App\Services\Support\DocumentNumberService;
 use Illuminate\Database\Eloquent\Model;
@@ -146,14 +147,29 @@ class SalesFieldOperationService
                 );
             }
 
+            $vehicle = Vehicle::query()->lockForUpdate()->findOrFail((int) $journey->vehicle_id);
+            $startOdometer = (int) $payload['start_odometer'];
+            $this->ensureOdometerDoesNotRegress(
+                $startOdometer,
+                $vehicle->current_odometer === null ? null : (int) $vehicle->current_odometer,
+                'start_odometer',
+            );
+
             // The visit plan is frozen when the journey is first opened.
             // Customers created afterwards are attached only when the caller
             // explicitly requests attach_to_today_journey.
             $journey->forceFill([
                 'status' => 'in_progress',
+                'start_odometer' => $startOdometer,
+                'end_odometer' => null,
+                'distance_km' => null,
                 'start_notes' => $payload['notes'] ?? null,
                 'started_at' => now(),
             ])->save();
+
+            if ($vehicle->current_odometer === null || $startOdometer > (int) $vehicle->current_odometer) {
+                $vehicle->forceFill(['current_odometer' => $startOdometer])->save();
+            }
 
             return $this->loadJourney($journey);
         });
@@ -269,11 +285,36 @@ class SalesFieldOperationService
                 );
             }
 
+            if ($journey->start_odometer === null) {
+                throw new OperationalApiException(
+                    'لا يمكن إنهاء الرحلة قبل تسجيل قراءة عداد البداية.',
+                    'sales_journey_start_odometer_missing',
+                    409,
+                );
+            }
+
+            $vehicle = Vehicle::query()->lockForUpdate()->findOrFail((int) $journey->vehicle_id);
+            $startOdometer = (int) $journey->start_odometer;
+            $endOdometer = (int) $payload['end_odometer'];
+
+            $this->ensureOdometerDoesNotRegress($endOdometer, $startOdometer, 'end_odometer');
+            $this->ensureOdometerDoesNotRegress(
+                $endOdometer,
+                $vehicle->current_odometer === null ? null : (int) $vehicle->current_odometer,
+                'end_odometer',
+            );
+
             $journey->forceFill([
                 'status' => 'completed',
                 'finished_at' => now(),
+                'end_odometer' => $endOdometer,
+                'distance_km' => $endOdometer - $startOdometer,
                 'finish_notes' => $payload['notes'] ?? null,
             ])->save();
+
+            if ($vehicle->current_odometer === null || $endOdometer > (int) $vehicle->current_odometer) {
+                $vehicle->forceFill(['current_odometer' => $endOdometer])->save();
+            }
 
             return $this->loadJourney($journey);
         });
@@ -408,6 +449,20 @@ class SalesFieldOperationService
     public function generateJourneyNumber(): string
     {
         return app(DocumentNumberService::class)->next('sales_journey', 'SJ');
+    }
+
+    private function ensureOdometerDoesNotRegress(int $reading, ?int $baseline, string $field): void
+    {
+        if ($baseline === null || $reading >= $baseline) {
+            return;
+        }
+
+        throw new OperationalApiException(
+            'قراءة عداد المركبة لا يمكن أن تكون أقل من آخر قراءة موثوقة.',
+            'vehicle_odometer_regression',
+            422,
+            [$field => ['يجب أن تكون قراءة العداد مساوية أو أكبر من آخر قراءة موثوقة.']],
+        );
     }
 
     private function ensureActiveRepresentativeContext(SalesJourney $journey): void

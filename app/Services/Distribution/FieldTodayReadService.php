@@ -224,6 +224,9 @@ class FieldTodayReadService
                 'status' => $journey->status,
                 'started_at' => $journey->started_at?->toIso8601String(),
                 'finished_at' => $journey->finished_at?->toIso8601String(),
+                'start_odometer' => $journey->start_odometer === null ? null : (int) $journey->start_odometer,
+                'end_odometer' => $journey->end_odometer === null ? null : (int) $journey->end_odometer,
+                'distance_km' => $journey->distance_km === null ? null : (int) $journey->distance_km,
                 'visits' => [
                     'total' => (int) $journey->visits_count,
                     'pending' => (int) $journey->pending_visits_count,

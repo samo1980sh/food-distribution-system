@@ -73,6 +73,13 @@ class VehicleExpenseForm
                             ->default(0)
                             ->required(),
 
+                        TextInput::make('odometer_reading')
+                            ->label('قراءة عداد المركبة')
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0)
+                            ->helperText('اختياري. عند إدخاله يجب ألا يقل عن آخر قراءة موثوقة للمركبة.'),
+
                         Select::make('payment_method')
                             ->label('طريقة الدفع')
                             ->options([

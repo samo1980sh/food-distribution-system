@@ -43,7 +43,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $visitId = (int) $opened->json('data.visits.0.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
             ->assertConflict()
             ->assertJsonPath('code', 'vehicle_load_handover_pending');
 
@@ -59,7 +59,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.handover_status', 'received');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
             ->assertOk()
             ->assertJsonPath('data.status', 'in_progress');
 
@@ -90,8 +90,10 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'expense_type' => 'fuel',
                 'amount' => 15,
                 'payment_method' => 'cash',
+                'odometer_reading' => 2010,
             ])
             ->assertCreated()
+            ->assertJsonPath('data.odometer_reading', 2010)
             ->assertJsonPath('data.operation_source', 'mobile_sales');
 
         $this->withFreshToken($token)
@@ -113,7 +115,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertOk();
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", ['end_odometer' => 2025])
             ->assertOk()
             ->assertJsonPath('data.status', 'completed');
 
@@ -197,7 +199,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.field_workspace.role', User::ROLE_SALES_REPRESENTATIVE)
             ->assertJsonPath('data.field_workspace.unified', true)
             ->assertJsonPath('data.field_workspace.legacy', false)
-            ->assertJsonPath('data.sync.registry_version', 8);
+            ->assertJsonPath('data.sync.registry_version', 9);
 
         $opened = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today')
@@ -208,7 +210,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $visitId = (int) $opened->json('data.visits.0.id');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
             ->assertConflict()
             ->assertJsonPath('code', 'vehicle_load_handover_pending');
 
@@ -225,7 +227,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.items.0.received_quantity', '10.000');
 
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
             ->assertOk()
             ->assertJsonPath('data.status', 'in_progress');
         $this->withFreshToken($token)
@@ -387,8 +389,10 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
                 'expense_type' => 'fuel',
                 'amount' => 15,
                 'payment_method' => 'cash',
+                'odometer_reading' => 2015,
             ])
             ->assertCreated()
+            ->assertJsonPath('data.odometer_reading', 2015)
             ->assertJsonPath('data.sales_representative.id', $context['representative']->id)
             ->assertJsonPath('data.expense_type', 'fuel')
             ->assertJsonPath('data.status', 'approved')
@@ -423,7 +427,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertConflict();
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", ['end_odometer' => 2025])
             ->assertConflict()
             ->assertJsonPath('code', 'sales_visits_pending');
 
@@ -437,7 +441,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ->assertJsonPath('data.documents.payments', 1)
             ->assertJsonPath('data.documents.returns', 1);
         $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish")
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", ['end_odometer' => 2025])
             ->assertOk()
             ->assertJsonPath('data.status', 'completed');
 
@@ -550,7 +554,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertCreated();
         $this->withFreshToken($token)
-            ->postJson('/api/v1/operational/sales-journeys/'.$firstJourney->json('data.id').'/start')
+            ->postJson('/api/v1/operational/sales-journeys/'.$firstJourney->json('data.id').'/start', ['start_odometer' => 2000])
             ->assertOk();
 
         $secondJourney = $this->withFreshToken($token)
@@ -559,7 +563,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertCreated();
         $this->withFreshToken($token)
-            ->postJson('/api/v1/operational/sales-journeys/'.$secondJourney->json('data.id').'/start')
+            ->postJson('/api/v1/operational/sales-journeys/'.$secondJourney->json('data.id').'/start', ['start_odometer' => 2000])
             ->assertConflict()
             ->assertJsonPath('code', 'sales_journey_conflict');
 
@@ -583,6 +587,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'code' => 'UNIFIED-VEH-'.$suffix,
             'plate_number' => 'UNIFIED-PLATE-'.$suffix,
             'status' => 'active',
+            'current_odometer' => 2000,
         ]);
         $warehouse = Warehouse::query()->create([
             'vehicle_id' => $vehicle->id,

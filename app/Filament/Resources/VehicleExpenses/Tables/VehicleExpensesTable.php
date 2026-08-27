@@ -67,6 +67,13 @@ class VehicleExpensesTable
                     ->sortable()
                     ->weight('bold'),
 
+                TextColumn::make('odometer_reading')
+                    ->label('قراءة العداد')
+                    ->suffix(' كم')
+                    ->placeholder('-')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 TextColumn::make('payment_method')
                     ->label('طريقة الدفع')
                     ->badge()

@@ -82,6 +82,9 @@ class VehicleLoadExpenseFilamentWorkflowTest extends TestCase
         $this->assertStringContainsString("TextEntry::make('handover_status')", $loadInfolist);
         $this->assertStringContainsString("TextColumn::make('handover_status')", $loadTable);
         $this->assertStringContainsString("Section::make('بيانات المصروف')", $expenseForm);
+        $this->assertStringContainsString("TextInput::make('odometer_reading')", $expenseForm);
+        $this->assertStringContainsString("TextEntry::make('odometer_reading')", $expenseInfolist);
+        $this->assertStringContainsString("TextColumn::make('odometer_reading')", $expenseTable);
         $this->assertStringContainsString("Section::make('الإيصال والملاحظات')", $expenseForm);
         $this->assertStringContainsString("Section::make('سجل الاعتماد والمراجعة')", $expenseInfolist);
     }

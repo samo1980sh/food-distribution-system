@@ -46,7 +46,7 @@ use InvalidArgumentException;
 
 final class MobileSyncEntityRegistry
 {
-    public const VERSION = 8;
+    public const VERSION = 9;
 
     /**
      * @return array<string, array{

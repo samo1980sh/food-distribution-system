@@ -24,6 +24,7 @@ class VehicleExpenseResource extends OperationalResource
             'expense_type' => $this->expense_type,
             'amount' => $this->decimal($this->amount),
             'payment_method' => $this->payment_method,
+            'odometer_reading' => $this->odometer_reading === null ? null : (int) $this->odometer_reading,
             'status' => $this->status,
             'notes' => $this->notes,
             'rejection_reason' => $this->rejection_reason,

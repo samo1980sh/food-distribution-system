@@ -21,6 +21,9 @@ class SalesJourney extends Model
         'status',
         'started_at',
         'finished_at',
+        'start_odometer',
+        'end_odometer',
+        'distance_km',
         'start_notes',
         'finish_notes',
         'created_by',
@@ -31,6 +34,9 @@ class SalesJourney extends Model
         'journey_date' => 'date',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
+        'start_odometer' => 'integer',
+        'end_odometer' => 'integer',
+        'distance_km' => 'integer',
         'operation_source' => OperationSource::class,
     ];
 

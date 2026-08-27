@@ -22,6 +22,7 @@ class VehicleExpense extends Model
         'expense_type',
         'amount',
         'payment_method',
+        'odometer_reading',
         'receipt_path',
         'status',
         'notes',
@@ -41,6 +42,7 @@ class VehicleExpense extends Model
         'operation_source' => OperationSource::class,
         'expense_date' => 'date',
         'amount' => 'decimal:2',
+        'odometer_reading' => 'integer',
         'approved_at' => 'datetime',
         'rejected_at' => 'datetime',
     ];

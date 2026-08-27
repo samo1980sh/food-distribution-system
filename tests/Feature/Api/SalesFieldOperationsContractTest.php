@@ -14,7 +14,7 @@ class SalesFieldOperationsContractTest extends TestCase
     #[Test]
     public function sales_field_entities_and_customer_create_are_exposed_for_sync(): void
     {
-        $this->assertSame(8, MobileSyncEntityRegistry::VERSION);
+        $this->assertSame(9, MobileSyncEntityRegistry::VERSION);
         $this->assertArrayHasKey('sales_journeys', MobileSyncEntityRegistry::definitions());
         $this->assertArrayHasKey('sales_visits', MobileSyncEntityRegistry::definitions());
         $this->assertTrue(MobileSyncPushRegistry::supports('customers', 'create'));

@@ -34,7 +34,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'action' => 'start',
             'record_id' => $journeyId,
             'base_version' => (string) $opened->json('data.sync_version'),
-            'payload' => [],
+            'payload' => ['start_odometer' => 4000],
         ]];
         $started = $this->push($token, $contextKey, 'sales-start-batch', $startOperation)
             ->assertOk()
@@ -104,10 +104,13 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'action' => 'finish',
             'record_id' => $journeyId,
             'base_version' => (string) $started->json('data.results.0.version'),
-            'payload' => [],
+            'payload' => ['end_odometer' => 4012],
         ]])->assertOk()
             ->assertJsonPath('data.results.0.status', 'applied')
-            ->assertJsonPath('data.results.0.record.status', 'completed');
+            ->assertJsonPath('data.results.0.record.status', 'completed')
+            ->assertJsonPath('data.results.0.record.start_odometer', 4000)
+            ->assertJsonPath('data.results.0.record.end_odometer', 4012)
+            ->assertJsonPath('data.results.0.record.distance_km', 12);
 
         $this->assertDatabaseHas('sales_journeys', ['id' => $journeyId, 'status' => 'completed']);
         $this->assertDatabaseCount('sales_visits', 1);
@@ -134,7 +137,7 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
     private function context(): array
     {
         $area = Area::query()->create(['code' => 'SLS-SYNC-AREA', 'name_ar' => 'منطقة مزامنة المبيعات', 'status' => 'active']);
-        $vehicle = Vehicle::query()->create(['code' => 'SLS-SYNC-VEH', 'plate_number' => 'SLS-SYNC-PLATE', 'status' => 'active']);
+        $vehicle = Vehicle::query()->create(['code' => 'SLS-SYNC-VEH', 'plate_number' => 'SLS-SYNC-PLATE', 'status' => 'active', 'current_odometer' => 4000]);
         $warehouse = Warehouse::query()->create([
             'vehicle_id' => $vehicle->id, 'code' => 'SLS-SYNC-WH',
             'name' => 'مستودع مزامنة المبيعات', 'type' => 'vehicle', 'status' => 'active',

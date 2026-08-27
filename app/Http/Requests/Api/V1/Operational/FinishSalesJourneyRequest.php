@@ -15,6 +15,9 @@ class FinishSalesJourneyRequest extends FormRequest
 
     public function rules(): array
     {
-        return ['notes' => ['sometimes', 'nullable', 'string', 'max:5000']];
+        return [
+            'end_odometer' => ['required', 'integer', 'min:0'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+        ];
     }
 }

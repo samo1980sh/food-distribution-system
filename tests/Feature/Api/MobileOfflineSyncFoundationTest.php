@@ -82,7 +82,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             ->getJson('/api/v1/operational/sync/status')
             ->assertOk()
             ->assertJsonPath('data.context_key', $contextKey)
-            ->assertJsonPath('data.registry_version', 8)
+            ->assertJsonPath('data.registry_version', 9)
             ->assertJsonPath('data.device.device_id', 'sync-device-bootstrap')
             ->assertJsonPath('data.reset_required', false);
     }
