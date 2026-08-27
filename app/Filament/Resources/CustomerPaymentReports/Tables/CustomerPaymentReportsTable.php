@@ -223,14 +223,6 @@ class CustomerPaymentReportsTable
                             );
                     }),
 
-                SelectFilter::make('status')
-                    ->label('الحالة')
-                    ->options([
-                        'draft' => 'مسودة',
-                        'confirmed' => 'معتمد',
-                        'cancelled' => 'ملغي',
-                    ]),
-
                 SelectFilter::make('payment_method')
                     ->label('طريقة الدفع')
                     ->options([
@@ -278,11 +270,10 @@ class CustomerPaymentReportsTable
             ], layout: FiltersLayout::Modal)
             ->filtersFormColumns(2)
             ->filtersFormSchema(fn (array $filters): array => [
-                Section::make('الفترة والحالة')
-                    ->description('حدد الفترة الزمنية وحالة التحصيل وطريقة الدفع المطلوبة.')
+                Section::make('الفترة وطريقة الدفع')
+                    ->description('يعرض التقرير التحصيلات المعتمدة فقط. حدد الفترة الزمنية وطريقة الدفع المطلوبة.')
                     ->schema([
                         $filters['payment_date'],
-                        $filters['status'],
                         $filters['payment_method'],
                     ])
                     ->columns(3)

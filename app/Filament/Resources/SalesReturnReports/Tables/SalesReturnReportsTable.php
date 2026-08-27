@@ -192,15 +192,6 @@ class SalesReturnReportsTable
                             );
                     }),
 
-                SelectFilter::make('status')
-                    ->label('الحالة')
-                    ->options([
-                        'draft' => 'مسودة',
-                        'confirmed' => 'معتمد',
-                        'cancelled' => 'ملغي',
-                    ])
-                    ->default('confirmed'),
-
                 SelectFilter::make('return_reason')
                     ->label('سبب المرتجع')
                     ->options([
@@ -250,10 +241,9 @@ class SalesReturnReportsTable
             ->filtersFormColumns(2)
             ->filtersFormSchema(fn (array $filters): array => [
                 Section::make('الفترة والتصنيف')
-                    ->description('حدد الفترة الزمنية وحالة المرتجع وسببه.')
+                    ->description('يعرض التقرير المرتجعات المعتمدة فقط. حدد الفترة الزمنية وسبب المرتجع.')
                     ->schema([
                         $filters['return_date'],
-                        $filters['status'],
                         $filters['return_reason'],
                     ])
                     ->columns(3)

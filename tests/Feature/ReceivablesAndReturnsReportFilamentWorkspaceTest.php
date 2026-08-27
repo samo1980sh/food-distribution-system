@@ -11,7 +11,7 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
         $reports = [
             [
                 'path' => 'Filament/Resources/CustomerPaymentReports/Tables/CustomerPaymentReportsTable.php',
-                'section' => "Section::make('الفترة والحالة')",
+                'section' => "Section::make('الفترة وطريقة الدفع')",
                 'scope_section' => "Section::make('العميل ونطاق التشغيل')",
                 'empty_heading' => "emptyStateHeading('لا توجد نتائج في تقرير التحصيلات')",
             ],
@@ -49,10 +49,10 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
     {
         $table = file_get_contents(app_path('Filament/Resources/CustomerPaymentReports/Tables/CustomerPaymentReportsTable.php'));
         $page = file_get_contents(app_path('Filament/Resources/CustomerPaymentReports/Pages/ManageCustomerPaymentReports.php'));
+        $resource = file_get_contents(app_path('Filament/Resources/CustomerPaymentReports/CustomerPaymentReportResource.php'));
 
         foreach ([
             "Filter::make('payment_date')",
-            "SelectFilter::make('status')",
             "SelectFilter::make('payment_method')",
             "SelectFilter::make('customer_id')",
             "SelectFilter::make('sales_invoice_id')",
@@ -78,16 +78,18 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
         $this->assertStringContainsString("->whereIn('payment_method'", $table);
         $this->assertStringContainsString('->summaries(', $table);
         $this->assertStringContainsString('allTableCondition: true', $table);
+        $this->assertStringContainsString("->where('status', 'confirmed')", $resource);
+        $this->assertStringNotContainsString("SelectFilter::make('status')", $table);
     }
 
     public function test_sales_return_report_keeps_existing_filters_printing_and_financial_summaries(): void
     {
         $table = file_get_contents(app_path('Filament/Resources/SalesReturnReports/Tables/SalesReturnReportsTable.php'));
         $page = file_get_contents(app_path('Filament/Resources/SalesReturnReports/Pages/ManageSalesReturnReports.php'));
+        $resource = file_get_contents(app_path('Filament/Resources/SalesReturnReports/SalesReturnReportResource.php'));
 
         foreach ([
             "Filter::make('return_date')",
-            "SelectFilter::make('status')",
             "SelectFilter::make('return_reason')",
             "SelectFilter::make('customer_id')",
             "SelectFilter::make('sales_invoice_id')",
@@ -109,9 +111,10 @@ class ReceivablesAndReturnsReportFilamentWorkspaceTest extends TestCase
 
         $this->assertStringContainsString("'reports.sales-returns.print'", $table);
         $this->assertStringContainsString("'reports.sales-returns.print-filtered'", $page);
-        $this->assertStringContainsString("->default('confirmed')", $table);
+        $this->assertStringNotContainsString("SelectFilter::make('status')", $table);
         $this->assertStringContainsString('->summaries(', $table);
         $this->assertStringContainsString('allTableCondition: true', $table);
+        $this->assertStringContainsString("->where('status', 'confirmed')", $resource);
     }
 
     public function test_secondary_receivables_and_returns_columns_remain_available_but_hidden_by_default(): void

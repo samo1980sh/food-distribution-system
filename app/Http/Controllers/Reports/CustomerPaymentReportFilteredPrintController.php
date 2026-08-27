@@ -49,12 +49,6 @@ class CustomerPaymentReportFilteredPrintController extends Controller
         $from = $this->normalizeDate($dateState['from'] ?? null);
         $until = $this->normalizeDate($dateState['until'] ?? null);
 
-        $status = $this->filterValue($filters, 'status');
-
-        if (! in_array($status, ['draft', 'confirmed', 'cancelled'], true)) {
-            $status = null;
-        }
-
         $paymentMethod = $this->filterValue($filters, 'payment_method');
 
         if (! in_array(
@@ -90,6 +84,7 @@ class CustomerPaymentReportFilteredPrintController extends Controller
         );
 
         $payments = CustomerPayment::query()
+            ->where('status', 'confirmed')
             ->with([
                 'customer',
                 'salesInvoice',
@@ -107,11 +102,6 @@ class CustomerPaymentReportFilteredPrintController extends Controller
                 $until,
                 fn (Builder $query, string $date): Builder => $query
                     ->whereDate('payment_date', '<=', $date),
-            )
-            ->when(
-                $status,
-                fn (Builder $query, string $value): Builder => $query
-                    ->where('status', $value),
             )
             ->when(
                 $paymentMethod,
@@ -247,9 +237,7 @@ class CustomerPaymentReportFilteredPrintController extends Controller
 
         $filterSummary = array_filter([
             'الفترة' => $period,
-            'الحالة' => $status
-                ? ($statusLabels[$status] ?? $status)
-                : null,
+            'الحالة' => 'معتمد',
             'طريقة الدفع' => $paymentMethod
                 ? ($paymentMethodLabels[$paymentMethod] ?? $paymentMethod)
                 : null,

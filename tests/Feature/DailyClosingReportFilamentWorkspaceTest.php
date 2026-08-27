@@ -56,7 +56,6 @@ class DailyClosingReportFilamentWorkspaceTest extends TestCase
 
         foreach ([
             "Filter::make('closing_date')",
-            "SelectFilter::make('status')",
             "SelectFilter::make('warehouse_id')",
             "SelectFilter::make('vehicle_id')",
             "SelectFilter::make('route_id')",
@@ -107,6 +106,8 @@ class DailyClosingReportFilamentWorkspaceTest extends TestCase
         }
 
         $this->assertStringContainsString('PermissionName::REPORT_DAILY_CLOSINGS->value', $resource);
+        $this->assertStringContainsString("->where('status', 'confirmed')", $resource);
+        $this->assertStringNotContainsString("SelectFilter::make('status')", $table);
     }
 
     public function test_secondary_daily_closing_columns_remain_available_but_hidden_by_default(): void

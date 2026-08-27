@@ -47,12 +47,6 @@ class DailyClosingFilteredPrintController extends Controller
         $from = $this->normalizeDate($dateState['from'] ?? null);
         $until = $this->normalizeDate($dateState['until'] ?? null);
 
-        $status = $this->filterValue($filters, 'status');
-
-        if (! in_array($status, ['draft', 'confirmed', 'cancelled'], true)) {
-            $status = null;
-        }
-
         $warehouseId = $this->normalizeId(
             $this->filterValue($filters, 'warehouse_id'),
         );
@@ -70,6 +64,7 @@ class DailyClosingFilteredPrintController extends Controller
         );
 
         $closings = DailyClosing::query()
+            ->where('status', 'confirmed')
             ->with([
                 'warehouse',
                 'vehicle',
@@ -85,11 +80,6 @@ class DailyClosingFilteredPrintController extends Controller
                 $until,
                 fn (Builder $query, string $date): Builder => $query
                     ->whereDate('closing_date', '<=', $date),
-            )
-            ->when(
-                $status,
-                fn (Builder $query, string $value): Builder => $query
-                    ->where('status', $value),
             )
             ->when(
                 $warehouseId,
@@ -184,7 +174,7 @@ class DailyClosingFilteredPrintController extends Controller
 
         $filterSummary = array_filter([
             'الفترة' => $period,
-            'الحالة' => $status ? ($statusLabels[$status] ?? $status) : null,
+            'الحالة' => 'معتمد',
             'المستودع' => $warehouseId
                 ? Warehouse::query()->find($warehouseId)?->name
                 : null,

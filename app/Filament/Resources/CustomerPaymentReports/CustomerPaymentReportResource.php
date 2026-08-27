@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class CustomerPaymentReportResource extends Resource
 {
@@ -57,6 +58,12 @@ class CustomerPaymentReportResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('status', 'confirmed');
     }
 
     public static function form(Schema $schema): Schema

@@ -49,12 +49,6 @@ class SalesReturnReportFilteredPrintController extends Controller
         $from = $this->normalizeDate($dateState['from'] ?? null);
         $until = $this->normalizeDate($dateState['until'] ?? null);
 
-        $status = $this->filterValue($filters, 'status');
-
-        if (! in_array($status, ['draft', 'confirmed', 'cancelled'], true)) {
-            $status = null;
-        }
-
         $returnReason = $this->filterValue($filters, 'return_reason');
 
         if (! in_array(
@@ -96,6 +90,7 @@ class SalesReturnReportFilteredPrintController extends Controller
         );
 
         $returns = SalesReturn::query()
+            ->where('status', 'confirmed')
             ->with([
                 'customer',
                 'salesInvoice',
@@ -114,11 +109,6 @@ class SalesReturnReportFilteredPrintController extends Controller
                 $until,
                 fn (Builder $query, string $date): Builder => $query
                     ->whereDate('return_date', '<=', $date),
-            )
-            ->when(
-                $status,
-                fn (Builder $query, string $value): Builder => $query
-                    ->where('status', $value),
             )
             ->when(
                 $returnReason,
@@ -235,9 +225,7 @@ class SalesReturnReportFilteredPrintController extends Controller
 
         $filterSummary = array_filter([
             'الفترة' => $period,
-            'الحالة' => $status
-                ? ($statusLabels[$status] ?? $status)
-                : null,
+            'الحالة' => 'معتمد',
             'سبب المرتجع' => $returnReason
                 ? ($reasonLabels[$returnReason] ?? $returnReason)
                 : null,

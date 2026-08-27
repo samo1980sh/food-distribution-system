@@ -329,14 +329,6 @@ class DailyClosingReportsTable
                             );
                     }),
 
-                SelectFilter::make('status')
-                    ->label('الحالة')
-                    ->options([
-                        'draft' => 'مسودة',
-                        'confirmed' => 'معتمد',
-                        'cancelled' => 'ملغي',
-                    ]),
-
                 SelectFilter::make('warehouse_id')
                     ->label('المستودع')
                     ->relationship('warehouse', 'name')
@@ -364,10 +356,9 @@ class DailyClosingReportsTable
             ->filtersFormColumns(3)
             ->filtersFormSchema(fn (array $filters): array => [
                 Section::make('خيارات تصفية الإغلاقات')
-                    ->description('حدد الفترة والحالة ونطاق المستودع أو السيارة أو خط التوزيع أو المندوب، ثم اعرض النتائج.')
+                    ->description('يعرض التقرير الإغلاقات المعتمدة فقط. حدد الفترة ونطاق المستودع أو السيارة أو خط التوزيع أو المندوب، ثم اعرض النتائج.')
                     ->schema([
                         $filters['closing_date'],
-                        $filters['status'],
                         $filters['warehouse_id'],
                         $filters['vehicle_id'],
                         $filters['route_id'],
