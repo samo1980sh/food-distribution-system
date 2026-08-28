@@ -33,25 +33,25 @@ class ProductsTable
                     ->searchable()
                     ->placeholder('-'),
                 TextColumn::make('unit.name_ar')
-                    ->label('الوحدة')
+                    ->label('وحدة التشغيل')
                     ->placeholder('-'),
                 TextColumn::make('sale_price')
-                    ->label('سعر البيع')
+                    ->label('سعر البيع / الوحدة')
                     ->money('SYP')
                     ->sortable()
                     ->weight('bold'),
                 TextColumn::make('wholesale_price')
-                    ->label('سعر الجملة')
+                    ->label('سعر الجملة / الوحدة')
                     ->money('SYP')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('purchase_price')
-                    ->label('سعر الشراء المرجعي')
+                    ->label('سعر الشراء المرجعي / الوحدة')
                     ->money('SYP')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('min_stock')
-                    ->label('حد المخزون')
+                    ->label('حد المخزون / الوحدة')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('has_expiry')
@@ -77,7 +77,7 @@ class ProductsTable
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('unit_id')
-                    ->label('الوحدة')
+                    ->label('وحدة التشغيل')
                     ->relationship('unit', 'name_ar')
                     ->searchable()
                     ->preload(),

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleLoads\Schemas;
 
+use App\Models\Product;
 use App\Enums\UserRole;
 use App\Support\Filament\OperationalFormContext;
 use Filament\Forms\Components\DatePicker;
@@ -154,10 +155,12 @@ class VehicleLoadForm
                                     ->columnSpan(2),
 
                                 TextInput::make('quantity')
-                                    ->label('الكمية')
+                                    ->label('الكمية بوحدة التشغيل')
                                     ->numeric()
                                     ->minValue(0.001)
                                     ->step('0.001')
+                                    ->suffix(fn (Get $get): string => self::productUnitLabel($get('product_id')))
+                                    ->helperText('هذه نفس وحدة المنتج المستخدمة في المخزون والبيع.')
                                     ->required(),
 
                                 TextInput::make('unit_cost')
@@ -182,4 +185,20 @@ class VehicleLoadForm
                     ]),
             ]);
     }
+
+    private static function productUnitLabel(mixed $productId): string
+    {
+        if (blank($productId)) {
+            return 'وحدة التشغيل';
+        }
+
+        $product = Product::query()
+            ->with('unit')
+            ->find($productId);
+
+        $label = trim((string) ($product?->unit?->symbol ?: $product?->unit?->name_ar));
+
+        return $label !== '' ? $label : 'وحدة غير محددة';
+    }
+
 }

@@ -118,7 +118,7 @@ class PurchaseOrdersTable
                                 ->addable(false)
                                 ->deletable(false)
                                 ->reorderable(false)
-                                ->columns(4)
+                                ->columns(5)
                                 ->schema([
                                     Hidden::make('purchase_order_item_id'),
                                     TextInput::make('product_name')
@@ -128,6 +128,10 @@ class PurchaseOrdersTable
                                         ->columnSpan(2),
                                     TextInput::make('remaining_quantity')
                                         ->label('المتبقي')
+                                        ->disabled()
+                                        ->dehydrated(false),
+                                    TextInput::make('unit_label')
+                                        ->label('وحدة التشغيل')
                                         ->disabled()
                                         ->dehydrated(false),
                                     TextInput::make('quantity')
@@ -205,7 +209,7 @@ class PurchaseOrdersTable
     /** @return array<string, mixed> */
     private static function receiptDefaults(PurchaseOrder $record): array
     {
-        $record->loadMissing('items.product');
+        $record->loadMissing('items.product.unit');
 
         return [
             'receipt_date' => now()->toDateString(),
@@ -219,6 +223,10 @@ class PurchaseOrdersTable
                         (float) $item->ordered_quantity - (float) $item->received_quantity,
                         3,
                     ),
+                    'unit_label' => trim((string) (
+                        $item->product?->unit?->symbol
+                        ?: $item->product?->unit?->name_ar
+                    )) ?: 'وحدة غير محددة',
                     'quantity' => 0,
                     'batch_number' => null,
                     'expiry_date' => null,

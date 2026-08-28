@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Schemas;
 
+use App\Models\Product;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -83,16 +85,18 @@ class PurchaseOrderForm
                                     ->native(false)
                                     ->columnSpan(2),
                                 TextInput::make('ordered_quantity')
-                                    ->label('الكمية')
+                                    ->label('الكمية بوحدة التشغيل')
                                     ->numeric()
                                     ->step('0.001')
                                     ->minValue(0.001)
+                                    ->suffix(fn (Get $get): string => self::productUnitLabel($get('product_id')))
                                     ->required(),
                                 TextInput::make('unit_cost')
-                                    ->label('تكلفة الوحدة')
+                                    ->label('تكلفة وحدة التشغيل')
                                     ->numeric()
                                     ->step('0.000001')
                                     ->minValue(0)
+                                    ->suffix(fn (Get $get): string => 'ل.س / '.self::productUnitLabel($get('product_id')))
                                     ->required(),
                                 Textarea::make('notes')
                                     ->label('ملاحظة الصنف')
@@ -103,4 +107,20 @@ class PurchaseOrderForm
                     ]),
             ]);
     }
+
+    private static function productUnitLabel(mixed $productId): string
+    {
+        if (blank($productId)) {
+            return 'وحدة التشغيل';
+        }
+
+        $product = Product::query()
+            ->with('unit')
+            ->find($productId);
+
+        $label = trim((string) ($product?->unit?->symbol ?: $product?->unit?->name_ar));
+
+        return $label !== '' ? $label : 'وحدة غير محددة';
+    }
+
 }

@@ -18,7 +18,7 @@ class ProductForm
             ->columns(2)
             ->components([
                 Section::make('هوية المنتج')
-                    ->description('الرموز والاسم والتصنيف والوحدة المستخدمة في المخزون والفواتير والتقارير.')
+                    ->description('الوحدة هنا هي وحدة التشغيل المعتمدة للمنتج؛ كل كميات المخزون والتحميل والبيع والمرتجعات والمشتريات تُسجل بهذه الوحدة ما لم تُبنَ دورة تحويل وحدات مستقلة لاحقًا.')
                     ->icon('heroicon-o-cube')
                     ->columns(2)
                     ->columnSpanFull()
@@ -47,7 +47,7 @@ class ProductForm
                             ->preload()
                             ->native(false),
                         Select::make('unit_id')
-                            ->label('الوحدة')
+                            ->label('وحدة التشغيل')
                             ->relationship(
                                 'unit',
                                 'name_ar',
@@ -55,7 +55,8 @@ class ProductForm
                             )
                             ->searchable()
                             ->preload()
-                            ->native(false),
+                            ->native(false)
+                            ->helperText('مثال: عبوة، علبة، كرتونة، كغ. السعر والرصيد والتحميل والبيع كلها تُفهم بهذه الوحدة.'),
                         Select::make('status')
                             ->label('الحالة')
                             ->options([
@@ -75,17 +76,17 @@ class ProductForm
                     ->columnSpanFull()
                     ->schema([
                         TextInput::make('purchase_price')
-                            ->label('سعر الشراء المرجعي')
+                            ->label('سعر الشراء المرجعي / وحدة التشغيل')
                             ->numeric()
                             ->minValue(0)
                             ->default(0),
                         TextInput::make('sale_price')
-                            ->label('سعر البيع')
+                            ->label('سعر البيع / وحدة التشغيل')
                             ->numeric()
                             ->minValue(0)
                             ->default(0),
                         TextInput::make('wholesale_price')
-                            ->label('سعر الجملة')
+                            ->label('سعر الجملة / وحدة التشغيل')
                             ->numeric()
                             ->minValue(0)
                             ->default(0),
@@ -98,7 +99,7 @@ class ProductForm
                     ->columnSpanFull()
                     ->schema([
                         TextInput::make('min_stock')
-                            ->label('حد التنبيه للمخزون')
+                            ->label('حد التنبيه / وحدة التشغيل')
                             ->numeric()
                             ->step('0.001')
                             ->minValue(0)
