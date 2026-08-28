@@ -12,6 +12,7 @@ use App\Models\StockBalance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -339,6 +340,12 @@ class SalesFieldOperationsApiTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'SLS-SOURCE-WH',
+            'name' => 'المستودع الرئيسي للمبيعات',
+            'type' => 'main',
+            'status' => 'active',
+        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'SLS-REP', 'name' => 'مندوب المبيعات',
             'type' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active',
@@ -379,7 +386,20 @@ class SalesFieldOperationsApiTest extends TestCase
             'average_unit_cost' => 5,
         ]);
 
-        return compact('area', 'vehicle', 'warehouse', 'representative', 'route', 'product');
+        VehicleLoad::query()->create([
+            'load_number' => 'SLS-LOAD-TODAY',
+            'vehicle_id' => $vehicle->id,
+            'route_id' => $route->id,
+            'sales_representative_id' => $representative->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $warehouse->id,
+            'load_date' => today(),
+            'status' => 'approved',
+            'handover_status' => 'received',
+            'total_quantity' => 0,
+        ]);
+
+        return compact('area', 'vehicle', 'warehouse', 'sourceWarehouse', 'representative', 'route', 'product');
     }
 
     private function salesUser(Employee $representative): User

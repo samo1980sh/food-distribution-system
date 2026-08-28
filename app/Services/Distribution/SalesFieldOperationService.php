@@ -130,14 +130,34 @@ class SalesFieldOperationService
                 );
             }
 
-            $pendingLoadExists = VehicleLoad::withoutGlobalScopes()
+            $approvedLoads = VehicleLoad::withoutGlobalScopes()
                 ->whereDate('load_date', $journey->journey_date)
                 ->where('route_id', $journey->route_id)
                 ->where('vehicle_id', $journey->vehicle_id)
                 ->where('to_warehouse_id', $journey->warehouse_id)
                 ->where('status', 'approved')
-                ->where('handover_status', 'pending')
-                ->exists();
+                ->where(function ($query) use ($journey): void {
+                    $query->where('sales_representative_id', $journey->sales_representative_id)
+                        ->orWhereNull('sales_representative_id');
+                })
+                ->lockForUpdate()
+                ->get(['id', 'handover_status']);
+
+            if ($approvedLoads->isEmpty()) {
+                throw new OperationalApiException(
+                    'لا يمكن بدء رحلة اليوم قبل تجهيز حمولة معتمدة ليوم العمل الحالي واستلامها.',
+                    'vehicle_load_required',
+                    409,
+                );
+            }
+
+            $pendingLoadExists = $approvedLoads->contains(
+                fn (VehicleLoad $load): bool => ! in_array(
+                    $load->handover_status,
+                    ['received', 'discrepancy'],
+                    true,
+                ),
+            );
 
             if ($pendingLoadExists) {
                 throw new OperationalApiException(

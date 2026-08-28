@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleExpense;
+use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -158,6 +159,12 @@ class OdometerLifecycleApiTest extends TestCase
             'type' => 'vehicle',
             'status' => 'active',
         ]);
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'ODO-SOURCE-WH',
+            'name' => 'المستودع الرئيسي للعداد',
+            'type' => 'main',
+            'status' => 'active',
+        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'ODO-REP',
             'name' => 'مندوب العداد',
@@ -172,6 +179,19 @@ class OdometerLifecycleApiTest extends TestCase
             'name' => 'خط العداد',
             'visit_days' => [],
             'status' => 'active',
+        ]);
+
+        VehicleLoad::query()->create([
+            'load_number' => 'ODO-LOAD-TODAY',
+            'vehicle_id' => $vehicle->id,
+            'route_id' => $route->id,
+            'sales_representative_id' => $representative->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $warehouse->id,
+            'load_date' => today(),
+            'status' => 'approved',
+            'handover_status' => 'received',
+            'total_quantity' => 0,
         ]);
 
         return compact('vehicle', 'warehouse', 'representative', 'route');

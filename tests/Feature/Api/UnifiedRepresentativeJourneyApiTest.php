@@ -537,6 +537,40 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->assertDatabaseCount('sales_invoices', 4);
     }
 
+    public function test_previous_day_received_load_does_not_unlock_today_journey(): void
+    {
+        $context = $this->context('DAY-BOUNDARY', 0);
+        $user = $this->representativeUser($context['representative']);
+        $token = $this->tokenFor($user);
+
+        $this->receivedLoad($context, today()->subDay()->toDateString());
+
+        $opened = $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'ready');
+        $journeyId = (int) $opened->json('data.id');
+
+        $this->withFreshToken($token)
+            ->getJson('/api/v1/operational/today')
+            ->assertOk()
+            ->assertJsonPath('data.contexts.sales_representative.summary.load_custody.status', 'none')
+            ->assertJsonPath('data.contexts.sales_representative.summary.load_custody.loads_count', 0)
+            ->assertJsonPath('data.contexts.sales_representative.summary.stock.total_quantity', '20.000');
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
+            ->assertConflict()
+            ->assertJsonPath('code', 'vehicle_load_required');
+
+        $this->receivedLoad($context, today()->toDateString());
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_progress');
+    }
+
     public function test_representative_cannot_start_a_conflicting_or_unauthorized_journey(): void
     {
         $first = $this->context('FIRST', 0);
@@ -545,8 +579,11 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $second['route']->update([
             'sales_representative_id' => $first['representative']->id,
         ]);
+        $second['representative'] = $first['representative'];
         $user = $this->representativeUser($first['representative']);
         $token = $this->tokenFor($user);
+        $this->receivedLoad($first, today()->toDateString());
+        $this->receivedLoad($second, today()->toDateString());
 
         $firstJourney = $this->withFreshToken($token)
             ->postJson('/api/v1/operational/sales-journeys/open-today', [
@@ -665,6 +702,23 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'route',
             'product',
         );
+    }
+
+    /** @param array<string, mixed> $context */
+    private function receivedLoad(array $context, string $date): VehicleLoad
+    {
+        return VehicleLoad::query()->create([
+            'load_number' => 'UNIFIED-READY-'.$context['route']->id.'-'.$date,
+            'vehicle_id' => $context['vehicle']->id,
+            'route_id' => $context['route']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'from_warehouse_id' => $context['sourceWarehouse']->id,
+            'to_warehouse_id' => $context['warehouse']->id,
+            'load_date' => $date,
+            'status' => 'approved',
+            'handover_status' => 'received',
+            'total_quantity' => 0,
+        ]);
     }
 
     /** @param array<string, mixed> $context */

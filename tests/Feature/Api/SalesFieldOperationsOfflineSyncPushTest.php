@@ -8,6 +8,7 @@ use App\Models\DistributionRoute;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -142,6 +143,12 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'vehicle_id' => $vehicle->id, 'code' => 'SLS-SYNC-WH',
             'name' => 'مستودع مزامنة المبيعات', 'type' => 'vehicle', 'status' => 'active',
         ]);
+        $sourceWarehouse = Warehouse::query()->create([
+            'code' => 'SLS-SYNC-SOURCE-WH',
+            'name' => 'المستودع الرئيسي لمزامنة المبيعات',
+            'type' => 'main',
+            'status' => 'active',
+        ]);
         $representative = Employee::query()->create([
             'employee_code' => 'SLS-SYNC-REP', 'name' => 'مندوب مزامنة المبيعات',
             'type' => User::ROLE_SALES_REPRESENTATIVE, 'status' => 'active',
@@ -151,6 +158,18 @@ class SalesFieldOperationsOfflineSyncPushTest extends TestCase
             'sales_representative_id' => $representative->id,
             'code' => 'SLS-SYNC-ROUTE', 'name' => 'خط مزامنة المبيعات',
             'visit_days' => [], 'status' => 'active',
+        ]);
+        VehicleLoad::query()->create([
+            'load_number' => 'SLS-SYNC-LOAD-TODAY',
+            'vehicle_id' => $vehicle->id,
+            'route_id' => $route->id,
+            'sales_representative_id' => $representative->id,
+            'from_warehouse_id' => $sourceWarehouse->id,
+            'to_warehouse_id' => $warehouse->id,
+            'load_date' => today(),
+            'status' => 'approved',
+            'handover_status' => 'received',
+            'total_quantity' => 0,
         ]);
         Customer::query()->create([
             'code' => 'SLS-SYNC-CUS', 'name' => 'عميل مزامنة المبيعات',
