@@ -6,6 +6,7 @@ use App\Enums\OperationSource;
 use App\Filament\Resources\DailyClosings\Actions\DailyClosingActions;
 use App\Filament\Resources\DailyClosings\DailyClosingResource;
 use App\Models\DailyClosing;
+use App\Support\Formatting\QuantityFormatter;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -51,8 +52,10 @@ class DailyClosingsTable
                     ->description(fn (DailyClosing $record): ?string => $record->vehicle?->name),
 
                 TextColumn::make('total_expected_quantity')
-                    ->label('الرصيد المتوقع')
-                    ->numeric(decimalPlaces: 3)
+                    ->label('الكمية المتوقعة')
+                    ->formatStateUsing(
+                        fn (mixed $state): string => QuantityFormatter::format((float) $state).' وحدة'
+                    )
                     ->sortable()
                     ->weight('bold'),
 

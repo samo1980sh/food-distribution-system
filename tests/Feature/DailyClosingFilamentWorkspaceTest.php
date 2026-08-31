@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Support\Formatting\QuantityFormatter;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DailyClosingFilamentWorkspaceTest extends TestCase
@@ -47,5 +49,20 @@ class DailyClosingFilamentWorkspaceTest extends TestCase
         $this->assertStringContainsString('persistSortInSession', $table);
         $this->assertStringContainsString('emptyStateHeading', $table);
         $this->assertStringContainsString("Filter::make('closing_date')", $table);
+
+        $expectedQuantityColumn = Str::between(
+            $table,
+            "TextColumn::make('total_expected_quantity')",
+            "TextColumn::make('expected_cash_amount')",
+        );
+
+        $this->assertStringContainsString("->label('الكمية المتوقعة')", $expectedQuantityColumn);
+        $this->assertStringContainsString('QuantityFormatter::format((float) $state)', $expectedQuantityColumn);
+        $this->assertStringContainsString("' وحدة'", $expectedQuantityColumn);
+        $this->assertStringNotContainsString("->label('الرصيد المتوقع')", $expectedQuantityColumn);
+        $this->assertStringNotContainsString('->numeric(', $expectedQuantityColumn);
+        $this->assertSame('100 وحدة', QuantityFormatter::format(100.000).' وحدة');
+        $this->assertSame('10.5 وحدة', QuantityFormatter::format(10.500).' وحدة');
+        $this->assertSame('10.25 وحدة', QuantityFormatter::format(10.250).' وحدة');
     }
 }
