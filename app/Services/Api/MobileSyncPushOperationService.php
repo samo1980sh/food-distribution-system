@@ -6,6 +6,7 @@ use App\Exceptions\Api\OperationalApiException;
 use App\Http\Requests\Api\V1\Operational\CancelOperationalDocumentRequest;
 use App\Http\Requests\Api\V1\Operational\CompleteSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\FinishSalesJourneyRequest;
+use App\Http\Requests\Api\V1\Operational\OpenDailyClosingFieldRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesJourneyRequest;
 use App\Http\Requests\Api\V1\Operational\StartSalesVisitRequest;
 use App\Http\Requests\Api\V1\Operational\SubmitDailyClosingCashRequest;
@@ -147,6 +148,10 @@ class MobileSyncPushOperationService
                 return $this->create($user, $request, $entity, $payload, $operation);
             }
 
+            if ($entity === 'daily_closings' && $action === 'open_today') {
+                return $this->openTodayClosing($user, $request, $payload, $operation);
+            }
+
             $record = $this->findRecord($entity, (int) $operation['record_id']);
 
             return match ($action) {
@@ -221,6 +226,45 @@ class MobileSyncPushOperationService
             $writeResult->replayed ? 'idempotent_replay' : 'created',
             $writeResult->replayed ? 'تمت إعادة السجل المنشأ سابقاً.' : 'تم إنشاء السجل.',
             $writeResult->replayed,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $operation
+     * @return array<string, mixed>
+     */
+    private function openTodayClosing(
+        User $user,
+        Request $request,
+        array $payload,
+        array $operation,
+    ): array {
+        $formRequest = $this->requestValidator->make(
+            OpenDailyClosingFieldRequest::class,
+            'POST',
+            $payload,
+            $user,
+        );
+        $this->requestValidator->authorize($formRequest);
+        $validated = $this->requestValidator->validate($formRequest);
+
+        $closing = $this->dailyClosingFieldHandoverService->openToday(
+            $user,
+            $validated['route_id'] ?? null,
+        );
+
+        return $this->success(
+            $operation,
+            $request,
+            'daily_closings',
+            $closing,
+            'applied',
+            $closing->wasRecentlyCreated ? 201 : 200,
+            $closing->wasRecentlyCreated ? 'created' : 'opened',
+            $closing->wasRecentlyCreated
+                ? 'تم فتح مسودة إغلاق اليوم.'
+                : 'تم تحميل إغلاق اليوم الحالي.',
         );
     }
 

@@ -70,6 +70,8 @@ class MobileSyncPushRequest extends FormRequest
                 $action = (string) ($operation['action'] ?? '');
                 $recordId = $operation['record_id'] ?? null;
                 $baseVersion = $operation['base_version'] ?? null;
+                $opensRecord = $action === 'create'
+                    || ($entity === 'daily_closings' && $action === 'open_today');
 
                 if ($entity !== '' && $action !== '' && ! MobileSyncPushRegistry::supports($entity, $action)) {
                     $validator->errors()->add(
@@ -78,7 +80,7 @@ class MobileSyncPushRequest extends FormRequest
                     );
                 }
 
-                if ($action === 'create') {
+                if ($opensRecord) {
                     if ($recordId !== null && $recordId !== '') {
                         $validator->errors()->add(
                             "operations.{$index}.record_id",

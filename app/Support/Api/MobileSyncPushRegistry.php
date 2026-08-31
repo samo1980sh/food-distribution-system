@@ -93,6 +93,7 @@ final class MobileSyncPushRegistry
                 'request' => DailyClosingWriteRequest::class,
                 'route_parameter' => 'dailyClosing',
                 'actions' => [
+                    'open_today',
                     'create',
                     'update',
                     'delete',

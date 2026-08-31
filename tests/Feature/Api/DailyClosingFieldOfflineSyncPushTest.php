@@ -20,6 +20,63 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_representative_opens_today_offline_and_exact_replay_is_idempotent(): void
+    {
+        $context = $this->context();
+        $sales = $this->userForEmployee(
+            User::ROLE_SALES_REPRESENTATIVE,
+            $context['representative'],
+        );
+        $token = $this->tokenFor($sales, 'closing-open-device');
+        $contextKey = $this->contextKey($token);
+        $this->completedJourney($context, $sales);
+        $operations = [[
+            'operation_id' => 'operation-closing-open-0001',
+            'entity' => 'daily_closings',
+            'action' => 'open_today',
+            'payload' => [
+                'route_id' => $context['route']->id,
+            ],
+        ]];
+
+        $opened = $this->push(
+            $token,
+            $contextKey,
+            'batch-closing-open-0001',
+            $operations,
+        )
+            ->assertOk()
+            ->assertJsonPath('data.replayed', false)
+            ->assertJsonPath('data.results.0.status', 'applied')
+            ->assertJsonPath('data.results.0.http_status', 201)
+            ->assertJsonPath('data.results.0.record.field_workflow', true);
+
+        $closingId = (int) $opened->json('data.results.0.record_id');
+        $version = (string) $opened->json('data.results.0.version');
+
+        $this->assertGreaterThan(0, $closingId);
+        $this->assertMatchesRegularExpression('/^c:[1-9][0-9]*$/', $version);
+
+        $this->push(
+            $token,
+            $contextKey,
+            'batch-closing-open-0001',
+            $operations,
+        )
+            ->assertOk()
+            ->assertJsonPath('data.replayed', true)
+            ->assertJsonPath('data.results.0.record_id', $closingId)
+            ->assertJsonPath('data.results.0.version', $version);
+
+        $this->assertDatabaseCount('daily_closings', 1);
+        $this->assertDatabaseHas('daily_closings', [
+            'id' => $closingId,
+            'sales_representative_id' => $context['representative']->id,
+            'field_workflow' => true,
+            'status' => 'draft',
+        ]);
+    }
+
     public function test_representative_inventory_and_cash_merge_from_the_same_base_version(): void
     {
         $context = $this->context();
@@ -31,15 +88,27 @@ class DailyClosingFieldOfflineSyncPushTest extends TestCase
         $salesContextKey = $this->contextKey($salesToken);
         $this->completedJourney($context, $sales);
 
-        $opened = $this->withFreshToken($salesToken)
-            ->postJson('/api/v1/operational/daily-closings/open-today', [
-                'route_id' => $context['route']->id,
-            ])
-            ->assertCreated();
+        $opened = $this->push(
+            $salesToken,
+            $salesContextKey,
+            'batch-closing-open-for-handover-0001',
+            [[
+                'operation_id' => 'operation-closing-open-for-handover-0001',
+                'entity' => 'daily_closings',
+                'action' => 'open_today',
+                'payload' => [
+                    'route_id' => $context['route']->id,
+                ],
+            ]],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.results.0.status', 'applied');
 
-        $closingId = (int) $opened->json('data.id');
-        $baseVersion = (string) $opened->json('data.sync_version');
-        $expectedQuantity = (float) $opened->json('data.items.0.expected_quantity');
+        $closingId = (int) $opened->json('data.results.0.record_id');
+        $baseVersion = (string) $opened->json('data.results.0.version');
+        $expectedQuantity = (float) $opened->json(
+            'data.results.0.record.items.0.expected_quantity',
+        );
 
         $inventory = $this->push(
             $salesToken,
