@@ -23,6 +23,7 @@ class FieldTodayReadService
     public function __construct(
         private readonly FieldRouteAssignmentResolver $routeResolver,
         private readonly AccessScopeService $accessScopeService,
+        private readonly SaleableVehicleStockService $saleableStock,
     ) {}
 
     /** @return array<string, mixed> */
@@ -101,8 +102,10 @@ class FieldTodayReadService
         return [
             'role' => $role,
             'status' => $status,
-            'schedule_status' => $resolution['status'],
+            'schedule_status' => $resolution['schedule_status'],
             'scheduled_today' => $resolution['scheduled_today'],
+            'operational_today' => $resolution['operational_today'],
+            'exceptional_operation' => $resolution['exceptional_operation'],
             'available_routes_count' => $resolution['available_count'],
             'scheduled_routes_count' => $resolution['scheduled_count'],
             'candidates' => $resolution['candidates'],
@@ -298,9 +301,7 @@ class FieldTodayReadService
         $stock = null;
 
         if ($warehouseId !== null) {
-            $balances = StockBalance::withoutGlobalScopes()
-                ->where('warehouse_id', $warehouseId)
-                ->where('quantity', '>', 0);
+            $balances = $this->saleableStock->query($warehouseId, $date);
             $balances = $this->scoped($balances, $user);
 
             $stock = [

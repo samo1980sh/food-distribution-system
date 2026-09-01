@@ -29,10 +29,27 @@ class VehicleLoadService
                 'fromWarehouse',
                 'toWarehouse',
                 'vehicle',
+                'route',
             ]);
 
             if (! $vehicleLoad->isDraft()) {
                 throw new RuntimeException('لا يمكن اعتماد أمر تحميل ليس بحالة مسودة.');
+            }
+
+            if ($vehicleLoad->route_id !== null || $vehicleLoad->sales_representative_id !== null) {
+                $route = $vehicleLoad->route;
+                if (
+                    $route === null
+                    || $vehicleLoad->sales_representative_id === null
+                    || (int) $route->vehicle_id !== (int) $vehicleLoad->vehicle_id
+                    || (int) $route->sales_representative_id !== (int) $vehicleLoad->sales_representative_id
+                    || ! app(FieldRouteAssignmentResolver::class)->isOperationalFor(
+                        $route,
+                        $vehicleLoad->load_date,
+                    )
+                ) {
+                    throw new RuntimeException('لا يمكن اعتماد الحمولة لأن المسار غير مجدول ولا يملك تصريح تشغيل استثنائي مطابقًا للتاريخ والمركبة والمندوب.');
+                }
             }
 
             $this->validateWarehouses($vehicleLoad);

@@ -50,4 +50,9 @@ class DistributionRoute extends Model
     {
         return $this->hasMany(Customer::class, 'route_id');
     }
+
+    public function operationalDayOverrides(): HasMany
+    {
+        return $this->hasMany(FieldOperationalDayOverride::class, 'route_id');
+    }
 }

@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
@@ -16,6 +17,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\Warehouse;
+use App\Services\Distribution\FieldRouteAssignmentResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -63,6 +65,10 @@ class FieldTodayReadApiTest extends TestCase
             ->assertJsonPath('data.date', '2026-07-27')
             ->assertJsonPath('data.available_roles.0', User::ROLE_SALES_REPRESENTATIVE)
             ->assertJsonPath('data.contexts.sales_representative.status', 'ready')
+            ->assertJsonPath('data.contexts.sales_representative.schedule_status', 'normal_schedule')
+            ->assertJsonPath('data.contexts.sales_representative.scheduled_today', true)
+            ->assertJsonPath('data.contexts.sales_representative.operational_today', true)
+            ->assertJsonPath('data.contexts.sales_representative.exceptional_operation', false)
             ->assertJsonPath('data.contexts.sales_representative.readiness.ready', true)
             ->assertJsonPath('data.contexts.sales_representative.route.id', $first['route']->id)
             ->assertJsonPath('data.contexts.sales_representative.summary.assigned_customers', 1)
@@ -71,6 +77,52 @@ class FieldTodayReadApiTest extends TestCase
             ->assertJsonPath('data.contexts.sales_representative.summary.invoices.confirmed_amount', '125.00')
             ->assertJsonPath('data.contexts.sales_representative.summary.payments.confirmed_amount', '50.00')
             ->assertJsonPath('data.contexts.sales_representative.summary.returns.confirmed_amount', '15.00');
+    }
+
+    public function test_field_today_distinguishes_exceptional_and_non_scheduled_days(): void
+    {
+        $context = $this->context('EXCEPTIONAL', ['tuesday']);
+        $user = $this->userForEmployee(User::ROLE_SALES_REPRESENTATIVE, $context['representative']);
+        $token = $this->tokenFor($user);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/today')
+            ->assertOk()
+            ->assertJsonPath('data.contexts.sales_representative.status', 'not_scheduled_today')
+            ->assertJsonPath('data.contexts.sales_representative.schedule_status', 'not_scheduled')
+            ->assertJsonPath('data.contexts.sales_representative.operational_today', false)
+            ->assertJsonPath('data.contexts.sales_representative.exceptional_operation', false);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertConflict();
+
+        FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $context['route']->id,
+            'reason' => 'تغطية استثنائية للاختبار',
+            'status' => 'active',
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/api/v1/operational/today')
+            ->assertOk()
+            ->assertJsonPath('data.contexts.sales_representative.status', 'ready')
+            ->assertJsonPath('data.contexts.sales_representative.schedule_status', 'exceptional_override')
+            ->assertJsonPath('data.contexts.sales_representative.scheduled_today', false)
+            ->assertJsonPath('data.contexts.sales_representative.operational_today', true)
+            ->assertJsonPath('data.contexts.sales_representative.exceptional_operation', true);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated();
+
+        $this->assertSame(
+            $context['route']->id,
+            app(FieldRouteAssignmentResolver::class)
+                ->resolveForClosing($user, null, today())
+                ->id,
+        );
     }
 
     private function context(string $suffix, array $visitDays): array

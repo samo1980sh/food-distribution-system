@@ -6,6 +6,7 @@ use App\Models\Area;
 use App\Models\Customer;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\StockBalance;
@@ -16,9 +17,11 @@ use App\Models\VehicleLoad;
 use App\Models\VehicleLoadItem;
 use App\Models\Warehouse;
 use App\Services\Sales\CustomerFinancialService;
+use App\Services\Distribution\VehicleLoadService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use RuntimeException;
 
 class UnifiedRepresentativeJourneyApiTest extends TestCase
 {
@@ -537,7 +540,7 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
         $this->assertDatabaseCount('sales_invoices', 4);
     }
 
-    public function test_previous_day_received_load_does_not_unlock_today_journey(): void
+    public function test_previous_day_received_load_stock_unlocks_today_journey(): void
     {
         $context = $this->context('DAY-BOUNDARY', 0);
         $user = $this->representativeUser($context['representative']);
@@ -560,15 +563,51 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
-            ->assertConflict()
-            ->assertJsonPath('code', 'vehicle_load_required');
-
-        $this->receivedLoad($context, today()->toDateString());
-
-        $this->withFreshToken($token)
-            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
             ->assertOk()
             ->assertJsonPath('data.status', 'in_progress');
+    }
+
+    public function test_no_current_load_and_no_saleable_vehicle_stock_blocks_start(): void
+    {
+        $context = $this->context('NO-CARRYOVER', 0);
+        StockBalance::query()->where('warehouse_id', $context['warehouse']->id)->delete();
+        $user = $this->representativeUser($context['representative']);
+        $journeyId = (int) $this->withFreshToken($this->tokenFor($user))
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->withFreshToken($this->tokenFor($user))
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
+            ->assertConflict()
+            ->assertJsonPath('code', 'vehicle_load_required');
+    }
+
+    public function test_expired_or_inactive_vehicle_stock_does_not_unlock_start(): void
+    {
+        foreach (['EXPIRED', 'INACTIVE'] as $case) {
+            $context = $this->context('UNSALEABLE-'.$case, 0);
+            $balance = StockBalance::withoutGlobalScopes()
+                ->where('warehouse_id', $context['warehouse']->id)
+                ->where('product_id', $context['product']->id)
+                ->firstOrFail();
+            if ($case === 'EXPIRED') {
+                $balance->update(['expiry_date' => today()->subDay()]);
+            } else {
+                $context['product']->update(['status' => 'inactive']);
+            }
+            $user = $this->representativeUser($context['representative']);
+            $token = $this->tokenFor($user);
+            $journeyId = (int) $this->withFreshToken($token)
+                ->postJson('/api/v1/operational/sales-journeys/open-today')
+                ->assertCreated()
+                ->json('data.id');
+
+            $this->withFreshToken($token)
+                ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
+                ->assertConflict()
+                ->assertJsonPath('code', 'vehicle_load_required');
+        }
     }
 
     public function test_representative_cannot_start_a_conflicting_or_unauthorized_journey(): void
@@ -610,6 +649,110 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             ])
             ->assertNotFound();
 
+    }
+
+    public function test_vehicle_load_approval_requires_normal_schedule_or_exact_override(): void
+    {
+        $blocked = $this->context('LOAD-BLOCKED', 0);
+        $blocked['route']->update(['visit_days' => [today()->addDay()->englishDayOfWeek]]);
+        $other = $this->context('LOAD-OTHER', 0);
+        $other['route']->update(['visit_days' => [today()->addDay()->englishDayOfWeek]]);
+        FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $other['route']->id,
+            'reason' => 'Override for another context',
+            'status' => 'active',
+        ]);
+
+        $load = $this->draftLoad($blocked, 'BLOCKED');
+        try {
+            app(VehicleLoadService::class)->approve($load);
+            $this->fail('A mismatched override must not authorize load approval.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringContainsString('تصريح تشغيل استثنائي', $exception->getMessage());
+        }
+
+        FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $blocked['route']->id,
+            'reason' => 'Exact exceptional operation',
+            'status' => 'active',
+        ]);
+        $this->assertSame('approved', app(VehicleLoadService::class)->approve($load)->status);
+
+        $scheduled = $this->context('LOAD-SCHEDULED', 0);
+        $scheduled['route']->update(['visit_days' => [strtolower(today()->englishDayOfWeek)]]);
+        $this->assertSame(
+            'approved',
+            app(VehicleLoadService::class)->approve($this->draftLoad($scheduled, 'SCHEDULED'))->status,
+        );
+    }
+
+    public function test_start_revalidates_exceptional_operation_after_opening(): void
+    {
+        $context = $this->context('OVERRIDE-START-REVALIDATION', 0);
+        $context['route']->update(['visit_days' => [strtolower(today()->addDay()->englishDayOfWeek)]]);
+        $override = FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $context['route']->id,
+            'reason' => 'Temporary exceptional operation',
+            'status' => 'active',
+        ]);
+        $user = $this->representativeUser($context['representative']);
+        $token = $this->tokenFor($user);
+        $journeyId = (int) $this->withFreshToken($token)
+            ->postJson('/api/v1/operational/sales-journeys/open-today')
+            ->assertCreated()
+            ->json('data.id');
+
+        $override->update(['status' => 'cancelled']);
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/start", ['start_odometer' => 2000])
+            ->assertConflict()
+            ->assertJsonPath('code', 'field_operational_day_not_authorized');
+    }
+
+    public function test_cancelled_override_can_be_reactivated_without_creating_duplicate_route_date(): void
+    {
+        $context = $this->context('OVERRIDE-REACTIVATE', 0);
+        $context['route']->update(['visit_days' => [strtolower(today()->addDay()->englishDayOfWeek)]]);
+        $override = FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $context['route']->id,
+            'reason' => 'Reusable exceptional operation',
+            'status' => 'active',
+        ]);
+
+        $override->update(['status' => 'cancelled']);
+        $this->assertSame('cancelled', $override->refresh()->status);
+        $this->assertNotNull($override->cancelled_at);
+
+        $override->update(['status' => 'active']);
+
+        $override->refresh();
+        $this->assertSame('active', $override->status);
+        $this->assertNull($override->cancelled_at);
+        $this->assertSame((int) $context['vehicle']->id, (int) $override->vehicle_id);
+        $this->assertSame((int) $context['representative']->id, (int) $override->sales_representative_id);
+        $this->assertDatabaseCount('field_operational_day_overrides', 1);
+    }
+
+    public function test_override_can_be_cancelled_after_route_becomes_normally_scheduled(): void
+    {
+        $context = $this->context('OVERRIDE-CANCEL-AFTER-SCHEDULE', 0);
+        $context['route']->update(['visit_days' => [strtolower(today()->addDay()->englishDayOfWeek)]]);
+        $override = FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $context['route']->id,
+            'reason' => 'Will become unnecessary',
+            'status' => 'active',
+        ]);
+
+        $context['route']->update(['visit_days' => [strtolower(today()->englishDayOfWeek)]]);
+        $override->update(['status' => 'cancelled']);
+
+        $this->assertSame('cancelled', $override->refresh()->status);
     }
 
     /** @return array<string, mixed> */
@@ -719,6 +862,40 @@ class UnifiedRepresentativeJourneyApiTest extends TestCase
             'handover_status' => 'received',
             'total_quantity' => 0,
         ]);
+    }
+
+    /** @param array<string, mixed> $context */
+    private function draftLoad(array $context, string $suffix): VehicleLoad
+    {
+        StockBalance::query()->updateOrCreate([
+            'warehouse_id' => $context['sourceWarehouse']->id,
+            'product_id' => $context['product']->id,
+            'batch_key' => '',
+            'expiry_key' => '',
+        ], [
+            'quantity' => 20,
+            'average_unit_cost' => 5,
+        ]);
+        $load = VehicleLoad::query()->create([
+            'load_number' => 'UNIFIED-DRAFT-'.$suffix,
+            'vehicle_id' => $context['vehicle']->id,
+            'route_id' => $context['route']->id,
+            'sales_representative_id' => $context['representative']->id,
+            'from_warehouse_id' => $context['sourceWarehouse']->id,
+            'to_warehouse_id' => $context['warehouse']->id,
+            'load_date' => today(),
+            'status' => 'draft',
+            'handover_status' => 'pending',
+        ]);
+        VehicleLoadItem::query()->create([
+            'vehicle_load_id' => $load->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 5,
+            'unit_cost' => 0,
+            'total_cost' => 0,
+        ]);
+
+        return $load;
     }
 
     /** @param array<string, mixed> $context */

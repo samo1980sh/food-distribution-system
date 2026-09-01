@@ -9,6 +9,7 @@ use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
@@ -60,6 +61,14 @@ class MobileSyncScopeService
             return $this->clean([
                 'area_id' => $model->area_id,
                 'route_id' => $model->getKey(),
+                'vehicle_id' => $model->vehicle_id,
+                'employee_ids' => [$model->sales_representative_id],
+            ]);
+        }
+
+        if ($model instanceof FieldOperationalDayOverride) {
+            return $this->clean([
+                'route_id' => $model->route_id,
                 'vehicle_id' => $model->vehicle_id,
                 'employee_ids' => [$model->sales_representative_id],
             ]);
@@ -150,6 +159,7 @@ class MobileSyncScopeService
         return match ($entity) {
             'areas' => $this->contains($scope->areaIds, $snapshot['area_id'] ?? null),
             'routes' => $this->contains($scope->routeIds, $snapshot['route_id'] ?? null),
+            'field_operational_day_overrides' => $this->matchesExactOperationalScope($scope, $snapshot),
             'vehicles' => $this->contains($scope->vehicleIds, $snapshot['vehicle_id'] ?? null),
             'warehouses' => $this->contains($scope->warehouseIds, $snapshot['warehouse_id'] ?? null),
             'employees' => $this->contains($scope->employeeIds, $snapshot['employee_id'] ?? null),
@@ -166,6 +176,14 @@ class MobileSyncScopeService
                     : $this->matchesOperationalScope($scope, $snapshot),
             default => false,
         };
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function matchesExactOperationalScope(object $scope, array $snapshot): bool
+    {
+        return $this->contains($scope->routeIds, $snapshot['route_id'] ?? null)
+            && $this->contains($scope->vehicleIds, $snapshot['vehicle_id'] ?? null)
+            && $this->intersects($scope->employeeIds, $snapshot['employee_ids'] ?? []);
     }
 
     /** @param array<string, mixed> $snapshot */

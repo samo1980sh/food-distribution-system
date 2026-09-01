@@ -45,6 +45,8 @@ class FieldTodayResource extends OperationalResource
             'status' => $context['status'],
             'schedule_status' => $context['schedule_status'],
             'scheduled_today' => $context['scheduled_today'],
+            'operational_today' => $context['operational_today'],
+            'exceptional_operation' => $context['exceptional_operation'],
             'available_routes_count' => $context['available_routes_count'],
             'scheduled_routes_count' => $context['scheduled_routes_count'],
             'candidate_routes' => array_map(

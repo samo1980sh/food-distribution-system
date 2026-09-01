@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\Operational\CustomerPaymentResource;
 use App\Http\Resources\Api\V1\Operational\CustomerResource;
 use App\Http\Resources\Api\V1\Operational\DailyClosingResource;
 use App\Http\Resources\Api\V1\Operational\EmployeeSummaryResource;
+use App\Http\Resources\Api\V1\Operational\FieldOperationalDayOverrideResource;
 use App\Http\Resources\Api\V1\Operational\ProductCategoryResource;
 use App\Http\Resources\Api\V1\Operational\ProductResource;
 use App\Http\Resources\Api\V1\Operational\RouteResource;
@@ -27,6 +28,7 @@ use App\Models\CustomerPayment;
 use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\SalesInvoice;
@@ -74,6 +76,12 @@ final class MobileSyncEntityRegistry
                 'resource' => RouteResource::class,
                 'permissions' => [PermissionName::DISTRIBUTION_ROUTES_VIEW->value],
                 'relations' => ['area', 'vehicle.warehouse', 'salesRepresentative'],
+            ],
+            'field_operational_day_overrides' => [
+                'model' => FieldOperationalDayOverride::class,
+                'resource' => FieldOperationalDayOverrideResource::class,
+                'permissions' => [PermissionName::DISTRIBUTION_ROUTES_VIEW->value],
+                'relations' => ['route', 'vehicle', 'salesRepresentative'],
             ],
             'vehicles' => [
                 'model' => Vehicle::class,

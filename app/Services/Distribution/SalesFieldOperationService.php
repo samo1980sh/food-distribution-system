@@ -22,6 +22,7 @@ class SalesFieldOperationService
 {
     public function __construct(
         private readonly FieldRouteAssignmentResolver $routeResolver,
+        private readonly SaleableVehicleStockService $saleableStock,
     ) {}
 
     public function openToday(User $user, ?int $routeId = null): SalesJourney
@@ -105,6 +106,7 @@ class SalesFieldOperationService
             }
 
             $this->ensureActiveRepresentativeContext($journey);
+            $this->ensureOperationalDayAuthorization($journey);
 
             app(DailyClosingGuard::class)->ensureOpen(
                 $journey->journey_date,
@@ -143,7 +145,13 @@ class SalesFieldOperationService
                 ->lockForUpdate()
                 ->get(['id', 'handover_status']);
 
-            if ($approvedLoads->isEmpty()) {
+            if (
+                $approvedLoads->isEmpty()
+                && ! $this->saleableStock->exists(
+                    (int) $journey->warehouse_id,
+                    $journey->journey_date,
+                )
+            ) {
                 throw new OperationalApiException(
                     'لا يمكن بدء رحلة اليوم قبل تجهيز حمولة معتمدة ليوم العمل الحالي واستلامها.',
                     'vehicle_load_required',
@@ -483,6 +491,24 @@ class SalesFieldOperationService
             422,
             [$field => ['يجب أن تكون قراءة العداد مساوية أو أكبر من آخر قراءة موثوقة.']],
         );
+    }
+
+    private function ensureOperationalDayAuthorization(SalesJourney $journey): void
+    {
+        $journey->loadMissing('route');
+        $route = $journey->route;
+
+        if (
+            ! $route instanceof DistributionRoute
+            || $journey->journey_date === null
+            || ! $this->routeResolver->isOperationalFor($route, $journey->journey_date)
+        ) {
+            throw new OperationalApiException(
+                'لم يعد يوم العمل الحالي مجدولًا ولا يملك تصريح تشغيل استثنائي فعالًا.',
+                'field_operational_day_not_authorized',
+                409,
+            );
+        }
     }
 
     private function ensureActiveRepresentativeContext(SalesJourney $journey): void

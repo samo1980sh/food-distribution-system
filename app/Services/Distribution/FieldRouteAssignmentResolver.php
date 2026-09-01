@@ -3,6 +3,7 @@
 namespace App\Services\Distribution;
 
 use App\Models\DistributionRoute;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\User;
 use App\Services\Authorization\AccessScopeService;
 use Carbon\CarbonInterface;
@@ -12,6 +13,12 @@ use RuntimeException;
 
 class FieldRouteAssignmentResolver
 {
+    public const SCHEDULE_NORMAL = 'normal_schedule';
+
+    public const SCHEDULE_EXCEPTIONAL = 'exceptional_override';
+
+    public const SCHEDULE_NOT_SCHEDULED = 'not_scheduled';
+
     public const STATUS_READY = 'ready';
 
     public const STATUS_NO_ASSIGNMENT = 'no_assignment';
@@ -42,8 +49,11 @@ class FieldRouteAssignmentResolver
     ): array {
         $date ??= today();
         $routes = $this->availableRoutesForRole($user, $role);
-        $scheduled = $routes
+        $normalScheduled = $routes
             ->filter(fn (DistributionRoute $route): bool => $this->isScheduledFor($route, $date))
+            ->values();
+        $operational = $routes
+            ->filter(fn (DistributionRoute $route): bool => $this->isOperationalFor($route, $date))
             ->values();
 
         if ($selectedRouteId !== null) {
@@ -56,24 +66,31 @@ class FieldRouteAssignmentResolver
                 );
             }
 
-            $scheduledToday = $this->isScheduledFor($selected, $date);
+            $scheduleStatus = $this->scheduleStatus($selected, $date);
+            $operationalToday = $scheduleStatus !== self::SCHEDULE_NOT_SCHEDULED;
 
             return [
-                'status' => $scheduledToday
+                'status' => $operationalToday
                     ? self::STATUS_READY
                     : self::STATUS_NOT_SCHEDULED_TODAY,
-                'scheduled_today' => $scheduledToday,
+                'schedule_status' => $scheduleStatus,
+                'scheduled_today' => $scheduleStatus === self::SCHEDULE_NORMAL,
+                'operational_today' => $operationalToday,
+                'exceptional_operation' => $scheduleStatus === self::SCHEDULE_EXCEPTIONAL,
                 'route' => $selected,
                 'candidates' => new Collection([$selected]),
                 'available_count' => $routes->count(),
-                'scheduled_count' => $scheduled->count(),
+                'scheduled_count' => $normalScheduled->count(),
             ];
         }
 
         if ($routes->isEmpty()) {
             return [
                 'status' => self::STATUS_NO_ASSIGNMENT,
+                'schedule_status' => self::SCHEDULE_NOT_SCHEDULED,
                 'scheduled_today' => false,
+                'operational_today' => false,
+                'exceptional_operation' => false,
                 'route' => null,
                 'candidates' => new Collection,
                 'available_count' => 0,
@@ -81,31 +98,43 @@ class FieldRouteAssignmentResolver
             ];
         }
 
-        if ($scheduled->count() === 1) {
+        if ($operational->count() === 1) {
+            $route = $operational->first();
+            $scheduleStatus = $this->scheduleStatus($route, $date);
+
             return [
                 'status' => self::STATUS_READY,
-                'scheduled_today' => true,
-                'route' => $scheduled->first(),
-                'candidates' => $scheduled,
+                'schedule_status' => $scheduleStatus,
+                'scheduled_today' => $scheduleStatus === self::SCHEDULE_NORMAL,
+                'operational_today' => true,
+                'exceptional_operation' => $scheduleStatus === self::SCHEDULE_EXCEPTIONAL,
+                'route' => $route,
+                'candidates' => $operational,
                 'available_count' => $routes->count(),
-                'scheduled_count' => 1,
+                'scheduled_count' => $normalScheduled->count(),
             ];
         }
 
-        if ($scheduled->count() > 1) {
+        if ($operational->count() > 1) {
             return [
                 'status' => self::STATUS_ROUTE_SELECTION_REQUIRED,
-                'scheduled_today' => true,
+                'schedule_status' => self::STATUS_ROUTE_SELECTION_REQUIRED,
+                'scheduled_today' => false,
+                'operational_today' => true,
+                'exceptional_operation' => false,
                 'route' => null,
-                'candidates' => $scheduled,
+                'candidates' => $operational,
                 'available_count' => $routes->count(),
-                'scheduled_count' => $scheduled->count(),
+                'scheduled_count' => $normalScheduled->count(),
             ];
         }
 
         return [
             'status' => self::STATUS_NOT_SCHEDULED_TODAY,
+            'schedule_status' => self::SCHEDULE_NOT_SCHEDULED,
             'scheduled_today' => false,
+            'operational_today' => false,
+            'exceptional_operation' => false,
             'route' => $routes->count() === 1 ? $routes->first() : null,
             'candidates' => $routes,
             'available_count' => $routes->count(),
@@ -128,11 +157,15 @@ class FieldRouteAssignmentResolver
                 throw new RuntimeException('خط التوزيع المحدد غير متاح لهذا المستخدم.');
             }
 
+            if (! $this->isOperationalFor($selected, $date)) {
+                throw new RuntimeException('خط التوزيع المحدد غير مجدول ولا يملك تصريح تشغيل استثنائي لهذا التاريخ.');
+            }
+
             return $selected;
         }
 
         $scheduled = $routes
-            ->filter(fn (DistributionRoute $route): bool => $this->isScheduledFor($route, $date))
+            ->filter(fn (DistributionRoute $route): bool => $this->isOperationalFor($route, $date))
             ->values();
 
         if ($scheduled->isEmpty()) {
@@ -166,6 +199,43 @@ class FieldRouteAssignmentResolver
         }
 
         return $visitDays->contains(strtolower($date->englishDayOfWeek));
+    }
+
+    public function scheduleStatus(
+        DistributionRoute $route,
+        CarbonInterface $date,
+    ): string {
+        if ($this->isScheduledFor($route, $date)) {
+            return self::SCHEDULE_NORMAL;
+        }
+
+        return $this->matchingOverrideExists($route, $date)
+            ? self::SCHEDULE_EXCEPTIONAL
+            : self::SCHEDULE_NOT_SCHEDULED;
+    }
+
+    public function isOperationalFor(
+        DistributionRoute $route,
+        CarbonInterface $date,
+    ): bool {
+        return $this->scheduleStatus($route, $date) !== self::SCHEDULE_NOT_SCHEDULED;
+    }
+
+    private function matchingOverrideExists(
+        DistributionRoute $route,
+        CarbonInterface $date,
+    ): bool {
+        if ($route->vehicle_id === null || $route->sales_representative_id === null) {
+            return false;
+        }
+
+        return FieldOperationalDayOverride::withoutGlobalScopes()
+            ->whereDate('operation_date', $date)
+            ->where('route_id', $route->getKey())
+            ->where('vehicle_id', $route->vehicle_id)
+            ->where('sales_representative_id', $route->sales_representative_id)
+            ->where('status', 'active')
+            ->exists();
     }
 
     /** @return Collection<int, DistributionRoute> */

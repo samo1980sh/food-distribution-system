@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
+use App\Models\FieldOperationalDayOverride;
 use App\Models\MobileSyncChange;
 use App\Models\MobileSyncCheckpoint;
 use App\Models\Product;
@@ -260,6 +261,69 @@ class MobileOfflineSyncFoundationTest extends TestCase
         $this->assertNotNull($tombstone);
         $this->assertNull($tombstone['record']);
         $this->assertNull($tombstone['version']);
+    }
+
+    public function test_operational_day_override_is_scoped_and_cancellation_removes_authorization(): void
+    {
+        $first = $this->context('OVERRIDE-A');
+        $second = $this->context('OVERRIDE-B');
+        $first['route']->update(['visit_days' => [strtolower(today()->addDay()->englishDayOfWeek)]]);
+        $second['route']->update(['visit_days' => [strtolower(today()->addDay()->englishDayOfWeek)]]);
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $first['representative']->update(['user_id' => $user->id]);
+        $token = $this->tokenFor($user, 'sync-device-operational-override');
+        $contextKey = $this->contextKey($token);
+        $visible = FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $first['route']->id,
+            'reason' => 'Scoped override',
+            'status' => 'active',
+        ]);
+        $hidden = FieldOperationalDayOverride::query()->create([
+            'operation_date' => today(),
+            'route_id' => $second['route']->id,
+            'reason' => 'Other scope override',
+            'status' => 'active',
+        ]);
+
+        $initial = $this->withToken($token)->postJson('/api/v1/operational/sync/pull', [
+            'cursor' => 0,
+            'limit' => 500,
+            'context_key' => $contextKey,
+        ])->assertOk();
+        $overrideIds = collect($initial->json('data.changes'))
+            ->where('entity', 'field_operational_day_overrides')
+            ->pluck('record_id');
+        $this->assertTrue($overrideIds->contains($visible->id));
+        $this->assertFalse($overrideIds->contains($hidden->id));
+        $cursor = (int) $initial->json('data.cursor');
+
+        $visible->update([
+            'status' => 'cancelled',
+            'cancelled_at' => now(),
+        ]);
+        $cancelled = $this->withToken($token)->postJson('/api/v1/operational/sync/pull', [
+            'cursor' => $cursor,
+            'context_key' => $contextKey,
+        ])->assertOk();
+        $change = collect($cancelled->json('data.changes'))->first(
+            fn (array $item): bool => $item['entity'] === 'field_operational_day_overrides'
+                && (int) $item['record_id'] === (int) $visible->id,
+        );
+        $this->assertSame('upsert', $change['operation']);
+        $this->assertSame('cancelled', $change['record']['status']);
+        $cursor = (int) $cancelled->json('data.cursor');
+
+        $visible->delete();
+        $deleted = $this->withToken($token)->postJson('/api/v1/operational/sync/pull', [
+            'cursor' => $cursor,
+            'context_key' => $contextKey,
+        ])->assertOk();
+        $this->assertNotNull(collect($deleted->json('data.changes'))->first(
+            fn (array $item): bool => $item['entity'] === 'field_operational_day_overrides'
+                && (int) $item['record_id'] === (int) $visible->id
+                && $item['operation'] === 'delete',
+        ));
     }
 
     public function test_business_service_updates_are_recorded_for_incremental_sync(): void
