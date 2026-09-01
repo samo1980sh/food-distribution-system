@@ -136,6 +136,85 @@ class MobileOfflineSyncFoundationTest extends TestCase
         ]);
     }
 
+    public function test_stock_pull_uses_representative_vehicle_scope_not_load_warehouse_scope(): void
+    {
+        $context = $this->context('STOCK-SCOPE');
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $context['representative']->update(['user_id' => $user->id]);
+        $mainStock = StockBalance::query()->create([
+            'warehouse_id' => $context['sourceWarehouse']->id,
+            'product_id' => $context['product']->id,
+            'quantity' => 70,
+            'average_unit_cost' => 5,
+        ]);
+        $token = $this->tokenFor($user, 'sync-device-stock-scope');
+        $contextKey = $this->contextKey($token);
+
+        $response = $this->withToken($token)
+            ->postJson('/api/v1/operational/sync/pull', [
+                'cursor' => 0,
+                'limit' => 500,
+                'context_key' => $contextKey,
+            ])
+            ->assertOk();
+
+        $stockIds = collect($response->json('data.changes'))
+            ->where('entity', 'stock_balances')
+            ->where('operation', 'upsert')
+            ->pluck('record_id')
+            ->map(static fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $this->assertContains($context['stock']->id, $stockIds);
+        $this->assertNotContains($mainStock->id, $stockIds);
+    }
+
+    public function test_stock_moving_out_of_vehicle_scope_emits_projection_delete(): void
+    {
+        $context = $this->context('STOCK-MOVE');
+        $user = User::factory()->create(['role' => User::ROLE_SALES_REPRESENTATIVE]);
+        $context['representative']->update(['user_id' => $user->id]);
+        $token = $this->tokenFor($user, 'sync-device-stock-move');
+        $contextKey = $this->contextKey($token);
+
+        $initial = $this->withToken($token)
+            ->postJson('/api/v1/operational/sync/pull', [
+                'cursor' => 0,
+                'limit' => 500,
+                'context_key' => $contextKey,
+            ])
+            ->assertOk();
+        $initialStock = collect($initial->json('data.changes'))
+            ->where('entity', 'stock_balances')
+            ->where('record_id', $context['stock']->id)
+            ->where('operation', 'upsert')
+            ->first();
+        $this->assertNotNull($initialStock);
+
+        $context['stock']->update([
+            'warehouse_id' => $context['sourceWarehouse']->id,
+        ]);
+
+        $incremental = $this->withToken($token)
+            ->postJson('/api/v1/operational/sync/pull', [
+                'cursor' => (int) $initial->json('data.cursor'),
+                'limit' => 500,
+                'context_key' => $contextKey,
+            ])
+            ->assertOk();
+        $stockChanges = collect($incremental->json('data.changes'))
+            ->where('entity', 'stock_balances')
+            ->where('record_id', $context['stock']->id)
+            ->values();
+
+        $this->assertCount(1, $stockChanges);
+        $this->assertSame('delete', $stockChanges->first()['operation']);
+        $this->assertNull($stockChanges->first()['record']);
+        $this->assertFalse($stockChanges->contains(
+            static fn (array $change): bool => $change['operation'] === 'upsert',
+        ));
+    }
+
     public function test_incremental_pull_returns_updates_and_deletion_tombstones(): void
     {
         $context = $this->context('A');
@@ -469,7 +548,7 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'wholesale_price' => 9,
             'status' => 'active',
         ]);
-        StockBalance::query()->create([
+        $stock = StockBalance::query()->create([
             'warehouse_id' => $warehouse->id,
             'product_id' => $product->id,
             'quantity' => 20,
@@ -509,6 +588,8 @@ class MobileOfflineSyncFoundationTest extends TestCase
             'unit',
             'product',
             'invoice',
+            'sourceWarehouse',
+            'stock',
         );
     }
 

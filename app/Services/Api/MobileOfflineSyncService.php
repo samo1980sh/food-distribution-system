@@ -184,6 +184,16 @@ class MobileOfflineSyncService
             return null;
         }
 
+        if (! $this->scopeService->allows(
+            $user,
+            $entity,
+            $this->scopeService->snapshot($record),
+        )) {
+            // Scope-changing updates record a previous-scope delete before
+            // this current-scope upsert, so only the unauthorized upsert skips.
+            return null;
+        }
+
         $resourceClass = $definition['resource'];
 
         return [
