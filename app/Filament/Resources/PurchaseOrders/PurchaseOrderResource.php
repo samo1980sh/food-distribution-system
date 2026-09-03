@@ -6,10 +6,12 @@ use App\Filament\Resources\PurchaseOrders\Pages\ManagePurchaseOrders;
 use App\Filament\Resources\PurchaseOrders\Schemas\PurchaseOrderForm;
 use App\Filament\Resources\PurchaseOrders\Tables\PurchaseOrdersTable;
 use App\Models\PurchaseOrder;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseOrderResource extends Resource
 {
@@ -47,6 +49,11 @@ class PurchaseOrderResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         return static::canViewAny();
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return app(AccessScopeService::class)->apply(parent::getEloquentQuery());
     }
 
     public static function form(Schema $schema): Schema

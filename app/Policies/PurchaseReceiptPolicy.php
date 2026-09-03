@@ -16,7 +16,7 @@ class PurchaseReceiptPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can(PermissionName::STOCK_MOVEMENTS_VIEW->value);
+        return $user->can(PermissionName::PURCHASE_RECEIPTS_VIEW->value);
     }
 
     public function view(User $user, PurchaseReceipt $receipt): bool

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\PermissionName;
 use App\Enums\UserRole;
 use App\Models\SalesInvoice;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\VehicleLoad;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -50,6 +51,10 @@ class RbacFoundationTest extends TestCase
             'role' => User::ROLE_MANAGER,
         ]);
 
+        $superAdmin = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+        ]);
+
         $supervisor = User::factory()->create([
             'role' => User::ROLE_SUPERVISOR,
         ]);
@@ -73,9 +78,15 @@ class RbacFoundationTest extends TestCase
             $supervisor->can(PermissionName::SALES_INVOICES_OVERRIDE_CREDIT_LIMIT->value),
         );
 
-        $this->assertTrue(
-            $warehouseKeeper->can(PermissionName::STOCK_MOVEMENTS_CREATE->value),
-        );
+        $this->assertTrue($warehouseKeeper->can(PermissionName::SUPPLIERS_CREATE->value));
+        $this->assertTrue($warehouseKeeper->can(PermissionName::SUPPLIERS_UPDATE->value));
+        $this->assertTrue($warehouseKeeper->can(PermissionName::PURCHASE_ORDERS_CREATE->value));
+        $this->assertTrue($warehouseKeeper->can(PermissionName::PURCHASE_ORDERS_UPDATE->value));
+        $this->assertTrue($warehouseKeeper->can(PermissionName::PURCHASE_ORDERS_RECEIVE->value));
+        $this->assertTrue($warehouseKeeper->can(PermissionName::INVENTORY_TRANSFERS_CREATE->value));
+        $this->assertFalse($warehouseKeeper->can(PermissionName::PURCHASE_ORDERS_APPROVE->value));
+        $this->assertFalse($warehouseKeeper->can(PermissionName::PURCHASE_ORDERS_CANCEL->value));
+        $this->assertFalse($warehouseKeeper->can(PermissionName::INVENTORY_ADJUSTMENTS_CREATE->value));
         $this->assertFalse(
             $warehouseKeeper->can(PermissionName::REPORT_PROFIT->value),
         );
@@ -110,6 +121,18 @@ class RbacFoundationTest extends TestCase
         $this->assertFalse(
             $accountant->can(PermissionName::VEHICLE_LOADS_APPROVE->value),
         );
+        $this->assertTrue($accountant->can(PermissionName::SUPPLIERS_VIEW->value));
+        $this->assertTrue($accountant->can(PermissionName::PURCHASE_ORDERS_VIEW->value));
+        $this->assertTrue($accountant->can(PermissionName::PURCHASE_RECEIPTS_VIEW->value));
+        $this->assertFalse($accountant->can(PermissionName::PURCHASE_ORDERS_CREATE->value));
+        $this->assertFalse($accountant->can(PermissionName::PURCHASE_ORDERS_APPROVE->value));
+        $this->assertFalse($accountant->can(PermissionName::PURCHASE_ORDERS_RECEIVE->value));
+
+        $this->assertTrue($supervisor->can(PermissionName::PURCHASE_ORDERS_APPROVE->value));
+        $this->assertTrue($supervisor->can(PermissionName::PURCHASE_ORDERS_CANCEL->value));
+        $this->assertFalse($supervisor->can(PermissionName::PURCHASE_ORDERS_CREATE->value));
+        $this->assertFalse($supervisor->can(PermissionName::PURCHASE_ORDERS_RECEIVE->value));
+        $this->assertFalse($supervisor->can(PermissionName::INVENTORY_ADJUSTMENTS_CREATE->value));
 
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::DISTRIBUTION_ROUTES_VIEW->value),
@@ -126,6 +149,17 @@ class RbacFoundationTest extends TestCase
         $this->assertTrue(
             $salesRepresentative->can(PermissionName::DAILY_CLOSINGS_SUBMIT_INVENTORY->value),
         );
+        $this->assertFalse($salesRepresentative->can(PermissionName::SUPPLIERS_VIEW->value));
+        $this->assertFalse($salesRepresentative->can(PermissionName::PURCHASE_ORDERS_CREATE->value));
+        $this->assertFalse($salesRepresentative->can(PermissionName::INVENTORY_TRANSFERS_CREATE->value));
+        $this->assertFalse($salesRepresentative->can(PermissionName::INVENTORY_ADJUSTMENTS_CREATE->value));
+
+        $this->assertTrue($manager->can(PermissionName::INVENTORY_ADJUSTMENTS_CREATE->value));
+        $this->assertTrue($manager->can('createAdjustment', StockMovement::class));
+        $this->assertFalse($manager->can('create', StockMovement::class));
+        $this->assertTrue($superAdmin->can(PermissionName::INVENTORY_ADJUSTMENTS_CREATE->value));
+        $this->assertTrue($superAdmin->can('createAdjustment', StockMovement::class));
+        $this->assertFalse($superAdmin->can('create', StockMovement::class));
     }
 
     public function test_inactive_super_admin_is_denied_by_the_global_gate(): void
@@ -213,5 +247,25 @@ class RbacFoundationTest extends TestCase
 
         $this->assertSame(count(UserRole::cases()), Role::query()->count());
         $this->assertSame(count(PermissionName::cases()), Permission::query()->count());
+    }
+
+    public function test_permission_seeder_removes_only_obsolete_stock_movement_crud_permissions(): void
+    {
+        $role = Role::findByName(UserRole::WAREHOUSE_KEEPER->value, 'web');
+        $obsolete = collect([
+            'stock_movements.create',
+            'stock_movements.update',
+            'stock_movements.delete',
+        ])->map(fn (string $name): Permission => Permission::findOrCreate($name, 'web'));
+        $unrelated = Permission::findOrCreate('test.unrelated.permission', 'web');
+        $role->givePermissionTo([...$obsolete, $unrelated]);
+
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        $this->assertDatabaseMissing('permissions', ['name' => 'stock_movements.create']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'stock_movements.update']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'stock_movements.delete']);
+        $this->assertDatabaseHas('permissions', ['name' => 'test.unrelated.permission']);
+        $this->assertFalse($role->fresh()->hasPermissionTo('test.unrelated.permission'));
     }
 }

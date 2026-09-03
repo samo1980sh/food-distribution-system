@@ -120,6 +120,22 @@ class OdometerLifecycleApiTest extends TestCase
 
         $this->withFreshToken($token)
             ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", [
+                'end_odometer' => 1200,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('code', 'vehicle_odometer_regression')
+            ->assertJsonValidationErrors(['end_odometer']);
+
+        $this->assertDatabaseHas('sales_journeys', [
+            'id' => $journeyId,
+            'status' => 'in_progress',
+            'start_odometer' => 1200,
+            'end_odometer' => null,
+            'distance_km' => null,
+        ]);
+
+        $this->withFreshToken($token)
+            ->postJson("/api/v1/operational/sales-journeys/{$journeyId}/finish", [
                 'end_odometer' => 1234,
             ])
             ->assertOk()

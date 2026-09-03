@@ -2,10 +2,16 @@
 
 namespace App\Filament\Resources\StockMovements\Tables;
 
-use App\Filament\Resources\StockMovements\StockMovementResource;
+use App\Filament\Resources\SalesInvoices\SalesInvoiceResource;
+use App\Filament\Resources\SalesReturns\SalesReturnResource;
+use App\Filament\Resources\VehicleLoads\VehicleLoadResource;
 use App\Models\Product;
+use App\Models\PurchaseReceipt;
+use App\Models\SalesInvoice;
+use App\Models\SalesReturn;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Models\VehicleLoad;
 use App\Models\Warehouse;
 use App\Services\Authorization\AccessScopeService;
 use App\Services\Inventory\AdministrativeStockMovementService;
@@ -17,11 +23,12 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Section;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 class StockMovementsTable
@@ -38,7 +45,7 @@ class StockMovementsTable
                 TextColumn::make('movement_type')
                     ->label('نوع الحركة')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => self::movementTypeLabel($state))
+                    ->formatStateUsing(fn (?string $state, StockMovement $record): string => self::movementTypeLabel($state, $record))
                     ->color(fn (?string $state): string => self::movementTypeColor($state)),
 
                 TextColumn::make('product.name_ar')
@@ -110,8 +117,10 @@ class StockMovementsTable
                     ->label('نوع الحركة')
                     ->options([
                         'opening_balance' => 'رصيد افتتاحي',
-                        'stock_receipt' => 'توريد / استلام مخزون',
-                        'manual_out' => 'إخراج يدوي',
+                        'stock_receipt' => 'استلام مشتريات / توريد تاريخي',
+                        'manual_out' => 'إخراج يدوي قديم',
+                        'inventory_adjustment_in' => 'تسوية زيادة مخزون',
+                        'inventory_adjustment_out' => 'تسوية نقص مخزون',
                         'warehouse_transfer' => 'تحويل بين المستودعات',
                         'administrative_reversal' => 'عكس حركة إدارية',
                         'vehicle_load_transfer' => 'تحميل سيارة',
@@ -171,6 +180,7 @@ class StockMovementsTable
                         ->schema(fn (StockMovement $record): array => self::correctionSchema($record))
                         ->action(function (StockMovement $record, array $data, Action $action): void {
                             try {
+                                Gate::authorize('createAdjustment', $record);
                                 app(AdministrativeStockMovementService::class)->correct(
                                     movement: $record,
                                     corrected: $data,
@@ -226,6 +236,7 @@ class StockMovementsTable
                         ])
                         ->action(function (StockMovement $record, array $data, Action $action): void {
                             try {
+                                Gate::authorize('createAdjustment', $record);
                                 app(AdministrativeStockMovementService::class)->reverse(
                                     movement: $record,
                                     reason: (string) ($data['reason'] ?? ''),
@@ -261,7 +272,7 @@ class StockMovementsTable
 
     private static function canAdministrativelyActOn(StockMovement $record): bool
     {
-        return StockMovementResource::canCreate()
+        return Gate::allows('createAdjustment', $record)
             && app(AdministrativeStockMovementService::class)->canActOn($record);
     }
 
@@ -305,7 +316,7 @@ class StockMovementsTable
                         ->copyable(),
                     TextEntry::make('movement_type_display')
                         ->label('نوع الحركة')
-                        ->state(self::movementTypeLabel($record->movement_type))
+                        ->state(self::movementTypeLabel($record->movement_type, $record))
                         ->badge()
                         ->color(self::movementTypeColor($record->movement_type)),
                     TextEntry::make('audit_status')
@@ -395,7 +406,7 @@ class StockMovementsTable
                 ->native(false),
         ];
 
-        if (in_array($record->movement_type, ['manual_out', 'warehouse_transfer'], true)) {
+        if (in_array($record->movement_type, ['manual_out', 'inventory_adjustment_out', 'warehouse_transfer'], true)) {
             $fields[] = Select::make('from_warehouse_id')
                 ->label('من المستودع')
                 ->options(self::warehouseOptions($record->movement_type === 'warehouse_transfer'))
@@ -405,7 +416,7 @@ class StockMovementsTable
                 ->native(false);
         }
 
-        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt', 'warehouse_transfer'], true)) {
+        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt', 'inventory_adjustment_in', 'warehouse_transfer'], true)) {
             $fields[] = Select::make('to_warehouse_id')
                 ->label('إلى المستودع')
                 ->options(self::warehouseOptions(in_array($record->movement_type, ['stock_receipt', 'warehouse_transfer'], true)))
@@ -430,7 +441,7 @@ class StockMovementsTable
             ->step('0.001')
             ->required();
 
-        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt'], true)) {
+        if (in_array($record->movement_type, ['opening_balance', 'stock_receipt', 'inventory_adjustment_in'], true)) {
             $fields[] = TextInput::make('unit_cost')
                 ->label('تكلفة الوحدة الصحيحة')
                 ->numeric()
@@ -477,6 +488,8 @@ class StockMovementsTable
             'opening_balance' => 'success',
             'stock_receipt' => 'success',
             'manual_out' => 'danger',
+            'inventory_adjustment_in' => 'success',
+            'inventory_adjustment_out' => 'danger',
             'warehouse_transfer' => 'info',
             'administrative_reversal' => 'warning',
             'vehicle_load_transfer' => 'primary',
@@ -531,9 +544,9 @@ class StockMovementsTable
         }
 
         $resourceClass = match ($record->reference_type) {
-            \App\Models\VehicleLoad::class => \App\Filament\Resources\VehicleLoads\VehicleLoadResource::class,
-            \App\Models\SalesInvoice::class => \App\Filament\Resources\SalesInvoices\SalesInvoiceResource::class,
-            \App\Models\SalesReturn::class => \App\Filament\Resources\SalesReturns\SalesReturnResource::class,
+            VehicleLoad::class => VehicleLoadResource::class,
+            SalesInvoice::class => SalesInvoiceResource::class,
+            SalesReturn::class => SalesReturnResource::class,
             default => null,
         };
 
@@ -554,12 +567,16 @@ class StockMovementsTable
         }
     }
 
-    private static function movementTypeLabel(?string $state): string
+    private static function movementTypeLabel(?string $state, ?StockMovement $movement = null): string
     {
         return match ($state) {
             'opening_balance' => 'رصيد افتتاحي',
-            'stock_receipt' => 'توريد مخزون',
-            'manual_out' => 'إخراج يدوي',
+            'stock_receipt' => $movement?->reference_type === PurchaseReceipt::class
+                ? 'استلام مشتريات'
+                : 'توريد مخزون تاريخي',
+            'manual_out' => 'إخراج يدوي قديم',
+            'inventory_adjustment_in' => 'تسوية زيادة مخزون',
+            'inventory_adjustment_out' => 'تسوية نقص مخزون',
             'warehouse_transfer' => 'تحويل',
             'administrative_reversal' => 'عكس حركة إدارية',
             'vehicle_load_transfer' => 'تحميل سيارة',

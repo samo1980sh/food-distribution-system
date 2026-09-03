@@ -14,7 +14,7 @@ class ManagePurchaseOrders extends ManageRecords
 
     public function getHeading(): string
     {
-        return 'أوامر الشراء والاستلام';
+        return 'أوامر الشراء';
     }
 
     public function getSubheading(): ?string

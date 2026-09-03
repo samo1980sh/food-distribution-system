@@ -18,28 +18,30 @@ class InventoryWorkspaceNavigationTest extends TestCase
         $this->assertStringContainsString('protected static ?string $cluster = InventoryCluster::class;', $balances);
         $this->assertStringContainsString('protected static ?string $cluster = InventoryCluster::class;', $movements);
         $this->assertStringContainsString("return 'المخزون الحالي';", $balances);
-        $this->assertStringContainsString("return 'الحركات والتسويات';", $movements);
+        $this->assertStringContainsString("return 'سجل حركات المخزون';", $movements);
         $this->assertStringContainsString('->discoverClusters(', $panel);
     }
 
     public function test_inventory_business_logic_remains_in_existing_resources_and_services(): void
     {
         $movementsPage = file_get_contents(app_path('Filament/Resources/StockMovements/Pages/ManageStockMovements.php'));
-        $movementForm = file_get_contents(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
         $inventoryService = file_get_contents(app_path('Services/Inventory/InventoryMovementService.php'));
+        $purchaseOrderTable = file_get_contents(app_path('Filament/Resources/PurchaseOrders/Tables/PurchaseOrdersTable.php'));
+        $transferPage = file_get_contents(app_path('Filament/Pages/WarehouseTransfer.php'));
 
         foreach ([
-            "Action::make('receiveStock')",
-            "Action::make('transferWarehouseStock')",
-            "'opening_balance' => \$service->addStock(",
-            "'manual_out' => \$service->removeStock(",
-            'WarehouseReplenishmentService::class',
+            "Action::make('createInventoryAdjustment')",
+            'InventoryAdjustmentService::class',
         ] as $expected) {
             $this->assertStringContainsString($expected, $movementsPage);
         }
 
-        $this->assertStringContainsString("'opening_balance' => 'رصيد افتتاحي'", $movementForm);
-        $this->assertStringNotContainsString("'warehouse_transfer' => 'تحويل بين المستودعات'", $movementForm);
+        $this->assertStringContainsString("Action::make('transferWarehouseStock')", $transferPage);
+        $this->assertStringContainsString('WarehouseReplenishmentService::class', $transferPage);
+        $this->assertStringNotContainsString("Action::make('receiveStock')", $movementsPage);
+        $this->assertStringContainsString("Action::make('receive')", $purchaseOrderTable);
+        $this->assertStringContainsString('PurchaseOrderService::class', $purchaseOrderTable);
+        $this->assertFileDoesNotExist(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
         $this->assertStringContainsString('class InventoryMovementService', $inventoryService);
     }
 

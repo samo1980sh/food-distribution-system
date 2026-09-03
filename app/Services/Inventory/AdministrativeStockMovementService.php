@@ -3,6 +3,7 @@
 namespace App\Services\Inventory;
 
 use App\Models\Product;
+use App\Models\PurchaseReceipt;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -20,6 +21,8 @@ class AdministrativeStockMovementService
         'stock_receipt',
         'manual_out',
         'warehouse_transfer',
+        'inventory_adjustment_in',
+        'inventory_adjustment_out',
     ];
 
     public static function isAdministrativeType(?string $movementType): bool
@@ -30,6 +33,7 @@ class AdministrativeStockMovementService
     public function canActOn(StockMovement $movement): bool
     {
         return self::isAdministrativeType($movement->movement_type)
+            && ! $this->isSourceControlled($movement)
             && ! $this->hasBeenReversed($movement);
     }
 
@@ -58,19 +62,15 @@ class AdministrativeStockMovementService
 
             return match ($movement->movement_type) {
                 'opening_balance',
-                'stock_receipt' => $inventory->removeStock(
-                    warehouse: $this->requiredWarehouse($movement->to_warehouse_id),
-                    product: $product,
-                    quantity: $movement->quantity,
-                    batchNumber: $movement->batch_number,
-                    expiryDate: $movement->expiry_date?->toDateString(),
-                    movementType: 'administrative_reversal',
+                'stock_receipt',
+                'inventory_adjustment_in' => $inventory->reverseInboundStock(
+                    original: $movement,
                     notes: $notes,
-                    reference: $movement,
                     movementDate: $movementDate,
                 ),
 
-                'manual_out' => $inventory->addStock(
+                'manual_out',
+                'inventory_adjustment_out' => $inventory->addStock(
                     warehouse: $this->requiredWarehouse($movement->from_warehouse_id),
                     product: $product,
                     quantity: $movement->quantity,
@@ -146,6 +146,11 @@ class AdministrativeStockMovementService
             throw new RuntimeException('الكمية المصححة يجب أن تكون أكبر من الصفر.');
         }
 
+        if ($movement->movement_type === 'inventory_adjustment_in'
+            && (float) ($corrected['unit_cost'] ?? 0) <= 0) {
+            throw new RuntimeException('تكلفة وحدة موجبة مطلوبة لتصحيح تسوية زيادة المخزون.');
+        }
+
         $movementDate = filled($corrected['movement_date'] ?? null)
             ? (string) $corrected['movement_date']
             : now()->toDateString();
@@ -177,7 +182,8 @@ class AdministrativeStockMovementService
 
             $newMovement = match ($movement->movement_type) {
                 'opening_balance',
-                'stock_receipt' => $inventory->addStock(
+                'stock_receipt',
+                'inventory_adjustment_in' => $inventory->addStock(
                     warehouse: $toWarehouse ?? throw new RuntimeException('المستودع الهدف مطلوب للتصحيح.'),
                     product: $product,
                     quantity: $quantity,
@@ -190,13 +196,14 @@ class AdministrativeStockMovementService
                     movementDate: $movementDate,
                 ),
 
-                'manual_out' => $inventory->removeStock(
+                'manual_out',
+                'inventory_adjustment_out' => $inventory->removeStock(
                     warehouse: $fromWarehouse ?? throw new RuntimeException('المستودع المصدر مطلوب للتصحيح.'),
                     product: $product,
                     quantity: $quantity,
                     batchNumber: $batchNumber,
                     expiryDate: $expiryDate,
-                    movementType: 'manual_out',
+                    movementType: $movement->movement_type,
                     notes: $notes,
                     reference: $movement,
                     movementDate: $movementDate,
@@ -229,6 +236,10 @@ class AdministrativeStockMovementService
     {
         if (! self::isAdministrativeType($movement->movement_type)) {
             throw new RuntimeException('الحركات التشغيلية لا تُعدّل من سجل المخزون. ألغِ العملية من مصدرها التشغيلي.');
+        }
+
+        if ($this->isSourceControlled($movement)) {
+            throw new RuntimeException('استلام المشتريات يُصحح من مسار الشراء، ولا يمكن عكسه من سجل المخزون.');
         }
 
         if ($this->hasBeenReversed($movement)) {
@@ -290,6 +301,12 @@ class AdministrativeStockMovementService
             'manual_out' => $fromWarehouse instanceof Warehouse
                 ? true
                 : throw new RuntimeException('المستودع المصدر مطلوب للإخراج المصحح.'),
+            'inventory_adjustment_in' => $toWarehouse instanceof Warehouse
+                ? true
+                : throw new RuntimeException('المستودع الهدف مطلوب لتصحيح تسوية الزيادة.'),
+            'inventory_adjustment_out' => $fromWarehouse instanceof Warehouse
+                ? true
+                : throw new RuntimeException('المستودع المصدر مطلوب لتصحيح تسوية النقص.'),
             'warehouse_transfer' => ($fromWarehouse instanceof Warehouse && $toWarehouse instanceof Warehouse)
                 ? true
                 : throw new RuntimeException('المستودع المصدر والهدف مطلوبان للتحويل المصحح.'),
@@ -307,6 +324,14 @@ class AdministrativeStockMovementService
             $this->ensureFixedWarehouse($toWarehouse);
         }
 
+        if ($movementType === 'inventory_adjustment_in') {
+            $this->ensureFixedWarehouse($toWarehouse);
+        }
+
+        if ($movementType === 'inventory_adjustment_out') {
+            $this->ensureFixedWarehouse($fromWarehouse);
+        }
+
         if ($movementType === 'warehouse_transfer') {
             $this->ensureFixedWarehouse($fromWarehouse);
             $this->ensureFixedWarehouse($toWarehouse);
@@ -322,6 +347,12 @@ class AdministrativeStockMovementService
         if (! in_array($warehouse->type, ['main', 'branch'], true)) {
             throw new RuntimeException('مخزون السيارة يُدار عبر حمولة السيارة المعتمدة، وليس عبر التوريد أو التحويل الإداري.');
         }
+    }
+
+    private function isSourceControlled(StockMovement $movement): bool
+    {
+        return $movement->movement_type === 'stock_receipt'
+            && $movement->reference_type === PurchaseReceipt::class;
     }
 
     private function ensureExpiryPolicy(Product $product, mixed $expiryDate): void

@@ -125,6 +125,68 @@ class InventoryMovementService
         });
     }
 
+    public function reverseInboundStock(
+        StockMovement $original,
+        string $notes,
+        CarbonInterface|string|null $movementDate = null,
+    ): StockMovement {
+        return DB::transaction(function () use ($original, $notes, $movementDate): StockMovement {
+            if ($original->to_warehouse_id === null) {
+                throw new RuntimeException('الحركة الواردة الأصلية لا تحدد مستودعًا مستلمًا.');
+            }
+
+            $warehouse = Warehouse::withoutGlobalScopes()->findOrFail($original->to_warehouse_id);
+            $product = Product::withoutGlobalScopes()->findOrFail($original->product_id);
+            $date = $this->normalizeMovementDate($movementDate);
+            app(DailyClosingGuard::class)->ensureOpen($date, $warehouse->id);
+
+            $balance = $this->balanceQuery(
+                $warehouse->id,
+                $product->id,
+                $original->batch_number,
+                $original->expiry_date?->toDateString(),
+            )->lockForUpdate()->first();
+
+            $reversalQuantity = (float) $original->quantity;
+            $currentQuantity = (float) ($balance?->quantity ?? 0);
+
+            if (! $balance || $currentQuantity < $reversalQuantity) {
+                throw new RuntimeException('الرصيد الحالي لنفس التشغيلة والصلاحية لا يكفي لعكس الحركة الواردة.');
+            }
+
+            $originalUnitCost = (float) $original->unit_cost;
+            $currentValue = $currentQuantity * (float) $balance->average_unit_cost;
+            $reversalValue = $reversalQuantity * $originalUnitCost;
+            $remainingQuantity = $currentQuantity - $reversalQuantity;
+            $remainingValue = $currentValue - $reversalValue;
+
+            if ($remainingValue < -0.000001 || ($remainingQuantity <= 0 && abs($remainingValue) > 0.000001)) {
+                throw new RuntimeException('لا يمكن عكس الحركة الواردة لأن الحركات اللاحقة جعلت أساس تكلفتها غير قابل للعكس الآمن.');
+            }
+
+            $balance->quantity = max($remainingQuantity, 0);
+            $balance->average_unit_cost = $remainingQuantity > 0
+                ? round(max($remainingValue, 0) / $remainingQuantity, 6)
+                : 0;
+            $balance->save();
+
+            return $this->createMovement([
+                'movement_type' => 'administrative_reversal',
+                'movement_date' => $date,
+                'from_warehouse_id' => $warehouse->id,
+                'product_id' => $product->id,
+                'batch_number' => $original->batch_number,
+                'expiry_date' => $original->expiry_date?->toDateString(),
+                'quantity' => $original->quantity,
+                'unit_cost' => $original->unit_cost,
+                'total_cost' => $original->total_cost,
+                'notes' => $notes,
+                'reference_type' => StockMovement::class,
+                'reference_id' => $original->getKey(),
+            ]);
+        });
+    }
+
     public function transfer(
         Warehouse $fromWarehouse,
         Warehouse $toWarehouse,

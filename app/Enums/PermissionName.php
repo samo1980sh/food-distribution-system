@@ -63,9 +63,21 @@ enum PermissionName: string
     case STOCK_BALANCES_VIEW = 'stock_balances.view';
 
     case STOCK_MOVEMENTS_VIEW = 'stock_movements.view';
-    case STOCK_MOVEMENTS_CREATE = 'stock_movements.create';
-    case STOCK_MOVEMENTS_UPDATE = 'stock_movements.update';
-    case STOCK_MOVEMENTS_DELETE = 'stock_movements.delete';
+    case INVENTORY_TRANSFERS_CREATE = 'inventory_transfers.create';
+    case INVENTORY_ADJUSTMENTS_CREATE = 'inventory_adjustments.create';
+
+    case SUPPLIERS_VIEW = 'suppliers.view';
+    case SUPPLIERS_CREATE = 'suppliers.create';
+    case SUPPLIERS_UPDATE = 'suppliers.update';
+
+    case PURCHASE_ORDERS_VIEW = 'purchase_orders.view';
+    case PURCHASE_ORDERS_CREATE = 'purchase_orders.create';
+    case PURCHASE_ORDERS_UPDATE = 'purchase_orders.update';
+    case PURCHASE_ORDERS_APPROVE = 'purchase_orders.approve';
+    case PURCHASE_ORDERS_RECEIVE = 'purchase_orders.receive';
+    case PURCHASE_ORDERS_CANCEL = 'purchase_orders.cancel';
+
+    case PURCHASE_RECEIPTS_VIEW = 'purchase_receipts.view';
 
     case VEHICLE_LOADS_VIEW = 'vehicle_loads.view';
     case VEHICLE_LOADS_CREATE = 'vehicle_loads.create';

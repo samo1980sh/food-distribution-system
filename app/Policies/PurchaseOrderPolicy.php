@@ -16,7 +16,7 @@ class PurchaseOrderPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can(PermissionName::STOCK_MOVEMENTS_VIEW->value);
+        return $user->can(PermissionName::PURCHASE_ORDERS_VIEW->value);
     }
 
     public function view(User $user, PurchaseOrder $order): bool
@@ -26,13 +26,38 @@ class PurchaseOrderPolicy
 
     public function create(User $user): bool
     {
-        return $user->can(PermissionName::STOCK_MOVEMENTS_CREATE->value);
+        return $user->can(PermissionName::PURCHASE_ORDERS_CREATE->value);
     }
 
     public function update(User $user, PurchaseOrder $order): bool
     {
-        return $this->create($user)
+        return $user->can(PermissionName::PURCHASE_ORDERS_UPDATE->value)
             && $order->isDraft()
+            && $this->warehouseAllowed($user, $order);
+    }
+
+    public function approve(User $user, PurchaseOrder $order): bool
+    {
+        return $user->can(PermissionName::PURCHASE_ORDERS_APPROVE->value)
+            && $order->isDraft()
+            && $this->warehouseAllowed($user, $order);
+    }
+
+    public function receive(User $user, PurchaseOrder $order): bool
+    {
+        return $user->can(PermissionName::PURCHASE_ORDERS_RECEIVE->value)
+            && $order->canReceive()
+            && $this->warehouseAllowed($user, $order);
+    }
+
+    public function cancel(User $user, PurchaseOrder $order): bool
+    {
+        return $user->can(PermissionName::PURCHASE_ORDERS_CANCEL->value)
+            && in_array($order->status, [
+                PurchaseOrder::STATUS_DRAFT,
+                PurchaseOrder::STATUS_APPROVED,
+            ], true)
+            && ! $order->receipts()->exists()
             && $this->warehouseAllowed($user, $order);
     }
 

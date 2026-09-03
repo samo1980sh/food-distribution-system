@@ -4,13 +4,13 @@ namespace App\Filament\Resources\StockMovements;
 
 use App\Filament\Clusters\InventoryCluster;
 use App\Filament\Resources\StockMovements\Pages\ManageStockMovements;
-use App\Filament\Resources\StockMovements\Schemas\StockMovementForm;
 use App\Filament\Resources\StockMovements\Tables\StockMovementsTable;
 use App\Models\StockMovement;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class StockMovementResource extends Resource
 {
@@ -24,17 +24,17 @@ class StockMovementResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'الحركات والتسويات';
+        return 'سجل حركات المخزون';
     }
 
     public static function getModelLabel(): string
     {
-        return 'تسوية أو حركة مخزون';
+        return 'حركة مخزون';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'سجل وتسويات المخزون';
+        return 'سجل حركات المخزون';
     }
 
     public static function getNavigationSort(): ?int
@@ -47,9 +47,9 @@ class StockMovementResource extends Resource
         return static::canViewAny();
     }
 
-    public static function form(Schema $schema): Schema
+    public static function getEloquentQuery(): Builder
     {
-        return StockMovementForm::configure($schema);
+        return app(AccessScopeService::class)->apply(parent::getEloquentQuery());
     }
 
     public static function table(Table $table): Table

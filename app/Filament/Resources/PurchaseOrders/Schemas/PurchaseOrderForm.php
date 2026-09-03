@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PurchaseOrders\Schemas;
 
 use App\Models\Product;
+use App\Services\Authorization\AccessScopeService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -40,9 +41,10 @@ class PurchaseOrderForm
                             ->relationship(
                                 'warehouse',
                                 'name',
-                                modifyQueryUsing: fn (Builder $query): Builder => $query
-                                    ->where('status', 'active')
-                                    ->whereIn('type', ['main', 'branch']),
+                                modifyQueryUsing: fn (Builder $query): Builder => app(AccessScopeService::class)
+                                    ->apply($query
+                                        ->where('status', 'active')
+                                        ->whereIn('type', ['main', 'branch'])),
                             )
                             ->searchable()
                             ->preload()
@@ -122,5 +124,4 @@ class PurchaseOrderForm
 
         return $label !== '' ? $label : 'وحدة غير محددة';
     }
-
 }

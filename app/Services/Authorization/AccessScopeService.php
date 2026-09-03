@@ -10,6 +10,8 @@ use App\Models\DailyClosing;
 use App\Models\DistributionRoute;
 use App\Models\Employee;
 use App\Models\ProfitReportEntry;
+use App\Models\PurchaseOrder;
+use App\Models\PurchaseReceipt;
 use App\Models\SalesInvoice;
 use App\Models\SalesJourney;
 use App\Models\SalesReturn;
@@ -59,6 +61,8 @@ class AccessScopeService
             Customer::class => $this->scopeCustomers($query, $scope),
             StockBalance::class => $this->scopeSingleColumn($query, 'warehouse_id', $scope->warehouseIds),
             StockMovement::class => $this->scopeStockMovements($query, $scope),
+            PurchaseOrder::class,
+            PurchaseReceipt::class => $this->scopeSingleColumn($query, 'warehouse_id', $scope->warehouseIds),
             VehicleLoad::class => $this->scopeVehicleLoads($query, $scope),
             SalesInvoice::class,
             SalesReturn::class,
@@ -207,6 +211,11 @@ class AccessScopeService
                     $record->getAttribute('from_warehouse_id'),
                     $record->getAttribute('to_warehouse_id'),
                 ],
+                $scope->warehouseIds,
+            ),
+            PurchaseOrder::class,
+            PurchaseReceipt::class => $this->allPresentIdsAllowed(
+                [$record->getAttribute('warehouse_id')],
                 $scope->warehouseIds,
             ),
             VehicleLoad::class => $this->allowsVehicleLoadAttributes($scope, $record),

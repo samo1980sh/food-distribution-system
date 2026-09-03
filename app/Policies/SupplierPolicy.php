@@ -15,7 +15,7 @@ class SupplierPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can(PermissionName::STOCK_MOVEMENTS_VIEW->value);
+        return $user->can(PermissionName::SUPPLIERS_VIEW->value);
     }
 
     public function view(User $user, Supplier $supplier): bool
@@ -25,12 +25,12 @@ class SupplierPolicy
 
     public function create(User $user): bool
     {
-        return $user->can(PermissionName::STOCK_MOVEMENTS_CREATE->value);
+        return $user->can(PermissionName::SUPPLIERS_CREATE->value);
     }
 
     public function update(User $user, Supplier $supplier): bool
     {
-        return $this->create($user);
+        return $user->can(PermissionName::SUPPLIERS_UPDATE->value);
     }
 
     public function delete(User $user, Supplier $supplier): bool

@@ -5,10 +5,12 @@ namespace App\Filament\Resources\PurchaseReceipts;
 use App\Filament\Resources\PurchaseReceipts\Pages\ManagePurchaseReceipts;
 use App\Filament\Resources\PurchaseReceipts\Tables\PurchaseReceiptsTable;
 use App\Models\PurchaseReceipt;
+use App\Services\Authorization\AccessScopeService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseReceiptResource extends Resource
 {
@@ -45,7 +47,12 @@ class PurchaseReceiptResource extends Resource
 
     public static function shouldRegisterNavigation(): bool
     {
-        return static::canViewAny();
+        return false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return app(AccessScopeService::class)->apply(parent::getEloquentQuery());
     }
 
     public static function form(Schema $schema): Schema

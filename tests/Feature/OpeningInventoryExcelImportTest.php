@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
-use App\Models\Warehouse;
 use App\Models\User;
+use App\Models\Warehouse;
 use App\Services\Imports\Excel\OpeningInventoryExcelImportService;
 use App\Services\Imports\Excel\OpeningInventoryExcelTemplateService;
 use App\Services\Inventory\InventoryMovementService;
@@ -372,16 +372,15 @@ class OpeningInventoryExcelImportTest extends TestCase
     {
         $preview = file_get_contents(resource_path('views/filament/imports/opening-inventory-excel-preview.blade.php'));
         $page = file_get_contents(app_path('Filament/Resources/StockMovements/Pages/ManageStockMovements.php'));
-        $form = file_get_contents(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
 
         $this->assertIsString($preview);
         $this->assertStringContainsString('fd-opening-inventory-import-preview', $preview);
         $this->assertStringContainsString('معاينة الرصيد الافتتاحي', $preview);
-        $this->assertStringContainsString("->label('تسوية مخزون إدارية')", $page);
-        $this->assertStringContainsString("->modalHeading('إضافة تسوية مخزون إدارية')", $page);
+        $this->assertStringContainsString("->label('تسوية مخزون')", $page);
+        $this->assertStringContainsString("->modalHeading('تسوية مخزون')", $page);
         $this->assertStringContainsString("->label('تحميل قالب الرصيد الافتتاحي')", $page);
-        $this->assertStringContainsString("->label('استيراد رصيد افتتاحي')", $page);
-        $this->assertStringContainsString("->label('سبب الحركة الإدارية')", $form);
+        $this->assertStringContainsString("->label('تهيئة الرصيد الافتتاحي')", $page);
+        $this->assertFileDoesNotExist(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
     }
 
     public function test_non_xlsx_extension_is_rejected(): void
@@ -427,7 +426,7 @@ class OpeningInventoryExcelImportTest extends TestCase
     /** @param list<list<mixed>> $rows */
     private function makeWorkbook(array $rows): string
     {
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray(OpeningInventoryExcelImportService::HEADERS, null, 'A1');
 

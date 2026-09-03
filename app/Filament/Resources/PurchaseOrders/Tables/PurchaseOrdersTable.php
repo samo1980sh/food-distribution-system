@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\PurchaseOrders\Tables;
 
-use App\Filament\Resources\PurchaseOrders\PurchaseOrderResource;
 use App\Models\PurchaseOrder;
 use App\Services\Purchasing\PurchaseOrderService;
 use Filament\Actions\Action;
@@ -17,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 
 class PurchaseOrdersTable
@@ -71,21 +71,22 @@ class PurchaseOrdersTable
                 ActionGroup::make([
                     EditAction::make()
                         ->label('تعديل المسودة')
-                        ->visible(fn (PurchaseOrder $record): bool => $record->isDraft())
+                        ->visible(fn (PurchaseOrder $record): bool => Gate::allows('update', $record))
                         ->slideOver(),
 
                     Action::make('approve')
                         ->label('اعتماد أمر الشراء')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn (PurchaseOrder $record): bool => $record->isDraft()
-                            && PurchaseOrderResource::canEdit($record))
+                        ->visible(fn (PurchaseOrder $record): bool => Gate::allows('approve', $record))
                         ->requiresConfirmation()
                         ->action(function (PurchaseOrder $record, Action $action): void {
                             try {
+                                Gate::authorize('approve', $record);
                                 app(PurchaseOrderService::class)->approve($record);
                             } catch (Throwable $exception) {
                                 self::fail($action, 'تعذر اعتماد أمر الشراء', $exception);
+
                                 return;
                             }
 
@@ -100,8 +101,7 @@ class PurchaseOrdersTable
                         ->label('تسجيل استلام')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->color('info')
-                        ->visible(fn (PurchaseOrder $record): bool => $record->canReceive()
-                            && PurchaseOrderResource::canView($record))
+                        ->visible(fn (PurchaseOrder $record): bool => Gate::allows('receive', $record))
                         ->slideOver()
                         ->modalHeading(fn (PurchaseOrder $record): string => 'استلام '.$record->purchase_order_number)
                         ->fillForm(fn (PurchaseOrder $record): array => self::receiptDefaults($record))
@@ -118,7 +118,7 @@ class PurchaseOrdersTable
                                 ->addable(false)
                                 ->deletable(false)
                                 ->reorderable(false)
-                                ->columns(5)
+                                ->columns(8)
                                 ->schema([
                                     Hidden::make('purchase_order_item_id'),
                                     TextInput::make('product_name')
@@ -126,8 +126,20 @@ class PurchaseOrdersTable
                                         ->disabled()
                                         ->dehydrated(false)
                                         ->columnSpan(2),
+                                    TextInput::make('ordered_quantity')
+                                        ->label('الكمية المطلوبة')
+                                        ->disabled()
+                                        ->dehydrated(false),
+                                    TextInput::make('received_quantity')
+                                        ->label('المستلم سابقًا')
+                                        ->disabled()
+                                        ->dehydrated(false),
                                     TextInput::make('remaining_quantity')
                                         ->label('المتبقي')
+                                        ->disabled()
+                                        ->dehydrated(false),
+                                    TextInput::make('unit_cost')
+                                        ->label('تكلفة الوحدة')
                                         ->disabled()
                                         ->dehydrated(false),
                                     TextInput::make('unit_label')
@@ -139,6 +151,7 @@ class PurchaseOrdersTable
                                         ->numeric()
                                         ->step('0.001')
                                         ->minValue(0)
+                                        ->maxValue(fn ($get): float => (float) $get('remaining_quantity'))
                                         ->required(),
                                     TextInput::make('batch_number')
                                         ->label('التشغيلة'),
@@ -150,6 +163,7 @@ class PurchaseOrdersTable
                         ])
                         ->action(function (PurchaseOrder $record, array $data, Action $action): void {
                             try {
+                                Gate::authorize('receive', $record);
                                 $receipt = app(PurchaseOrderService::class)->receive(
                                     order: $record,
                                     lines: $data['lines'] ?? [],
@@ -158,6 +172,7 @@ class PurchaseOrdersTable
                                 );
                             } catch (Throwable $exception) {
                                 self::fail($action, 'تعذر تسجيل الاستلام', $exception);
+
                                 return;
                             }
 
@@ -168,14 +183,52 @@ class PurchaseOrdersTable
                                 ->send();
                         }),
 
+                    Action::make('receiptHistory')
+                        ->label('سجل الاستلامات')
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->color('gray')
+                        ->visible(fn (PurchaseOrder $record): bool => $record->receipts()->exists())
+                        ->slideOver()
+                        ->modalHeading(fn (PurchaseOrder $record): string => 'سجل استلامات '.$record->purchase_order_number)
+                        ->fillForm(fn (PurchaseOrder $record): array => self::receiptHistoryDefaults($record))
+                        ->schema([
+                            Repeater::make('receipts')
+                                ->label('سندات الاستلام')
+                                ->addable(false)
+                                ->deletable(false)
+                                ->reorderable(false)
+                                ->columns(3)
+                                ->schema([
+                                    TextInput::make('receipt_number')
+                                        ->label('رقم السند')
+                                        ->disabled(),
+                                    TextInput::make('receipt_date')
+                                        ->label('تاريخ الاستلام')
+                                        ->disabled(),
+                                    TextInput::make('received_by')
+                                        ->label('استلمه')
+                                        ->disabled(),
+                                    TextInput::make('items_count')
+                                        ->label('عدد الأصناف')
+                                        ->disabled(),
+                                    TextInput::make('total_quantity')
+                                        ->label('إجمالي الكمية')
+                                        ->disabled(),
+                                    TextInput::make('total_amount')
+                                        ->label('القيمة الإجمالية')
+                                        ->suffix(' SYP')
+                                        ->disabled(),
+                                ])
+                                ->columnSpanFull(),
+                        ])
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('إغلاق'),
+
                     Action::make('cancel')
                         ->label('إلغاء أمر الشراء')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn (PurchaseOrder $record): bool => in_array($record->status, [
-                            PurchaseOrder::STATUS_DRAFT,
-                            PurchaseOrder::STATUS_APPROVED,
-                        ], true) && PurchaseOrderResource::canView($record))
+                        ->visible(fn (PurchaseOrder $record): bool => Gate::allows('cancel', $record))
                         ->requiresConfirmation()
                         ->slideOver()
                         ->schema([
@@ -187,12 +240,14 @@ class PurchaseOrdersTable
                         ])
                         ->action(function (PurchaseOrder $record, array $data, Action $action): void {
                             try {
+                                Gate::authorize('cancel', $record);
                                 app(PurchaseOrderService::class)->cancel(
                                     $record,
                                     (string) ($data['reason'] ?? ''),
                                 );
                             } catch (Throwable $exception) {
                                 self::fail($action, 'تعذر إلغاء أمر الشراء', $exception);
+
                                 return;
                             }
 
@@ -219,10 +274,13 @@ class PurchaseOrdersTable
                 ->map(fn ($item): array => [
                     'purchase_order_item_id' => $item->id,
                     'product_name' => $item->product?->name_ar ?? '-',
+                    'ordered_quantity' => round((float) $item->ordered_quantity, 3),
+                    'received_quantity' => round((float) $item->received_quantity, 3),
                     'remaining_quantity' => round(
                         (float) $item->ordered_quantity - (float) $item->received_quantity,
                         3,
                     ),
+                    'unit_cost' => round((float) $item->unit_cost, 6),
                     'unit_label' => trim((string) (
                         $item->product?->unit?->symbol
                         ?: $item->product?->unit?->name_ar
@@ -230,6 +288,28 @@ class PurchaseOrdersTable
                     'quantity' => 0,
                     'batch_number' => null,
                     'expiry_date' => null,
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private static function receiptHistoryDefaults(PurchaseOrder $record): array
+    {
+        $record->loadMissing(['receipts.items', 'receipts.creator']);
+
+        return [
+            'receipts' => $record->receipts
+                ->sortByDesc('receipt_date')
+                ->map(fn ($receipt): array => [
+                    'receipt_number' => $receipt->receipt_number,
+                    'receipt_date' => $receipt->receipt_date?->format('Y-m-d')
+                        ?? (string) $receipt->receipt_date,
+                    'received_by' => $receipt->creator?->name ?? '-',
+                    'items_count' => $receipt->items->count(),
+                    'total_quantity' => round((float) $receipt->items->sum('quantity'), 3),
+                    'total_amount' => number_format((float) $receipt->total_amount, 2),
                 ])
                 ->values()
                 ->all(),

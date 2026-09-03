@@ -129,14 +129,13 @@ class OperationalResponsibilitySeparationTest extends TestCase
         $paymentPage = file_get_contents(app_path('Filament/Resources/CustomerPayments/Pages/ManageCustomerPayments.php'));
         $expensePage = file_get_contents(app_path('Filament/Resources/VehicleExpenses/Pages/ManageVehicleExpenses.php'));
         $stockPage = file_get_contents(app_path('Filament/Resources/StockMovements/Pages/ManageStockMovements.php'));
-        $stockForm = file_get_contents(app_path('Filament/Resources/StockMovements/Schemas/StockMovementForm.php'));
 
         $this->assertStringContainsString('return [];', $invoicePage);
         $this->assertStringContainsString('تسجيل تحصيل مكتبي', $paymentPage);
         $this->assertStringContainsString('مصروف إداري استثنائي', $expensePage);
-        $this->assertStringContainsString('تسوية مخزون إدارية', $stockPage);
-        $this->assertStringContainsString('سبب الحركة الإدارية', $stockForm);
-        $this->assertStringContainsString('->required()', $stockForm);
+        $this->assertStringContainsString('تسوية مخزون', $stockPage);
+        $this->assertStringContainsString("Action::make('createInventoryAdjustment')", $stockPage);
+        $this->assertStringContainsString('السبب التفصيلي', $stockPage);
     }
 
     public function test_accountant_sees_the_real_operational_pages_and_header_actions(): void
